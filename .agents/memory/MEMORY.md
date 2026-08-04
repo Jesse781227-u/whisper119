@@ -1,0 +1,1 @@
+- [Storefront render safety](storefront-render-safety.md) — Normalize API collections before rendering and keep a top-level recovery boundary around customer-facing React UI.
