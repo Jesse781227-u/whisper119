@@ -1,100 +1,135 @@
-import { ArrowRight, Download, Globe2, Mail, Sparkles } from "lucide-react"
+import { ArrowRight, BookOpen, ChevronRight, Mail, Sparkles } from "lucide-react"
 import { Link } from "wouter"
 import { useGetStorefrontSummary } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatPrice } from "@/lib/utils"
 
-const previewCovers = ["/covers/cover-1.jpg", "/covers/cover-2.jpg", "/covers/cover-3.jpg", "/covers/cover-4.jpg"]
+const previewCovers = ["/covers/cover-1.jpg", "/covers/cover-2.jpg", "/covers/cover-3.jpg"]
+
+function SectionHeading({ eyebrow, title, href = "/shop" }: { eyebrow?: string; title: string; href?: string }) {
+  return (
+    <div className="mb-4 flex items-end justify-between gap-4">
+      <div>
+        {eyebrow && <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-primary">{eyebrow}</p>}
+        <h2 className="text-xl font-extrabold tracking-tight sm:text-2xl">{title}</h2>
+      </div>
+      <Link href={href} className="flex shrink-0 items-center gap-0.5 text-xs font-bold text-primary hover:text-primary/80">
+        More <ChevronRight className="h-4 w-4" />
+      </Link>
+    </div>
+  )
+}
+
+function PromoBanner() {
+  return (
+    <div className="relative isolate min-h-[168px] overflow-hidden rounded-2xl bg-[linear-gradient(118deg,#2739a5_0%,#7444d8_52%,#d34dbe_100%)] px-5 py-6 text-white shadow-lg shadow-primary/15 sm:min-h-[190px] sm:px-8">
+      <div className="absolute -right-10 -top-14 -z-10 h-52 w-52 rounded-full bg-fuchsia-300/35 blur-2xl" />
+      <div className="absolute -bottom-24 left-1/3 -z-10 h-48 w-48 rounded-full bg-cyan-300/25 blur-3xl" />
+      <div className="absolute right-4 top-3 h-20 w-14 rotate-12 overflow-hidden rounded-lg opacity-45 shadow-xl sm:right-16 sm:h-28 sm:w-20">
+        <img src="/covers/cover-2.jpg" alt="" className="h-full w-full object-cover" />
+      </div>
+      <div className="relative max-w-[15rem] sm:max-w-sm">
+        <p className="text-[0.62rem] font-bold uppercase tracking-[0.18em] text-white/75">Welcome to Whisper 119</p>
+        <h1 className="mt-2 text-2xl font-extrabold leading-[1.06] tracking-tight sm:text-4xl">Find a book worth keeping.</h1>
+        <p className="mt-2 text-xs leading-5 text-white/80 sm:text-sm">DRM-free EPUBs and PDFs, delivered straight to your inbox.</p>
+        <Link href="/shop" className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[0.68rem] font-extrabold text-primary shadow-md transition-transform hover:-translate-y-0.5">
+          Explore the shelf <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+      <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+        <span className="h-1.5 w-4 rounded-full bg-white" />
+        <span className="h-1.5 w-1.5 rounded-full bg-white/45" />
+        <span className="h-1.5 w-1.5 rounded-full bg-white/45" />
+      </div>
+    </div>
+  )
+}
 
 function EmptyShelf() {
   return (
-    <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-      <div className="animate-fade-rise">
-        <p className="rule-label">The first shelf</p>
-        <h1 className="mt-5 max-w-xl font-display text-5xl leading-[0.98] sm:text-6xl lg:text-7xl">
-          A small shop with a long reading list.
-        </h1>
-        <p className="mt-7 max-w-lg text-base leading-7 text-muted-foreground">
-          No warehouse, no algorithm and no recommendations engine — just a shelf of titles chosen carefully and sold as clean, DRM-free EPUB and PDF files.
-        </p>
-        <div className="mt-9 flex flex-wrap gap-4">
-          <Link href="/shop" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-mono text-[0.68rem] uppercase tracking-[0.13em] text-primary-foreground transition-transform hover:-translate-y-0.5">
-            Browse the shop <ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link href="/about" className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 font-mono text-[0.68rem] uppercase tracking-[0.13em] text-muted-foreground transition-colors hover:border-primary hover:text-primary">
-            About the shop
-          </Link>
+    <div className="relative overflow-hidden rounded-2xl border border-primary/10 bg-card p-5 shadow-sm sm:p-8">
+      <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-primary/10 blur-2xl" />
+      <div className="relative flex items-center gap-5 sm:gap-8">
+        <div className="flex shrink-0 -space-x-5">
+          {previewCovers.map((cover, index) => (
+            <img key={cover} src={cover} alt="" className={`h-28 w-[4.6rem] rounded-lg border-2 border-card object-cover shadow-lg sm:h-36 sm:w-24 ${index === 1 ? "z-10 -translate-y-3" : ""}`} />
+          ))}
         </div>
-        <div className="mt-10 flex flex-wrap gap-x-7 gap-y-3 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-2"><Download className="h-4 w-4" strokeWidth={1.4} /> Email delivery</span>
-          <span className="inline-flex items-center gap-2"><Globe2 className="h-4 w-4" strokeWidth={1.4} /> Every country</span>
-          <span className="inline-flex items-center gap-2"><Sparkles className="h-4 w-4" strokeWidth={1.4} /> DRM-free</span>
+        <div className="min-w-0">
+          <p className="text-lg font-extrabold leading-tight sm:text-xl">The first shelf is being curated.</p>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm">The shop owner is choosing the first titles now. Come back soon for books you can keep forever.</p>
+          <Link href="/about" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary">How it works <ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
       </div>
-      <div className="relative mx-auto grid w-full max-w-xl grid-cols-4 items-end gap-3 px-6 py-10 sm:gap-5">
-        <div className="absolute inset-x-0 top-1/2 h-32 -translate-y-1/2 rounded-full bg-accent/50 blur-3xl" />
-        {previewCovers.map((cover, index) => (
-          <div key={cover} className={`relative book-shadow overflow-hidden rounded-sm transition-transform duration-500 hover:-translate-y-3 ${index % 2 === 1 ? "mb-8" : ""}`}>
-            <img src={cover} alt="" className="aspect-[2/3] w-full object-cover" />
-          </div>
-        ))}
-      </div>
+    </div>
+  )
+}
+
+function ServiceStrip() {
+  return (
+    <div className="grid grid-cols-2 gap-3 rounded-2xl bg-primary px-4 py-4 text-primary-foreground shadow-lg shadow-primary/15 sm:grid-cols-3">
+      <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0" /><span className="text-[0.68rem] font-bold leading-4">Delivered by email</span></div>
+      <div className="flex items-center gap-2"><BookOpen className="h-4 w-4 shrink-0" /><span className="text-[0.68rem] font-bold leading-4">PDF + EPUB</span></div>
+      <div className="col-span-2 flex items-center gap-2 sm:col-span-1"><Sparkles className="h-4 w-4 shrink-0" /><span className="text-[0.68rem] font-bold leading-4">DRM-free forever</span></div>
     </div>
   )
 }
 
 export default function Home() {
   const { data: summary, isLoading, error } = useGetStorefrontSummary()
-  const hasBooks = Boolean(summary?.featured.length || summary?.newArrivals.length)
   const featured = summary?.featured ?? []
   const arrivals = summary?.newArrivals ?? []
+  const hasBooks = featured.length > 0 || arrivals.length > 0
+  const sections = summary?.categories ?? []
 
   return (
-    <main>
-      <section className="border-b border-border/70 bg-secondary/25">
-        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 md:py-24">
-          {isLoading ? (
-            <div className="grid gap-10 lg:grid-cols-2"><div><Skeleton className="h-4 w-32" /><Skeleton className="mt-6 h-28 w-full" /><Skeleton className="mt-6 h-20 w-4/5" /></div><Skeleton className="mx-auto aspect-[4/3] w-full max-w-xl" /></div>
-          ) : hasBooks ? (
-            <div className="grid gap-12 lg:grid-cols-[0.9fr_0.8fr] lg:items-center">
-              <div className="animate-fade-rise">
-                <p className="rule-label">This month’s shelf</p>
-                <h1 className="mt-5 max-w-xl font-display text-5xl leading-[0.98] sm:text-6xl lg:text-7xl">{featured[0]?.title ?? "A small shop with a long reading list."}</h1>
-                {featured[0] && <p className="mt-3 font-mono text-xs uppercase tracking-[0.15em] text-muted-foreground">by {featured[0].author}</p>}
-                <p className="mt-7 max-w-lg text-base leading-7 text-muted-foreground">{featured[0]?.description ?? "A shelf of titles chosen carefully and sold as clean, DRM-free files."}</p>
-                <div className="mt-9 flex flex-wrap gap-4">
-                  <Link href="/shop" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-mono text-[0.68rem] uppercase tracking-[0.13em] text-primary-foreground">Browse the shop <ArrowRight className="h-4 w-4" /></Link>
-                  {featured[0] && <Link href={`/book/${featured[0].id}`} className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 font-mono text-[0.68rem] uppercase tracking-[0.13em] text-muted-foreground hover:border-primary hover:text-primary">Read about it</Link>}
-                </div>
-              </div>
-              {featured[0]?.coverUrl ? <Link href={`/book/${featured[0].id}`} className="mx-auto block w-full max-w-sm hover-lift"><img src={featured[0].coverUrl} alt={`Cover of ${featured[0].title}`} className="book-shadow aspect-[2/3] w-full rounded-sm object-cover" /></Link> : <EmptyShelf />}
-            </div>
-          ) : (
-            <EmptyShelf />
-          )}
-        </div>
-      </section>
+    <main className="mx-auto max-w-7xl px-4 pb-16 pt-5 sm:px-6 sm:pt-8">
+      <PromoBanner />
 
-      {error ? (
-        <section className="mx-auto max-w-7xl px-5 py-20 text-center sm:px-8"><p className="font-display text-2xl">The shelf is taking a quiet moment.</p><p className="mt-3 text-sm text-muted-foreground">Please try again shortly.</p></section>
+      {isLoading ? (
+        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => <div key={item}><Skeleton className="aspect-[0.69] w-full rounded-xl" /><Skeleton className="mt-3 h-4 w-4/5" /><Skeleton className="mt-2 h-3 w-2/5" /></div>)}
+        </div>
+      ) : error ? (
+        <div className="mt-8 rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center text-sm text-destructive">The shelf could not load. Please try again shortly.</div>
       ) : (
         <>
-          <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
-            <div className="flex items-end justify-between border-b border-border/70 pb-5">
-              <div><p className="rule-label">Fresh off the press</p><h2 className="mt-2 font-display text-3xl">New arrivals</h2></div>
-              <Link href="/shop" className="hidden font-mono text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground hover:text-primary sm:block">See all →</Link>
-            </div>
-            {arrivals.length ? <div className="mt-10 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">{arrivals.slice(0, 4).map((book) => <BookCard key={book.id} book={book} />)}</div> : <div className="mt-10 border border-dashed border-border px-6 py-14 text-center"><p className="font-display text-2xl">The shelf is being assembled.</p><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">Come back soon for the first handpicked titles. Every book will arrive as an attachment in your inbox.</p><Link href="/about" className="mt-6 inline-flex items-center gap-2 font-mono text-[0.65rem] uppercase tracking-[0.15em] text-primary">How it works <ArrowRight className="h-3.5 w-3.5" /></Link></div>}
+          <section className="mt-8">
+            <SectionHeading eyebrow="Handpicked for you" title="Popular" />
+            {featured.length > 0 ? (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">{featured.slice(0, 8).map((book) => <BookCard key={book.id} book={book} />)}</div>
+            ) : (
+              <EmptyShelf />
+            )}
           </section>
-          <section className="border-y border-border/70 bg-secondary/25">
-            <div className="mx-auto grid max-w-7xl gap-8 px-5 py-14 sm:px-8 md:grid-cols-3">
-              <div><Mail className="h-5 w-5 text-primary" strokeWidth={1.4} /><p className="mt-4 font-display text-xl">Delivered by email</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Your PDF or EPUB arrives as an actual attachment after payment clears.</p></div>
-              <div><Globe2 className="h-5 w-5 text-primary" strokeWidth={1.4} /><p className="mt-4 font-display text-xl">Made for everywhere</p><p className="mt-2 text-sm leading-6 text-muted-foreground">A quiet little shop for readers ordering from any country.</p></div>
-              <div><Sparkles className="h-5 w-5 text-primary" strokeWidth={1.4} /><p className="mt-4 font-display text-xl">No lock-in</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Clean DRM-free files you can keep, back up, and read anywhere.</p></div>
-            </div>
+
+          <section className="mt-8">
+            <ServiceStrip />
           </section>
-          {featured.length > 0 && <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8"><p className="rule-label">On the shelf now</p><div className="mt-8 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">{featured.slice(0, 4).map((book) => <BookCard key={book.id} book={book} />)}</div></section>}
+
+          {arrivals.length > 0 ? (
+            <section className="mt-9">
+              <SectionHeading eyebrow="Just added" title="New arrivals" />
+              <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">{arrivals.slice(0, 8).map((book) => <BookCard key={book.id} book={book} />)}</div>
+            </section>
+          ) : null}
+
+          {sections.slice(0, 3).map((category) => (
+            <section key={category.name} className="mt-9">
+              <SectionHeading title={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} />
+              <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-7 text-center text-sm text-muted-foreground">
+                Browse the {category.name.toLowerCase()} shelf in the catalogue.
+                <Link href={`/shop?category=${encodeURIComponent(category.name)}`} className="ml-1 font-bold text-primary">See titles →</Link>
+              </div>
+            </section>
+          ))}
+
+          {!hasBooks && (
+            <div className="mt-9 rounded-2xl bg-secondary/70 p-5 text-center sm:p-8">
+              <p className="text-sm font-bold">A quieter kind of bookstore</p>
+              <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-muted-foreground">No algorithm, no lock-in, no waiting for a parcel. Just carefully selected digital books delivered as real attachments after payment.</p>
+            </div>
+          )}
         </>
       )}
     </main>
