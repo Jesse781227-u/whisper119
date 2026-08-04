@@ -6,10 +6,8 @@ import {
   Clock3,
   FileText,
   LogOut,
-  Moon,
   PackageCheck,
   Plus,
-  Sun,
   Upload,
   WalletCards,
 } from "lucide-react"
@@ -24,12 +22,10 @@ import {
   useRequestUploadUrl,
 } from "@workspace/api-client-react"
 import type { BookInput, BookInputFormat } from "@workspace/api-client-react"
-import { useTheme } from "@/components/theme-provider"
 import { formatDate, formatPrice } from "@/lib/utils"
 
 export function AdminLogin() {
   const [, setLocation] = useLocation()
-  const { theme, setTheme } = useTheme()
   const login = useAdminLogin()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -50,9 +46,6 @@ export function AdminLogin() {
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/30"><BookOpen className="h-5 w-5" strokeWidth={2.5} /></span>
             <div><p className="text-lg font-extrabold">Whisper 119</p><p className="text-xs text-white/60">Private librarian desk</p></div>
           </Link>
-          <button type="button" aria-label="Toggle theme" onClick={() => setTheme(theme === "light" ? "dark" : "light")} className="rounded-full bg-white/10 p-3 text-white/80 backdrop-blur hover:bg-white/20">
-            {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-          </button>
         </div>
         <div className="rounded-3xl border border-white/15 bg-white/10 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary-foreground/70">Welcome back</p>
@@ -72,7 +65,6 @@ export function AdminLogin() {
 }
 
 function AdminNav({ onLogout }: { onLogout: () => void }) {
-  const { theme, setTheme } = useTheme()
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <Link href="/admin" className="flex items-center gap-3">
@@ -81,7 +73,6 @@ function AdminNav({ onLogout }: { onLogout: () => void }) {
       </Link>
       <div className="flex items-center gap-2">
         <Link href="/" className="hidden rounded-full px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-secondary hover:text-primary sm:block">View storefront</Link>
-        <button type="button" aria-label="Toggle theme" onClick={() => setTheme(theme === "light" ? "dark" : "light")} className="rounded-full p-2.5 text-muted-foreground hover:bg-secondary hover:text-primary">{theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}</button>
         <button type="button" onClick={onLogout} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:border-destructive hover:text-destructive"><LogOut className="h-3.5 w-3.5" /> Sign out</button>
       </div>
     </div>

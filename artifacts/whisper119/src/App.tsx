@@ -82,7 +82,7 @@ function App() {
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <ThemeProvider>
+          <ThemeProvider defaultTheme="dark">
             <CartProvider>
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
                 <AppShell />

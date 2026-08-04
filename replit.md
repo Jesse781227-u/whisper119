@@ -54,7 +54,7 @@ The private admin desk provides cookie-backed login, dashboard totals, catalogue
 
 ## User preferences
 
-- Keep the current MegaNovel-inspired bookstore direction: mobile-first app chrome, blue primary actions, rounded cards and pills, cover-heavy grids, bold sans-serif typography, persistent light/dark themes, and restrained motion. Do not copy chapter-reading, fake ratings/views, or customer download-link behavior from the reference.
+- Keep the current cover-heavy bookstore direction: mobile-first app chrome, rounded cards and pills, bold sans-serif typography, a dark romance palette, and restrained motion. Use moonlit plum, wine, rose, silver, and antique-gold cues with subtle night-forest atmosphere; do not use a light theme. Do not copy chapter-reading, fake ratings/views, or customer download-link behavior from the reference.
 - Customer-facing copy should sound casual and personal, as if the author is speaking directly to visitors. Prefer first-person language about the author's books and avoid generic bookstore filler, curation disclaimers, and decorative sparkle icons.
 - Push commits to the connected GitHub repository after meaningful changes and report push failures explicitly.
 - For visual redesign work, implement and push each meaningful page or section as its own segment before moving to the next.

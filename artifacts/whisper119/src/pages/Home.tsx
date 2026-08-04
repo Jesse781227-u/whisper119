@@ -20,14 +20,17 @@ function SectionHeading({ eyebrow, title, href = "/shop" }: { eyebrow?: string; 
 
 function PromoBanner() {
   return (
-    <div className="relative isolate min-h-[168px] overflow-hidden rounded-2xl bg-[linear-gradient(118deg,#2739a5_0%,#7444d8_52%,#d34dbe_100%)] px-5 py-6 text-white shadow-lg shadow-primary/15 sm:min-h-[190px] sm:px-8">
-      <div className="absolute -right-10 -top-14 -z-10 h-52 w-52 rounded-full bg-fuchsia-300/35 blur-2xl" />
-      <div className="absolute -bottom-24 left-1/3 -z-10 h-48 w-48 rounded-full bg-cyan-300/25 blur-3xl" />
+    <div className="relative isolate min-h-[168px] overflow-hidden rounded-2xl bg-[linear-gradient(118deg,#160e24_0%,#4c1f3e_54%,#8f3c65_100%)] px-5 py-6 text-white shadow-lg shadow-primary/20 sm:min-h-[190px] sm:px-8">
+      <div className="absolute -right-10 -top-14 -z-10 h-52 w-52 rounded-full bg-rose-200/20 blur-2xl" />
+      <div className="absolute -bottom-24 left-1/3 -z-10 h-48 w-48 rounded-full bg-violet-300/15 blur-3xl" />
+      <div aria-hidden="true" className="absolute right-12 top-5 h-16 w-16 rounded-full bg-amber-100/20 shadow-[0_0_46px_12px_rgba(242,216,181,0.14)]" />
+      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-14 bg-[linear-gradient(160deg,transparent_0_20%,rgba(11,6,19,0.76)_21%_30%,transparent_31%_37%,rgba(11,6,19,0.82)_38%_48%,transparent_49%_55%,rgba(11,6,19,0.9)_56%)] opacity-80" />
+      <div aria-hidden="true" className="absolute bottom-0 left-0 h-20 w-1/2 bg-[linear-gradient(120deg,transparent_0_35%,rgba(11,6,19,0.72)_36%_42%,transparent_43%_48%,rgba(11,6,19,0.88)_49%)] opacity-80" />
       <div className="absolute right-4 top-3 h-20 w-14 rotate-12 overflow-hidden rounded-lg opacity-45 shadow-xl sm:right-16 sm:h-28 sm:w-20">
         <img src="/covers/cover-2.jpg" alt="" className="h-full w-full object-cover" />
       </div>
       <div className="relative max-w-[15rem] sm:max-w-sm">
-        <p className="text-[0.62rem] font-bold uppercase tracking-[0.18em] text-white/75">A note from me</p>
+        <p className="text-[0.62rem] font-bold uppercase tracking-[0.18em] text-rose-100/80">A note from me</p>
         <h1 className="mt-2 text-2xl font-extrabold leading-[1.06] tracking-tight sm:text-4xl">I’m glad you found my books.</h1>
         <p className="mt-2 text-xs leading-5 text-white/80 sm:text-sm">I make and share DRM-free EPUBs and PDFs, and send them straight to your inbox.</p>
         <Link href="/shop" className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[0.68rem] font-extrabold text-primary shadow-md transition-transform hover:-translate-y-0.5">

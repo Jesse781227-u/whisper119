@@ -1,19 +1,16 @@
 import { Link, useLocation } from "wouter"
-import { BookOpen, ChevronDown, Menu, Moon, Search, ShoppingBag, Sun, UserCircle, X } from "lucide-react"
+import { BookOpen, ChevronDown, Menu, Search, ShoppingBag, UserCircle, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useGetStorefrontSummary } from "@workspace/api-client-react"
 import { useCart } from "@/components/cart-provider"
-import { useTheme } from "@/components/theme-provider"
 
 export function Navbar() {
   const { items } = useCart()
-  const { theme, setTheme } = useTheme()
   const { data: summary } = useGetStorefrontSummary()
   const [open, setOpen] = useState(false)
   const [menuVisible, setMenuVisible] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [location] = useLocation()
-  const dark = theme === "dark"
   const categories = Array.isArray(summary?.categories) ? summary.categories : []
 
   useEffect(() => {
@@ -71,9 +68,7 @@ export function Navbar() {
             <ShoppingBag className="h-5 w-5" />
             {items.length > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.58rem] text-primary-foreground">{items.length}</span>}
           </Link>
-          <button type="button" aria-label="Toggle theme" onClick={() => setTheme(dark ? "light" : "dark")} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary">
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
+          <span aria-hidden="true" className="hidden h-8 w-px bg-border sm:block" />
           <Link href="/admin/login" aria-label="Account" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20">
             <UserCircle className="h-5 w-5" />
           </Link>
