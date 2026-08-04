@@ -31,6 +31,8 @@ Whisper 119 is a boutique, single-seller digital bookstore for international rea
 - `artifacts/whisper119/src/` — storefront, checkout, confirmation, admin shell, theme, and cart
 - `artifacts/api-server/src/routes/` — Express routes for catalogue, orders/Paystack, admin, and storage
 - `artifacts/api-server/src/lib/` — signed admin sessions, object storage, payment verification, and email delivery
+- `scripts/data/demo-books.json` — fictional development catalogue fixture
+- `pnpm --filter @workspace/scripts run seed:demo-books` — idempotently seed the development catalogue and private sample attachments
 - `lib/api-spec/openapi.yaml` — API source of truth
 - `lib/api-client-react/src/generated/` and `lib/api-zod/src/generated/` — generated clients and validation schemas
 - `lib/db/src/schema/` — Drizzle tables for books, orders, and order items
@@ -62,7 +64,7 @@ The private admin desk provides cookie-backed login, dashboard totals, catalogue
 - `PAYSTACK_SECRET_KEY` and SMTP credentials are intentionally fail-closed; do not create fake payment or delivery behavior.
 - Run `pnpm --filter @workspace/api-spec run codegen` after changing `lib/api-spec/openapi.yaml`, then run `pnpm --filter @workspace/db run push` after schema changes.
 - Vite configs use build-safe defaults for `PORT` and `BASE_PATH`, because Render/build environments do not always provide runtime workflow variables.
-- The current development catalogue is empty until the librarian uploads real ebook files; do not seed records with nonexistent object paths.
+- Development includes 24 clearly fictional demo books with local cover artwork and tiny private sample attachments for testing. Replace or remove these records before treating the catalogue as production inventory.
 
 ## Pointers
 

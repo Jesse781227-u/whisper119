@@ -16,22 +16,6 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50">
-      <div className="flex h-12 items-center justify-between bg-primary px-4 text-primary-foreground sm:px-6">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-primary">
-            <BookOpen className="h-4 w-4" strokeWidth={2.5} />
-          </span>
-          <div className="min-w-0 leading-none">
-            <p className="truncate text-xs font-bold">Whisper 119</p>
-            <p className="mt-0.5 text-[0.6rem] font-medium text-primary-foreground/75">Digital books, delivered</p>
-          </div>
-        </div>
-        <span className="hidden text-xs font-semibold text-primary-foreground/80 sm:block">Read anywhere. Keep forever.</span>
-        <Link href="/shop" className="rounded-full bg-white px-4 py-2 text-[0.68rem] font-bold text-primary shadow-sm transition-transform hover:-translate-y-0.5">
-          Browse books
-        </Link>
-      </div>
-
       <div className="border-b border-border bg-background/95 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <button type="button" aria-label={open ? "Close menu" : "Open menu"} onClick={() => setOpen((value) => !value)} className="shrink-0 rounded-full p-2 text-foreground transition-colors hover:bg-secondary md:hidden">
