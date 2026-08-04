@@ -1,132 +1,37 @@
+import { Search, SlidersHorizontal, X } from "lucide-react"
 import { useState } from "react"
-import { useListBooks, useGetStorefrontSummary } from "@workspace/api-client-react"
 import { Link } from "wouter"
-import { formatPrice } from "@/lib/utils"
+import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
+import { BookCard } from "@/components/book-card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function Shop() {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState<string | undefined>()
-
-  const { data: books, isLoading, error } = useListBooks({
-    search: search || undefined,
-    category,
-  })
-
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const { data: books, isLoading, error } = useListBooks({ search: search || undefined, category })
   const { data: summary } = useGetStorefrontSummary()
 
   return (
-    <main className="min-h-screen py-12 px-4 container mx-auto">
-      <div className="flex flex-col md:flex-row gap-12">
-        {/* Sidebar */}
-        <aside className="w-full md:w-64 shrink-0 space-y-8">
-          <div>
-            <h3 className="font-serif text-lg mb-4">Search</h3>
-            <Input
-              type="search"
-              placeholder="Titles, authors..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="bg-transparent"
-            />
-          </div>
-
-          <div>
-            <h3 className="font-serif text-lg mb-4">Categories</h3>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setCategory(undefined)}
-                className={`text-left text-sm py-1 transition-colors ${
-                  !category ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                All Titles
-              </button>
-              {summary?.categories.map((c) => (
-                <button
-                  key={c.name}
-                  onClick={() => setCategory(c.name)}
-                  className={`flex items-center justify-between text-left text-sm py-1 transition-colors ${
-                    category === c.name ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <span>{c.name}</span>
-                  <span className="text-xs text-muted-foreground tabular-nums">{c.count}</span>
-                </button>
-              ))}
-            </div>
+    <main className="mx-auto max-w-7xl px-5 py-14 sm:px-8 md:py-20">
+      <div className="mb-14 max-w-2xl"><p className="rule-label">The catalogue</p><h1 className="mt-4 font-display text-5xl leading-none sm:text-6xl">A shelf worth lingering over.</h1><p className="mt-5 text-base leading-7 text-muted-foreground">Browse the collection by title, author, or mood. Everything here is DRM-free and delivered by email.</p></div>
+      <button type="button" onClick={() => setFiltersOpen((value) => !value)} className="mb-8 inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 font-mono text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground md:hidden"><SlidersHorizontal className="h-4 w-4" /> Filters</button>
+      <div className="grid gap-12 md:grid-cols-[13rem_1fr]">
+        <aside className={`${filtersOpen ? "block" : "hidden"} md:block`}>
+          <div className="sticky top-28">
+            <p className="rule-label">Find a title</p>
+            <div className="relative mt-4"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Search titles or authors" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search…" className="h-10 rounded-none border-x-0 border-t-0 bg-transparent pl-9 pr-2 shadow-none focus-visible:ring-0" /></div>
+            <div className="mt-10"><p className="rule-label">Browse by category</p><div className="mt-4 grid gap-2">
+              <button type="button" onClick={() => setCategory(undefined)} className={`flex items-center justify-between py-1 text-left text-sm ${!category ? "font-medium text-primary" : "text-muted-foreground hover:text-foreground"}`}><span>All titles</span>{!category && <span>•</span>}</button>
+              {summary?.categories.map((item) => <button key={item.name} type="button" onClick={() => setCategory(item.name)} className={`flex items-center justify-between py-1 text-left text-sm ${category === item.name ? "font-medium text-primary" : "text-muted-foreground hover:text-foreground"}`}><span>{item.name}</span><span className="font-mono text-[0.62rem]">{item.count}</span></button>)}
+            </div></div>
           </div>
         </aside>
-
-        {/* Grid */}
-        <div className="flex-1">
-          <div className="mb-8 flex items-center justify-between border-b pb-4">
-            <h1 className="text-3xl font-serif">
-              {category ? category : search ? "Search Results" : "All Books"}
-            </h1>
-            <span className="text-sm text-muted-foreground tabular-nums">
-              {books?.length || 0} results
-            </span>
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="space-y-4">
-                  <Skeleton className="aspect-[2/3] w-full" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-              ))}
-            </div>
-          ) : error ? (
-            <p className="text-destructive">Failed to load books.</p>
-          ) : books?.length === 0 ? (
-            <div className="py-20 text-center">
-              <p className="text-muted-foreground text-lg font-serif">No titles found.</p>
-              <button
-                onClick={() => { setSearch(""); setCategory(undefined); }}
-                className="mt-4 text-sm text-foreground underline underline-offset-4 hover:text-muted-foreground"
-              >
-                Clear filters
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-              {books?.map((book) => (
-                <Link key={book.id} href={`/book/${book.id}`} className="group block">
-                  <div className="aspect-[2/3] relative mb-4 overflow-hidden bg-muted">
-                    {book.coverUrl ? (
-                      <img
-                        src={book.coverUrl}
-                        alt={book.title}
-                        className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center border-2 border-transparent group-hover:border-foreground/10 transition-colors">
-                        <span className="font-serif text-lg leading-tight mb-2">{book.title}</span>
-                      </div>
-                    )}
-                    <div className="absolute top-3 right-3 flex flex-col gap-2">
-                      <Badge variant="secondary" className="bg-background/90 backdrop-blur font-mono text-[10px] uppercase">
-                        {book.format}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-serif text-lg font-medium leading-tight group-hover:text-primary/80 transition-colors">
-                      {book.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">{book.author}</p>
-                    <p className="text-sm font-medium pt-1">{formatPrice(book.price, book.currency)}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        <section>
+          <div className="mb-8 flex items-end justify-between border-b border-border/70 pb-5"><div><p className="rule-label">{category ?? (search ? "Search results" : "All titles")}</p><h2 className="mt-2 font-display text-2xl">{books?.length ?? 0} {books?.length === 1 ? "book" : "books"}</h2></div>{(search || category) && <button type="button" onClick={() => { setSearch(""); setCategory(undefined) }} className="flex items-center gap-1 font-mono text-[0.62rem] uppercase tracking-[0.13em] text-muted-foreground hover:text-primary">Clear <X className="h-3.5 w-3.5" /></button>}</div>
+          {isLoading ? <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3, 4, 5, 6].map((item) => <div key={item}><Skeleton className="aspect-[2/3] w-full" /><Skeleton className="mt-4 h-5 w-4/5" /><Skeleton className="mt-2 h-4 w-2/5" /></div>)}</div> : error ? <div className="border border-destructive/30 p-8 text-center text-sm text-destructive">Could not load the catalogue.</div> : books?.length ? <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">{books.map((book) => <BookCard key={book.id} book={book} />)}</div> : <div className="border border-dashed border-border px-6 py-20 text-center"><p className="font-display text-3xl">Nothing on this shelf yet.</p><p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">The shop owner is still choosing the first titles. Clear the filters or check back soon.</p><Link href="/about" className="mt-6 inline-block font-mono text-[0.65rem] uppercase tracking-[0.15em] text-primary">About Whisper 119 →</Link></div>}
+        </section>
       </div>
     </main>
   )

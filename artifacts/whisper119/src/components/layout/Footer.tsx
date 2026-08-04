@@ -1,44 +1,36 @@
 import { Link } from "wouter"
+import { ArrowUpRight } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="border-t py-12">
-      <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
-        <div className="md:col-span-2">
-          <h3 className="font-serif text-xl font-medium mb-4">Whisper 119</h3>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            A small shop with a long reading list. Quiet, carefully chosen titles sold as clean, DRM-free EPUB and PDF files.
+    <footer className="mt-24 border-t border-border/70 bg-secondary/35">
+      <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-[1.4fr_0.7fr_0.7fr]">
+        <div>
+          <p className="font-display text-2xl">Whisper 119</p>
+          <p className="mt-4 max-w-sm text-sm leading-7 text-muted-foreground">
+            A small, carefully kept bookshop for digital readers. Every title is chosen slowly and delivered as a clean, DRM-free file.
           </p>
+          <p className="mt-8 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-muted-foreground">Made for readers everywhere</p>
         </div>
         <div>
-          <h4 className="font-medium mb-4">Shop</h4>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>
-              <Link href="/shop" className="hover:text-foreground transition-colors">
-                All Books
-              </Link>
-            </li>
-            <li>
-              <Link href="/about" className="hover:text-foreground transition-colors">
-                About the Shop
-              </Link>
-            </li>
-          </ul>
+          <p className="rule-label">Explore</p>
+          <div className="mt-5 grid gap-3 text-sm">
+            <Link href="/shop" className="text-muted-foreground transition-colors hover:text-primary">All books</Link>
+            <Link href="/about" className="text-muted-foreground transition-colors hover:text-primary">About the shop</Link>
+            <Link href="/admin/login" className="text-muted-foreground transition-colors hover:text-primary">Shop owner login</Link>
+          </div>
         </div>
         <div>
-          <h4 className="font-medium mb-4">Support</h4>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>
-              <Link href="/admin/login" className="hover:text-foreground transition-colors">
-                Librarian Login
-              </Link>
-            </li>
-          </ul>
+          <p className="rule-label">Contact</p>
+          <div className="mt-5 grid gap-3 text-sm text-muted-foreground">
+            <a href="mailto:hello@whisper119.shop" className="transition-colors hover:text-primary">hello@whisper119.shop</a>
+            <span>Prices in USD</span>
+            <span className="flex items-center gap-1">Worldwide delivery <ArrowUpRight className="h-3.5 w-3.5" /></span>
+          </div>
         </div>
       </div>
-      <div className="container mx-auto px-4 mt-12 pt-8 border-t text-sm text-muted-foreground flex flex-col md:flex-row justify-between items-center">
-        <p>&copy; {new Date().getFullYear()} Whisper 119. All rights reserved.</p>
-        <p className="mt-2 md:mt-0">Instant download upon purchase.</p>
+      <div className="border-t border-border/70 px-5 py-5 text-center font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted-foreground sm:px-8">
+        © {new Date().getFullYear()} Whisper 119 · Digital titles only · Delivered by email
       </div>
     </footer>
   )
