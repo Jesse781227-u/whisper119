@@ -76,7 +76,13 @@ function ServiceStrip() {
 }
 
 export default function Home() {
-  const { data: summary, isLoading, error } = useGetStorefrontSummary()
+  const { data: summary, isLoading, error, refetch, isRefetching } = useGetStorefrontSummary({
+    query: {
+      queryKey: ["/api/storefront/summary"],
+      retry: 3,
+      retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
+    },
+  })
   const featured = summary?.featured ?? []
   const arrivals = summary?.newArrivals ?? []
   const hasBooks = featured.length > 0 || arrivals.length > 0
@@ -91,7 +97,12 @@ export default function Home() {
           {[1, 2, 3, 4].map((item) => <div key={item}><Skeleton className="aspect-[0.69] w-full rounded-xl" /><Skeleton className="mt-3 h-4 w-4/5" /><Skeleton className="mt-2 h-3 w-2/5" /></div>)}
         </div>
       ) : error ? (
-        <div className="mt-8 rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center text-sm text-destructive">The shelf could not load. Please try again shortly.</div>
+        <div className="mt-8 rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center text-sm text-destructive">
+          <p>The shelf could not load. Please try again shortly.</p>
+          <button type="button" onClick={() => void refetch()} disabled={isRefetching} className="mt-4 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-opacity disabled:opacity-60">
+            {isRefetching ? "Trying again…" : "Try again"}
+          </button>
+        </div>
       ) : (
         <>
           <section className="mt-8">
