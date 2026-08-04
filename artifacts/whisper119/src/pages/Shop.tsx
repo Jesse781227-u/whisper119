@@ -25,7 +25,7 @@ export default function Shop() {
   const [format, setFormat] = useState<FormatFilter>(initial.format)
   const [maxPrice, setMaxPrice] = useState(initial.maxPrice)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const { data: books, isLoading, error, refetch, isRefetching } = useListBooks(
+  const { data: booksData, isLoading, error, refetch, isRefetching } = useListBooks(
     {
       search: search || undefined,
       category: category || undefined,
@@ -47,6 +47,8 @@ export default function Shop() {
     },
   )
   const { data: summary } = useGetStorefrontSummary()
+  const books = Array.isArray(booksData) ? booksData : []
+  const categories = Array.isArray(summary?.categories) ? summary.categories : []
   const hasFilters = Boolean(search || category || format || maxPrice)
 
   function updateUrl(next: { search?: string; category?: string; format?: FormatFilter; maxPrice?: string }) {
@@ -132,9 +134,9 @@ export default function Shop() {
               <div className="grid gap-1">
                 <button type="button" onClick={() => selectCategory("")} className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${!category ? "bg-primary/10 font-bold text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
                   All books
-                  {summary?.categories.reduce((total, item) => total + item.count, 0) ? <span className="text-[0.65rem]">{summary.categories.reduce((total, item) => total + item.count, 0)}</span> : null}
+                  {categories.reduce((total, item) => total + item.count, 0) ? <span className="text-[0.65rem]">{categories.reduce((total, item) => total + item.count, 0)}</span> : null}
                 </button>
-                {summary?.categories.map((item) => (
+                {categories.map((item) => (
                   <button key={item.name} type="button" onClick={() => selectCategory(item.name)} className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${category === item.name ? "bg-primary/10 font-bold text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
                     {item.name}<span className="text-[0.65rem]">{item.count}</span>
                   </button>

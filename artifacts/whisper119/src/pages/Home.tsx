@@ -83,17 +83,18 @@ export default function Home() {
       retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
     },
   })
-  const { data: catalogue = [], isLoading: isCatalogueLoading, error: catalogueError, refetch: refetchCatalogue } = useListBooks(undefined, {
+  const { data: catalogueData, isLoading: isCatalogueLoading, error: catalogueError, refetch: refetchCatalogue } = useListBooks(undefined, {
     query: {
       queryKey: ["/api/books"],
       retry: 3,
       retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
     },
   })
-  const featured = summary?.featured?.length ? summary.featured : catalogue.slice(0, 8)
-  const arrivals = summary?.newArrivals?.length ? summary.newArrivals : catalogue.slice(8, 16)
+  const catalogue = Array.isArray(catalogueData) ? catalogueData : []
+  const featured = Array.isArray(summary?.featured) && summary.featured.length > 0 ? summary.featured : catalogue.slice(0, 8)
+  const arrivals = Array.isArray(summary?.newArrivals) && summary.newArrivals.length > 0 ? summary.newArrivals : catalogue.slice(8, 16)
   const hasBooks = featured.length > 0 || arrivals.length > 0
-  const sections = summary?.categories ?? []
+  const sections = Array.isArray(summary?.categories) ? summary.categories : []
   const isLoadingShelf = isLoading || isCatalogueLoading
   const shelfError = error && catalogueError
 

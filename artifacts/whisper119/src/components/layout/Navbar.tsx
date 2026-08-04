@@ -14,7 +14,7 @@ export function Navbar() {
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [location] = useLocation()
   const dark = theme === "dark"
-  const categories = summary?.categories ?? []
+  const categories = Array.isArray(summary?.categories) ? summary.categories : []
 
   useEffect(() => {
     if (!open) {
