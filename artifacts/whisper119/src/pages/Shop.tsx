@@ -42,6 +42,7 @@ export default function Shop() {
         }],
         retry: 3,
         retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
+        placeholderData: (previousBooks) => previousBooks,
       },
     },
   )

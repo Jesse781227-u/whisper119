@@ -1,6 +1,6 @@
 import { ArrowRight, BookOpen, ChevronRight, Mail, Sparkles } from "lucide-react"
 import { Link } from "wouter"
-import { useGetStorefrontSummary } from "@workspace/api-client-react"
+import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -83,23 +83,36 @@ export default function Home() {
       retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
     },
   })
-  const featured = summary?.featured ?? []
-  const arrivals = summary?.newArrivals ?? []
+  const { data: catalogue = [], isLoading: isCatalogueLoading, error: catalogueError, refetch: refetchCatalogue } = useListBooks(undefined, {
+    query: {
+      queryKey: ["/api/books"],
+      retry: 3,
+      retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
+    },
+  })
+  const featured = summary?.featured?.length ? summary.featured : catalogue.slice(0, 8)
+  const arrivals = summary?.newArrivals?.length ? summary.newArrivals : catalogue.slice(8, 16)
   const hasBooks = featured.length > 0 || arrivals.length > 0
   const sections = summary?.categories ?? []
+  const isLoadingShelf = isLoading || isCatalogueLoading
+  const shelfError = error && catalogueError
+
+  function retryShelf() {
+    void Promise.all([refetch(), refetchCatalogue()])
+  }
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-5 sm:px-6 sm:pt-8">
       <PromoBanner />
 
-      {isLoading ? (
+      {isLoadingShelf ? (
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[1, 2, 3, 4].map((item) => <div key={item}><Skeleton className="aspect-[0.69] w-full rounded-xl" /><Skeleton className="mt-3 h-4 w-4/5" /><Skeleton className="mt-2 h-3 w-2/5" /></div>)}
         </div>
-      ) : error ? (
+      ) : shelfError && !hasBooks ? (
         <div className="mt-8 rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center text-sm text-destructive">
           <p>The shelf could not load. Please try again shortly.</p>
-          <button type="button" onClick={() => void refetch()} disabled={isRefetching} className="mt-4 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-opacity disabled:opacity-60">
+          <button type="button" onClick={retryShelf} disabled={isRefetching} className="mt-4 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-opacity disabled:opacity-60">
             {isRefetching ? "Trying again…" : "Try again"}
           </button>
         </div>
@@ -128,9 +141,10 @@ export default function Home() {
           {sections.slice(0, 3).map((category) => (
             <section key={category.name} className="mt-9">
               <SectionHeading title={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} />
-              <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-7 text-center text-sm text-muted-foreground">
-                Browse the {category.name.toLowerCase()} shelf in the catalogue.
-                <Link href={`/shop?category=${encodeURIComponent(category.name)}`} className="ml-1 font-bold text-primary">See titles →</Link>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">
+                {catalogue.filter((book) => book.category === category.name).slice(0, 4).map((book) => (
+                  <BookCard key={book.id} book={book} />
+                ))}
               </div>
             </section>
           ))}
