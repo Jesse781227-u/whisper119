@@ -7,6 +7,11 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// API clients expect a JSON body on successful catalogue requests. Express's
+// default ETag handling can turn a cached GET into a 304 response, which has
+// no body and is treated as an error by the generated client.
+app.disable("etag");
+
 app.use(
   pinoHttp({
     logger,
