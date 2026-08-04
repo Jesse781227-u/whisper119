@@ -11,6 +11,7 @@ export function Footer() {
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen className="h-4 w-4" /></span>
               <span className="text-lg font-extrabold">Whisper 119</span>
             </Link>
+            <p className="mt-2 text-[0.68rem] font-extrabold uppercase tracking-[0.2em] text-primary">browse, buy, read</p>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">I make and share digital books for readers everywhere. I’ll send your DRM-free file straight to your inbox.</p>
           </div>
           <div className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm">
