@@ -9,7 +9,11 @@ type DemoBook = typeof booksTable.$inferInsert;
 const execFileAsync = promisify(execFile);
 
 const fixturePath = new URL("../data/demo-books.json", import.meta.url);
-const fixture = JSON.parse(await readFile(fixturePath, "utf8")) as Array<Omit<DemoBook, "currency" | "publishedAt"> & { publishedAt: string }>;
+const supplementalPath = new URL("../data/supplemental-demo-books.json", import.meta.url);
+const fixture = [
+  ...JSON.parse(await readFile(fixturePath, "utf8")),
+  ...JSON.parse(await readFile(supplementalPath, "utf8")),
+] as Array<Omit<DemoBook, "currency" | "publishedAt"> & { publishedAt: string }>;
 const books: DemoBook[] = fixture.map((book) => ({
   ...book,
   currency: "USD",
@@ -93,7 +97,24 @@ async function uploadDemoAttachment(book: DemoBook, content: Buffer): Promise<vo
 for (const book of books) {
   const content = book.format === "PDF" ? pdfContent(book) : await epubContent(book);
   await uploadDemoAttachment(book, content);
+  await db.insert(booksTable).values(book).onConflictDoUpdate({
+    target: booksTable.slug,
+    set: {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      price: book.price,
+      currency: book.currency,
+      category: book.category,
+      description: book.description,
+      format: book.format,
+      coverObjectPath: book.coverObjectPath,
+      fileObjectPath: book.fileObjectPath,
+      fileName: book.fileName,
+      featured: book.featured,
+      publishedAt: book.publishedAt,
+    },
+  });
 }
 
-await db.insert(booksTable).values(books).onConflictDoNothing({ target: booksTable.slug });
-console.log(`Seeded ${books.length} demo books and private sample attachments (existing slugs were left unchanged).`);
+console.log(`Seeded ${books.length} demo books and private sample attachments.`);

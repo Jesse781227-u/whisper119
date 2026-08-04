@@ -64,7 +64,7 @@ The private admin desk provides cookie-backed login, dashboard totals, catalogue
 - `PAYSTACK_SECRET_KEY` and SMTP credentials are intentionally fail-closed; do not create fake payment or delivery behavior.
 - Run `pnpm --filter @workspace/api-spec run codegen` after changing `lib/api-spec/openapi.yaml`, then run `pnpm --filter @workspace/db run push` after schema changes.
 - Vite configs use build-safe defaults for `PORT` and `BASE_PATH`, because Render/build environments do not always provide runtime workflow variables.
-- Development includes 24 clearly fictional demo books with local cover artwork and tiny private sample attachments for testing. Replace or remove these records before treating the catalogue as production inventory.
+- Development includes 51 clearly fictional demo books across fiction, science fiction, adventure, poetry, mystery, travel, wellbeing, business, technology, history, biography, and cooking. They use local cover artwork and tiny private sample attachments for testing. Replace or remove these records before treating the catalogue as production inventory.
 
 ## Pointers
 
