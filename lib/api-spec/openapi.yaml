@@ -565,11 +565,12 @@ components:
         subtotal: { type: number }
         status: { type: string, enum: [pending, paid, failed] }
         paymentStatus: { type: string }
+        deliveryEmailSent: { type: boolean }
         downloaded: { type: boolean }
         createdAt: { type: string }
         paidAt: { type: ["string", "null"] }
         items: { type: array, items: { $ref: "#/components/schemas/OrderItem" } }
-      required: [id, reference, email, country, currency, subtotal, status, paymentStatus, downloaded, createdAt, paidAt, items]
+      required: [id, reference, email, country, currency, subtotal, status, paymentStatus, deliveryEmailSent, downloaded, createdAt, paidAt, items]
     OrderItem:
       type: object
       properties:

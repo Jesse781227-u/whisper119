@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Whisper 119"
+description = "A boutique digital bookstore for international readers to discover and instantly download ebooks from the Whisper 119 collection."
+version = "1.0.0"
+id = "artifacts/whisper119"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24186
+
+[services.development]
+run = "pnpm --filter @workspace/whisper119 run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/whisper119", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/whisper119/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24186"
+BASE_PATH = "/"

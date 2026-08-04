@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -26,8 +27,13 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify: (req, _res, body) => {
+    (req as express.Request & { rawBody?: Buffer }).rawBody = body;
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.use("/api", router);
 
