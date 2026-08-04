@@ -1,0 +1,48 @@
+You're rebuilding the frontend UI of **Whisper 119** — a single-seller digital bookstore (Paystack payments, files emailed automatically after purchase, dark/light mode toggle). The previous design pass looked cheap/generic and is being thrown out. You have reference screenshots of an app called MegaNovel — match that visual language and interaction pattern, adapted to a bookstore that sells and emails files rather than hosts reading.
+
+## Non-negotiable process rule
+**Build and push segment by segment.** One page, one component, one section at a time — commit and push after each, however small. Do not build multiple pages before pushing. If this redesign takes 100 small pushes in this run, that's correct; a handful of large pushes is a failure mode. If you're ever unsure whether a piece is "done enough" to push, push it anyway and keep going.
+
+## Design reference: what to copy from MegaNovel
+The reference screens are a novel-reading app, but the *visual system* is what to copy — clean modern mobile-web UI, bold sans-serif type, a strong single blue accent color on a mostly white/light surface, rounded pill buttons and chips, card-grid layouts, sticky top/bottom bars. Copy these patterns exactly; adapt the *content* to a bookstore (no "chapters," no in-app "read now," since Whisper 119 sells and emails files, it doesn't host reading).
+
+**Header/nav:**
+- Top bar: hamburger menu icon (left), rounded search input with magnifier icon ("Search what you want" placeholder), a "Library"/"My Purchases" icon+label, a **dark/light mode toggle icon** (sun/moon), circular account avatar (right)
+- Below that: a horizontally scrollable row of category chips (her book genres/categories), rounded pill style, active state filled
+
+**Home page:**
+- Hero carousel banner (rounded corners, gradient or featured-cover art, dot indicators, a pill CTA button) — feature a promo or new release
+- "Popular" section heading with a 2-column grid of book cards below: cover image with a small stat overlay (bottom-left of cover — use something like a rating badge instead of MegaNovel's view-count, since views aren't relevant here), title below, author name in a muted secondary line
+- Repeat pattern for category-specific sections ("Fiction", "Romance", whatever her real categories are), each with a heading + "More >" link + horizontal or grid row of covers
+
+**Book detail page:**
+- Breadcrumb (Home / Category / Title, truncated with ellipsis if long)
+- Large cover image, centered, with title overlaid into the cover art style presentation
+- Title as a bold heading below the cover
+- Tag pills row: category + any format tag (e.g. "PDF", "EPUB")
+- Meta line: language, author name — no age-rating icon (not relevant), keep a small flag/report icon if there's a need to report an issue with a listing (optional, low priority)
+- Stats row (three-column block, matching the visual weight of MegaNovel's Chapters/Rating/Views row, but with bookstore-relevant stats): **Price**, **Rating** (if you're building reviews) or **Format**, and **Pages** or **File size** — pick three that are genuinely useful, don't force an exact 1:1 match if it doesn't make sense
+- "Synopsis" section, expandable/collapsible with a chevron for long descriptions
+- Tag/trope chips row (genre-adjacent descriptors), expandable
+- "Share to:" row of circular social icons (Facebook, X/Twitter, WhatsApp, copy-link) — skip Reddit unless it's genuinely relevant to her audience
+- "You may also like" grid: same book-card component as the homepage, showing 6 related titles
+- **Sticky bottom action bar** — this is the key MegaNovel pattern to replicate: two or three-button bar fixed to the bottom of the screen. For Whisper 119: "ADD TO CART" (secondary style) and a visually prominent center/primary "BUY NOW" button (filled accent color, larger touch target, matching how MegaNovel makes "READ NOW" the visual focal point of its bottom bar). Do not include a "download" button here — delivery is via email after payment, not a button the customer taps
+
+**Cart page:** keep the established product spec (one copy per title, no quantity stepper, subtotal, no shipping line) but style it with the same card/list visual language — cover thumbnails, clean rows, bold total.
+
+**Checkout page:** same established flow (email → payment, country selector, reassurance copy about email delivery) styled consistently — rounded input fields, clear step indicator if multi-step.
+
+**Login/auth screen:** full-bleed atmospheric background image (her own brand art, not MegaNovel's samurai art — use whatever cover/brand art already exists in `attached_assets/`, or a placeholder if nothing fits), dark gradient overlay, "Welcome to Whisper 119" wordmark-style heading with a short tagline, then stacked full-width pill buttons: "Continue with Google", "Continue with Email" (this is for the **admin login only** unless she also wants customer accounts — if customer accounts aren't in scope, skip this pattern for shoppers entirely and only build it for `/admin/login`).
+
+**Category/browse page:** same 2-column card grid as the homepage "Popular" section, with filter controls (category, price, format) presented as a filter drawer/sidebar rather than MegaNovel's approach, since she needs price/format filtering that MegaNovel doesn't have.
+
+## What NOT to copy
+- No "chapters," "catalog chapter list," or "Read Now" — Whisper 119 doesn't host in-browser reading
+- No "Download" as a customer-facing action anywhere — delivery is automatic email after payment
+- Skip MegaNovel's own app-download promo banner entirely — that's their app marketing, not relevant to her product
+
+## Design tokens
+The toggle in the header switches between the two themes below and must persist the user's choice (localStorage or equivalent) and also appear in the admin shell, not just the customer-facing nav. Adapt the MegaNovel visual weight (bold type, blue accent, card grids, pill buttons, sticky bars) but keep it consistent with anything already established for Whisper 119 (check `attached_assets/` and any existing Tailwind config/CSS variables before picking a fresh palette — extend, don't clash). If nothing usable exists yet, choose a clean primary accent (a confident blue or her brand color if one exists) on a white/light-neutral surface for light mode, and the equivalent dark surface for dark mode, keeping the same accent so both themes feel like the same product.
+
+## Execution
+Work through: header/nav → home page → category browse → book detail → cart → checkout → admin login → admin dashboard/books/orders, pushing after every component and every page. Verify each page renders and looks intentional before moving to the next segment — don't move on with a broken or half-styled page.
