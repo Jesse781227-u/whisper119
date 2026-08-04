@@ -6,6 +6,7 @@ import { BookCard, BookCover } from "@/components/book-card"
 import { useCart } from "@/components/cart-provider"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDate, formatPrice } from "@/lib/utils"
+import { DEMO_BOOKS } from "@/data/demo-books"
 
 function ShareButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
   return (
@@ -18,16 +19,39 @@ function ShareButton({ label, children, onClick }: { label: string; children: Re
 export default function BookDetail() {
   const { bookId } = useParams<{ bookId: string }>()
   const [, setLocation] = useLocation()
-  const { data: book, isLoading, error } = useGetBook(bookId!)
-  const { data: allBooks } = useListBooks()
+  const { data: apiBook, isLoading: isBookLoading, error: bookError } = useGetBook(bookId ?? "", {
+    query: {
+      queryKey: ["/api/books", bookId],
+      enabled: Boolean(bookId),
+      retry: 2,
+      retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 2000),
+    },
+  })
+  const { data: apiBooks, isLoading: isCatalogueLoading } = useListBooks(undefined, {
+    query: {
+      queryKey: ["/api/books"],
+      retry: 2,
+      retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 2000),
+    },
+  })
   const { items, addItem } = useCart()
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const related = useMemo(
-    () => (allBooks ?? []).filter((item) => item.id !== book?.id && (!book?.category || item.category === book.category)).slice(0, 6),
-    [allBooks, book?.category, book?.id],
-  )
+  const catalogue = Array.isArray(apiBooks) && apiBooks.length > 0 ? apiBooks : DEMO_BOOKS
+  const book = apiBook ?? catalogue.find((item) => item.id === bookId || item.slug === bookId)
+  const related = useMemo(() => (
+    catalogue
+      .filter((item) => item.id !== book?.id && item.category === book?.category)
+      .slice(0, 6)
+  ), [catalogue, book?.category, book?.id])
+  const suggestions = useMemo(() => (
+    catalogue
+      .filter((item) => item.id !== book?.id && !related.some((relatedBook) => relatedBook.id === item.id))
+      .slice(0, 6)
+  ), [catalogue, book?.id, related])
+  const isLoading = !book && (isBookLoading || isCatalogueLoading)
+  const error = !book && bookError
 
   if (isLoading) {
     return (
@@ -101,7 +125,7 @@ export default function BookDetail() {
             {expanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
           </button>
            <p className={`mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground ${expanded ? "" : "line-clamp-4"}`}>{book.description || "I hope this book gives you something good to carry with you."}</p>
-          {!expanded && book.description.length > 260 && <button type="button" onClick={() => setExpanded(true)} className="mt-2 text-xs font-bold text-primary">Read more</button>}
+           {!expanded && (book.description?.length ?? 0) > 260 && <button type="button" onClick={() => setExpanded(true)} className="mt-2 text-xs font-bold text-primary">Read more</button>}
           <div className="mt-5 flex flex-wrap gap-2">
             {descriptors.map((descriptor) => <span key={descriptor} className="rounded-full bg-primary/10 px-3 py-1.5 text-[0.68rem] font-bold text-primary">{descriptor}</span>)}
           </div>
@@ -119,8 +143,15 @@ export default function BookDetail() {
 
         {related.length > 0 && (
           <section className="mt-8">
-            <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">Keep browsing</p><h2 className="mt-1 text-xl font-extrabold">You may also like</h2></div><Link href="/shop" className="text-xs font-bold text-primary">More →</Link></div>
+            <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">Same world</p><h2 className="mt-1 text-xl font-extrabold">Related books</h2></div><Link href={`/shop?category=${encodeURIComponent(book.category)}`} className="text-xs font-bold text-primary">More →</Link></div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{related.map((item) => <BookCard key={item.id} book={item} />)}</div>
+          </section>
+        )}
+
+        {suggestions.length > 0 && (
+          <section className="mt-9">
+            <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">A few more from me</p><h2 className="mt-1 text-xl font-extrabold">You might also like</h2></div><Link href="/shop" className="text-xs font-bold text-primary">Browse all →</Link></div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{suggestions.map((item) => <BookCard key={item.id} book={item} />)}</div>
           </section>
         )}
 
