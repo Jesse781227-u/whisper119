@@ -1,44 +1,142 @@
-import { ArrowLeft, Check, Mail, ShoppingBag } from "lucide-react"
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, Mail, ShoppingCart, Sparkles } from "lucide-react"
+import { useMemo, useState } from "react"
 import { Link, useLocation, useParams } from "wouter"
-import { useGetBook } from "@workspace/api-client-react"
-import { BookCover } from "@/components/book-card"
+import { useGetBook, useListBooks } from "@workspace/api-client-react"
+import { BookCard, BookCover } from "@/components/book-card"
 import { useCart } from "@/components/cart-provider"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDate, formatPrice } from "@/lib/utils"
+
+function ShareButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
+  return (
+    <button type="button" aria-label={label} onClick={onClick} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
+      {children}
+    </button>
+  )
+}
 
 export default function BookDetail() {
   const { bookId } = useParams<{ bookId: string }>()
   const [, setLocation] = useLocation()
   const { data: book, isLoading, error } = useGetBook(bookId!)
+  const { data: allBooks } = useListBooks()
   const { items, addItem } = useCart()
+  const [expanded, setExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
 
-  if (isLoading) return <main className="mx-auto max-w-7xl px-5 py-20 sm:px-8"><div className="grid gap-12 lg:grid-cols-[0.45fr_0.8fr]"><Skeleton className="mx-auto aspect-[2/3] w-full max-w-md" /><div><Skeleton className="h-5 w-24" /><Skeleton className="mt-6 h-20 w-4/5" /><Skeleton className="mt-6 h-28 w-full" /></div></div></main>
-  if (error || !book) return <main className="mx-auto max-w-7xl px-5 py-32 text-center sm:px-8"><p className="font-display text-3xl">This title has left the shelf.</p><Link href="/shop" className="mt-6 inline-block font-mono text-xs uppercase tracking-[0.15em] text-primary">Back to the shop →</Link></main>
+  const related = useMemo(
+    () => (allBooks ?? []).filter((item) => item.id !== book?.id && (!book?.category || item.category === book.category)).slice(0, 6),
+    [allBooks, book?.category, book?.id],
+  )
+
+  if (isLoading) {
+    return (
+      <main className="pb-24">
+        <Skeleton className="h-[27rem] w-full rounded-none sm:h-[34rem]" />
+        <div className="mx-auto max-w-3xl px-4 pt-7 sm:px-6"><Skeleton className="h-8 w-4/5" /><Skeleton className="mt-4 h-5 w-2/5" /><Skeleton className="mt-8 h-28 w-full" /></div>
+      </main>
+    )
+  }
+
+  if (error || !book) {
+    return <main className="mx-auto max-w-3xl px-4 py-32 text-center"><p className="text-2xl font-extrabold">This title has left the shelf.</p><Link href="/shop" className="mt-6 inline-block text-xs font-bold text-primary">Back to the catalogue →</Link></main>
+  }
 
   const inCart = items.some((item) => item.id === book.id)
+  const heroStyle = book.coverUrl ? { backgroundImage: `linear-gradient(180deg, hsl(229 45% 10% / .2), hsl(229 45% 8% / .94)), url("${book.coverUrl}")` } : undefined
+  const descriptors = [book.category, book.format, "DRM-free", "Email delivery"]
+
+  function addAndNavigate(path: string) {
+    if (!inCart && book) addItem(book)
+    setLocation(path)
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1800)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-12 sm:px-8 md:py-20">
-      <Link href="/shop" className="mb-12 inline-flex items-center gap-2 font-mono text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground hover:text-primary"><ArrowLeft className="h-3.5 w-3.5" /> Back to the shelf</Link>
-      <div className="grid gap-14 lg:grid-cols-[0.58fr_1fr] lg:items-start lg:gap-24">
-        <div className="mx-auto w-full max-w-md lg:sticky lg:top-28"><BookCover book={book} className="aspect-[2/3]" /><p className="mt-4 text-center font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted-foreground">{book.format} · DRM-free digital edition</p></div>
-        <div>
-          <p className="rule-label">{book.category}</p>
-          <h1 className="mt-5 max-w-2xl font-display text-5xl leading-[0.96] sm:text-6xl">{book.title}</h1>
-          <p className="mt-4 font-display text-xl italic text-muted-foreground">by {book.author}</p>
-          <div className="mt-9 max-w-2xl whitespace-pre-wrap text-base leading-8 text-muted-foreground">{book.description || "A carefully chosen title from the Whisper 119 shelf."}</div>
-          <div className="mt-12 border-y border-border/70 py-7">
-            <div className="flex flex-wrap items-center justify-between gap-6">
-              <div><p className="font-display text-3xl">{formatPrice(book.price, book.currency)}</p><p className="mt-2 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted-foreground">One copy · instant email delivery</p></div>
-              <button type="button" disabled={inCart} onClick={() => { if (!inCart) addItem(book); setLocation("/cart") }} className={`inline-flex h-12 items-center gap-2 rounded-full px-7 font-mono text-[0.68rem] uppercase tracking-[0.13em] transition-colors ${inCart ? "bg-accent text-accent-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}>
-                {inCart ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />} {inCart ? "In cart" : "Add to cart"}
-              </button>
+    <main className="pb-28">
+      <section className="relative isolate overflow-hidden bg-[#0c112b] text-white">
+        <div className="absolute inset-0 -z-10 bg-cover bg-center opacity-60 blur-2xl scale-110" style={heroStyle} />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(8,12,34,.38),#0c112b_88%)]" />
+        <div className="mx-auto max-w-5xl px-4 pb-8 pt-5 sm:px-6 sm:pb-12 sm:pt-7">
+          <div className="flex items-center justify-between">
+            <Link href="/shop" className="inline-flex items-center gap-2 text-xs font-bold text-white/80 hover:text-white"><ArrowLeft className="h-5 w-5" /> Back</Link>
+            <span className="max-w-[60%] truncate text-[0.68rem] font-medium text-white/60">Home / {book.category} / {book.title}</span>
+          </div>
+          <div className="mx-auto mt-8 max-w-xs sm:mt-10">
+            <BookCover book={book} className="aspect-[0.69] border border-white/15 shadow-2xl shadow-black/40" />
+          </div>
+          <div className="mx-auto mt-7 max-w-2xl text-center">
+            <div className="flex justify-center gap-2">
+              <span className="rounded-md bg-primary px-2.5 py-1 text-[0.65rem] font-extrabold">{book.category}</span>
+              <span className="rounded-md bg-white/15 px-2.5 py-1 text-[0.65rem] font-bold text-white/85">{book.format}</span>
             </div>
+            <h1 className="mt-4 text-3xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">{book.title}</h1>
+            <p className="mt-2 text-sm text-white/70">by <span className="font-semibold text-white/90">{book.author}</span></p>
+            <p className="mt-3 text-xs text-white/60">Published {formatDate(book.publishedAt)} · Digital edition</p>
           </div>
-          <div className="mt-8 grid gap-5 text-sm text-muted-foreground sm:grid-cols-2">
-            <div className="flex gap-3"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" strokeWidth={1.4} /><span>After payment, the file and receipt arrive as email attachments.</span></div>
-            <div><span className="font-mono text-[0.6rem] uppercase tracking-[0.15em]">Published</span><p className="mt-1 text-foreground">{formatDate(book.publishedAt)}</p></div>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
+        <section className="-mt-1 rounded-b-2xl border border-t-0 border-border bg-card shadow-sm">
+          <div className="grid grid-cols-3 divide-x divide-border px-2 py-5 text-center">
+            <div><p className="text-lg font-extrabold text-primary">{formatPrice(book.price, book.currency)}</p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">Price</p></div>
+            <div><p className="text-lg font-extrabold">{book.format}</p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">Format</p></div>
+            <div><p className="text-lg font-extrabold">Email</p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">Delivery</p></div>
           </div>
+        </section>
+
+        <section className="mt-8">
+          <button type="button" onClick={() => setExpanded((value) => !value)} className="flex w-full items-center justify-between text-left">
+            <div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">About this book</p><h2 className="mt-1 text-xl font-extrabold">Synopsis</h2></div>
+            {expanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+          </button>
+          <p className={`mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground ${expanded ? "" : "line-clamp-4"}`}>{book.description || "A carefully chosen digital title from the Whisper 119 shelf."}</p>
+          {!expanded && book.description.length > 260 && <button type="button" onClick={() => setExpanded(true)} className="mt-2 text-xs font-bold text-primary">Read more</button>}
+          <div className="mt-5 flex flex-wrap gap-2">
+            {descriptors.map((descriptor) => <span key={descriptor} className="rounded-full bg-primary/10 px-3 py-1.5 text-[0.68rem] font-bold text-primary">{descriptor}</span>)}
+          </div>
+        </section>
+
+        <section className="mt-8 border-y border-border py-6">
+          <p className="text-sm font-extrabold">Share this book</p>
+          <div className="mt-3 flex items-center gap-2">
+            <ShareButton label="Share by email"><Mail className="h-4 w-4" /></ShareButton>
+            <ShareButton label="Share on X"><span className="text-sm font-extrabold">𝕏</span></ShareButton>
+            <ShareButton label="Copy link" onClick={copyLink}>{copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}</ShareButton>
+            {copied && <span className="ml-2 text-xs font-bold text-primary">Link copied</span>}
+          </div>
+        </section>
+
+        {related.length > 0 && (
+          <section className="mt-8">
+            <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">Keep browsing</p><h2 className="mt-1 text-xl font-extrabold">You may also like</h2></div><Link href="/shop" className="text-xs font-bold text-primary">More →</Link></div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{related.map((item) => <BookCard key={item.id} book={item} />)}</div>
+          </section>
+        )}
+
+        <section className="mt-8 rounded-2xl bg-secondary/70 p-5">
+          <div className="flex items-start gap-3"><Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-extrabold">A book you can keep</p><p className="mt-1 text-xs leading-5 text-muted-foreground">After Paystack confirms payment, your {book.format} file and receipt arrive as real email attachments. There are no public download links on this page.</p></div></div>
+        </section>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 shadow-[0_-8px_24px_hsl(224_30%_22%_/_0.12)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-3xl gap-2">
+          <button type="button" onClick={() => addAndNavigate("/cart")} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card text-[0.68rem] font-extrabold uppercase tracking-wide text-foreground transition-colors hover:border-primary hover:text-primary">
+            {inCart ? <Check className="h-4 w-4 text-primary" /> : <ShoppingCart className="h-4 w-4" />} {inCart ? "In cart" : "Add to cart"}
+          </button>
+          <button type="button" onClick={() => addAndNavigate("/checkout")} className="flex h-12 flex-[1.25] items-center justify-center gap-2 rounded-xl bg-primary text-[0.68rem] font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:-translate-y-0.5">
+            Buy now · {formatPrice(book.price, book.currency)}
+          </button>
         </div>
       </div>
     </main>
