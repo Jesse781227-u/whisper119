@@ -14,7 +14,7 @@ import Cart from '@/pages/Cart';
 import Checkout from '@/pages/Checkout';
 import Order from '@/pages/Order';
 import Admin, { AdminLogin } from '@/pages/Admin';
-import { Route, Switch, Router as WouterRouter } from 'wouter';
+import { Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
 
@@ -42,15 +42,26 @@ function App() {
         <ThemeProvider>
           <CartProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-              <Navbar />
-              <Router />
-              <Footer />
+              <AppShell />
             </WouterRouter>
           </CartProvider>
         </ThemeProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
+  );
+}
+
+function AppShell() {
+  const [location] = useLocation();
+  const isAdmin = location.startsWith("/admin");
+
+  return (
+    <>
+      {!isAdmin && <Navbar />}
+      <Router />
+      {!isAdmin && <Footer />}
+    </>
   );
 }
 
