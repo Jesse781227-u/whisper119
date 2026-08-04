@@ -1,36 +1,29 @@
+import { ArrowUpRight, BookOpen, Mail } from "lucide-react"
 import { Link } from "wouter"
-import { ArrowUpRight } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-border/70 bg-secondary/35">
-      <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-[1.4fr_0.7fr_0.7fr]">
-        <div>
-          <p className="font-display text-2xl">Whisper 119</p>
-          <p className="mt-4 max-w-sm text-sm leading-7 text-muted-foreground">
-            A small, carefully kept bookshop for digital readers. Every title is chosen slowly and delivered as a clean, DRM-free file.
-          </p>
-          <p className="mt-8 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-muted-foreground">Made for readers everywhere</p>
-        </div>
-        <div>
-          <p className="rule-label">Explore</p>
-          <div className="mt-5 grid gap-3 text-sm">
-            <Link href="/shop" className="text-muted-foreground transition-colors hover:text-primary">All books</Link>
-            <Link href="/about" className="text-muted-foreground transition-colors hover:text-primary">About the shop</Link>
-            <Link href="/admin/login" className="text-muted-foreground transition-colors hover:text-primary">Shop owner login</Link>
+    <footer className="mt-12 border-t border-border bg-secondary/40">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+        <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+          <div className="max-w-sm">
+            <Link href="/" className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen className="h-4 w-4" /></span>
+              <span className="text-lg font-extrabold">Whisper 119</span>
+            </Link>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">A small digital bookshop for readers everywhere. DRM-free titles, delivered directly to your inbox.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm">
+            <Link href="/shop" className="font-semibold text-muted-foreground hover:text-primary">Browse books</Link>
+            <Link href="/about" className="font-semibold text-muted-foreground hover:text-primary">About the shop</Link>
+            <a href="mailto:hello@whisper119.shop" className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-primary"><Mail className="h-3.5 w-3.5" /> Contact</a>
+            <Link href="/admin/login" className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-primary">Librarian login <ArrowUpRight className="h-3.5 w-3.5" /></Link>
           </div>
         </div>
-        <div>
-          <p className="rule-label">Contact</p>
-          <div className="mt-5 grid gap-3 text-sm text-muted-foreground">
-            <a href="mailto:hello@whisper119.shop" className="transition-colors hover:text-primary">hello@whisper119.shop</a>
-            <span>Prices in USD</span>
-            <span className="flex items-center gap-1">Worldwide delivery <ArrowUpRight className="h-3.5 w-3.5" /></span>
-          </div>
+        <div className="mt-8 flex flex-wrap justify-between gap-3 border-t border-border pt-5 text-[0.62rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">
+          <span>© {new Date().getFullYear()} Whisper 119</span>
+          <span>Digital titles · Email delivery · Prices in USD</span>
         </div>
-      </div>
-      <div className="border-t border-border/70 px-5 py-5 text-center font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted-foreground sm:px-8">
-        © {new Date().getFullYear()} Whisper 119 · Digital titles only · Delivered by email
       </div>
     </footer>
   )
