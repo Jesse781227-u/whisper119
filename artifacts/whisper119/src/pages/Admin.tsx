@@ -8,6 +8,7 @@ import {
   useListAdminBooks,
   useListAdminOrders,
   useCreateBook,
+  useRequestUploadUrl,
 } from "@workspace/api-client-react"
 import type { BookInput, BookInputFormat } from "@workspace/api-client-react"
 import { Moon, Sun, LogOut, Plus, CheckCircle2, Clock3, BookOpen } from "lucide-react"
@@ -90,6 +91,7 @@ function AdminNav({ onLogout }: { onLogout: () => void }) {
 
 function BookForm({ onCreated }: { onCreated: () => void }) {
   const createBook = useCreateBook()
+  const requestUploadUrl = useRequestUploadUrl()
   const [title, setTitle] = useState("")
   const [author, setAuthor] = useState("")
   const [slug, setSlug] = useState("")
@@ -97,22 +99,60 @@ function BookForm({ onCreated }: { onCreated: () => void }) {
   const [category, setCategory] = useState("")
   const [description, setDescription] = useState("")
   const [format, setFormat] = useState<BookInputFormat>("EPUB")
-  const [fileName, setFileName] = useState("")
+  const [ebookFile, setEbookFile] = useState<File | null>(null)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  function submit(event: React.FormEvent) {
-    event.preventDefault()
-    const payload: BookInput = {
-      title, author, slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
-      price: Number(price), currency: "USD", category, description, format,
-      coverObjectPath: null, fileObjectPath: "/objects/uploads/admin-file-not-configured", fileName: fileName || `${slug || "ebook"}.${format.toLowerCase()}`,
-      featured: false, publishedAt: new Date().toISOString(),
-    }
-    createBook.mutate({ data: payload }, {
-      onSuccess: () => {
-        setTitle(""); setAuthor(""); setSlug(""); setPrice(""); setCategory(""); setDescription(""); setFileName("")
-        onCreated()
+  async function uploadFile(file: File) {
+    const response = await requestUploadUrl.mutateAsync({
+      data: {
+        name: file.name,
+        size: file.size,
+        contentType: file.type || "application/octet-stream",
       },
     })
+    const upload = await fetch(response.uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    })
+    if (!upload.ok) {
+      throw new Error(`Could not upload ${file.name}.`)
+    }
+    return response.objectPath
+  }
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null)
+    if (!ebookFile) {
+      setError("Choose the ebook file before saving this title.")
+      return
+    }
+    const extension = ebookFile.name.split(".").pop()?.toUpperCase()
+    if (extension !== format) {
+      setError(`The selected file must be a ${format} file.`)
+      return
+    }
+    try {
+      const [fileObjectPath, coverObjectPath] = await Promise.all([
+        uploadFile(ebookFile),
+        coverFile ? uploadFile(coverFile) : Promise.resolve(null),
+      ])
+      const payload: BookInput = {
+        title, author, slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+        price: Number(price), currency: "USD", category, description, format,
+        coverObjectPath, fileObjectPath, fileName: ebookFile.name,
+        featured: false, publishedAt: new Date().toISOString(),
+      }
+      await createBook.mutateAsync({ data: payload })
+      setTitle(""); setAuthor(""); setSlug(""); setPrice(""); setCategory(""); setDescription("")
+      setEbookFile(null)
+      setCoverFile(null)
+      onCreated()
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Could not save this title.")
+    }
   }
 
   return (
@@ -126,9 +166,10 @@ function BookForm({ onCreated }: { onCreated: () => void }) {
           <div className="space-y-2"><Label>Price (USD)</Label><Input required min="0" step="0.01" type="number" value={price} onChange={(event) => setPrice(event.target.value)} /></div>
           <div className="space-y-2"><Label>Category</Label><Input required value={category} onChange={(event) => setCategory(event.target.value)} /></div>
           <div className="space-y-2"><Label>Format</Label><select className="flex h-9 w-full border border-input bg-transparent px-3 text-sm" value={format} onChange={(event) => setFormat(event.target.value as BookInputFormat)}><option value="EPUB">EPUB</option><option value="PDF">PDF</option></select></div>
-          <div className="space-y-2 sm:col-span-2"><Label>File name</Label><Input required placeholder="book.epub" value={fileName} onChange={(event) => setFileName(event.target.value)} /></div>
+          <div className="space-y-2"><Label htmlFor="ebook-file">Ebook file</Label><Input id="ebook-file" required accept={format === "PDF" ? ".pdf,application/pdf" : ".epub,application/epub+zip"} type="file" onChange={(event) => setEbookFile(event.target.files?.[0] ?? null)} /></div>
+          <div className="space-y-2"><Label htmlFor="cover-file">Cover image (optional)</Label><Input id="cover-file" accept="image/png,image/jpeg,image/webp" type="file" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} /></div>
           <div className="space-y-2 sm:col-span-2"><Label>Description</Label><Textarea required value={description} onChange={(event) => setDescription(event.target.value)} /></div>
-          <div className="sm:col-span-2"><Button disabled={createBook.isPending}>{createBook.isPending ? "Saving…" : "Add title"}</Button>{createBook.error && <p className="mt-2 text-sm text-destructive">Could not save this title.</p>}</div>
+          <div className="sm:col-span-2"><Button disabled={createBook.isPending || requestUploadUrl.isPending}>{createBook.isPending || requestUploadUrl.isPending ? "Uploading…" : "Add title"}</Button>{error && <p className="mt-2 text-sm text-destructive">{error}</p>}</div>
         </form>
       </CardContent>
     </Card>

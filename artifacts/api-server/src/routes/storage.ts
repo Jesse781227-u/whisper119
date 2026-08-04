@@ -11,6 +11,8 @@ import {
   ObjectStorageService,
 } from '../lib/objectStorage';
 import { requireAdmin } from "../lib/auth";
+import { db, booksTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -118,6 +120,15 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join('/') : raw;
     const objectPath = `/objects/${wildcardPath}`;
+    const [cover] = await db
+      .select({ id: booksTable.id })
+      .from(booksTable)
+      .where(eq(booksTable.coverObjectPath, objectPath))
+      .limit(1);
+    if (!cover) {
+      res.status(403).json({ error: 'Private ebook files are delivered by email after payment.' });
+      return;
+    }
     const objectFile =
       await objectStorageService.getObjectEntityFile(objectPath);
 

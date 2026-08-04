@@ -44,7 +44,7 @@ export async function orderWithItems(order: Order) {
   return { order, items };
 }
 
-export function orderResponse(order: Order, items: OrderItem[], includeDownloads = false) {
+export function orderResponse(order: Order, items: OrderItem[]) {
   return {
     id: order.id,
     reference: order.reference,
@@ -64,7 +64,7 @@ export function orderResponse(order: Order, items: OrderItem[], includeDownloads
       author: item.author,
       price: item.price,
       format: item.format,
-      downloadUrl: includeDownloads && order.status === "paid" ? `/api/storage/objects/${item.bookId}` : null,
+      downloadUrl: null,
       downloaded: item.downloaded,
     })),
   };

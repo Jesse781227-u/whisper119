@@ -12,7 +12,7 @@ export default function About() {
             Every book listed here represents a deliberate choice. We focus on literature in translation, small independent presses, and titles that deserve to be read slowly and kept forever.
           </p>
           <p>
-            Because we sell only digital files, there is no waiting for shipping. Your files are delivered instantly upon purchase via a secure download page, and a backup link is sent directly to your inbox.
+            Because we sell only digital files, there is no waiting for shipping. Once payment clears, your files and receipt are sent to the inbox you entered at checkout as email attachments.
           </p>
           <p>
             We believe you should own the books you buy. DRM locks you into specific ecosystems and devices. Our files are completely DRM-free, meaning you can read them on any device, convert them for your e-reader, and back them up to your personal archives. 
