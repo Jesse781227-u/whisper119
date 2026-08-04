@@ -1,7 +1,6 @@
 kind = "web"
 previewPath = "/"
 title = "Whisper 119"
-description = "A boutique digital bookstore for international readers to discover and instantly download ebooks from the Whisper 119 collection."
 version = "1.0.0"
 id = "artifacts/whisper119"
 router = "path"

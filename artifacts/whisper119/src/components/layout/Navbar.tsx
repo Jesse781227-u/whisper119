@@ -3,6 +3,7 @@ import { BookOpen, ChevronDown, Menu, Search, ShoppingBag, UserCircle, X } from 
 import { useEffect, useState } from "react"
 import { useGetStorefrontSummary } from "@workspace/api-client-react"
 import { useCart } from "@/components/cart-provider"
+import { DEMO_CATEGORIES } from "@/data/demo-books"
 
 export function Navbar() {
   const { items } = useCart()
@@ -11,7 +12,7 @@ export function Navbar() {
   const [menuVisible, setMenuVisible] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [location] = useLocation()
-  const categories = Array.isArray(summary?.categories) ? summary.categories : []
+  const categories = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : DEMO_CATEGORIES
 
   useEffect(() => {
     if (!open) {
