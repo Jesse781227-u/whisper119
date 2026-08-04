@@ -52,8 +52,9 @@ The private admin desk provides cookie-backed login, dashboard totals, catalogue
 
 ## User preferences
 
-- Keep the boutique/editorial direction: warm parchment light mode, ink/espresso dark mode, serif headings, sans body text, generous whitespace, and restrained motion.
+- Keep the current MegaNovel-inspired bookstore direction: mobile-first app chrome, blue primary actions, rounded cards and pills, cover-heavy grids, bold sans-serif typography, persistent light/dark themes, and restrained motion. Do not copy chapter-reading, fake ratings/views, or customer download-link behavior from the reference.
 - Push commits to the connected GitHub repository after meaningful changes and report push failures explicitly.
+- For visual redesign work, implement and push each meaningful page or section as its own segment before moving to the next.
 
 ## Gotchas
 
