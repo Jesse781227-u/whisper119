@@ -11,11 +11,11 @@ export function Footer() {
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen className="h-4 w-4" /></span>
               <span className="text-lg font-extrabold">Whisper 119</span>
             </Link>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">A small digital bookshop for readers everywhere. DRM-free titles, delivered directly to your inbox.</p>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">I make and share digital books for readers everywhere. I’ll send your DRM-free file straight to your inbox.</p>
           </div>
           <div className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm">
             <Link href="/shop" className="font-semibold text-muted-foreground hover:text-primary">Browse books</Link>
-            <Link href="/about" className="font-semibold text-muted-foreground hover:text-primary">About the shop</Link>
+            <Link href="/about" className="font-semibold text-muted-foreground hover:text-primary">About me</Link>
             <a href="mailto:hello@whisper119.shop" className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-primary"><Mail className="h-3.5 w-3.5" /> Contact</a>
             <Link href="/admin/login" className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-primary">Librarian login <ArrowUpRight className="h-3.5 w-3.5" /></Link>
           </div>

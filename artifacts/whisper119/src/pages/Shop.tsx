@@ -83,9 +83,9 @@ export default function Shop() {
   return (
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-7 sm:px-6 sm:pt-10">
       <div className="mb-7">
-        <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">The catalogue</p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">Find your next book</h1>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Browse carefully chosen digital titles. Every book is DRM-free and delivered by email after payment.</p>
+        <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">My books</p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">Have a look around.</h1>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">These are the books I’ve written, chosen, and made available as DRM-free PDF and EPUB files.</p>
       </div>
 
       <div className="relative mb-5 md:hidden">
@@ -198,7 +198,7 @@ export default function Shop() {
           ) : (
             <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-20 text-center">
               <p className="text-2xl font-extrabold">Nothing on this shelf yet.</p>
-              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">{hasFilters ? "Try clearing your filters or search for something else." : "The shop owner is still choosing the first titles. Check back soon."}</p>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">{hasFilters ? "Try clearing your filters or search for something else." : "I’m adding more books as I make them available."}</p>
               {hasFilters ? <button type="button" onClick={clearFilters} className="mt-5 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground">Clear filters</button> : <Link href="/about" className="mt-5 inline-block text-xs font-bold text-primary">About Whisper 119 →</Link>}
             </div>
           )}

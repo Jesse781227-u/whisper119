@@ -1,10 +1,8 @@
-import { ArrowRight, BookOpen, ChevronRight, Mail, Sparkles } from "lucide-react"
+import { ArrowRight, BookOpen, ChevronRight, Mail } from "lucide-react"
 import { Link } from "wouter"
 import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
-
-const previewCovers = ["/covers/cover-1.jpg", "/covers/cover-2.jpg", "/covers/cover-3.jpg"]
 
 function SectionHeading({ eyebrow, title, href = "/shop" }: { eyebrow?: string; title: string; href?: string }) {
   return (
@@ -29,11 +27,11 @@ function PromoBanner() {
         <img src="/covers/cover-2.jpg" alt="" className="h-full w-full object-cover" />
       </div>
       <div className="relative max-w-[15rem] sm:max-w-sm">
-        <p className="text-[0.62rem] font-bold uppercase tracking-[0.18em] text-white/75">Welcome to Whisper 119</p>
-        <h1 className="mt-2 text-2xl font-extrabold leading-[1.06] tracking-tight sm:text-4xl">Find a book worth keeping.</h1>
-        <p className="mt-2 text-xs leading-5 text-white/80 sm:text-sm">DRM-free EPUBs and PDFs, delivered straight to your inbox.</p>
+        <p className="text-[0.62rem] font-bold uppercase tracking-[0.18em] text-white/75">A note from me</p>
+        <h1 className="mt-2 text-2xl font-extrabold leading-[1.06] tracking-tight sm:text-4xl">I’m glad you found my books.</h1>
+        <p className="mt-2 text-xs leading-5 text-white/80 sm:text-sm">I make and share DRM-free EPUBs and PDFs, and send them straight to your inbox.</p>
         <Link href="/shop" className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[0.68rem] font-extrabold text-primary shadow-md transition-transform hover:-translate-y-0.5">
-          Explore the shelf <ArrowRight className="h-3.5 w-3.5" />
+          See my books <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
       <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
@@ -45,32 +43,12 @@ function PromoBanner() {
   )
 }
 
-function EmptyShelf() {
-  return (
-    <div className="relative overflow-hidden rounded-2xl border border-primary/10 bg-card p-5 shadow-sm sm:p-8">
-      <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-primary/10 blur-2xl" />
-      <div className="relative flex items-center gap-5 sm:gap-8">
-        <div className="flex shrink-0 -space-x-5">
-          {previewCovers.map((cover, index) => (
-            <img key={cover} src={cover} alt="" className={`h-28 w-[4.6rem] rounded-lg border-2 border-card object-cover shadow-lg sm:h-36 sm:w-24 ${index === 1 ? "z-10 -translate-y-3" : ""}`} />
-          ))}
-        </div>
-        <div className="min-w-0">
-          <p className="text-lg font-extrabold leading-tight sm:text-xl">The first shelf is being curated.</p>
-          <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm">The shop owner is choosing the first titles now. Come back soon for books you can keep forever.</p>
-          <Link href="/about" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-primary">How it works <ArrowRight className="h-3.5 w-3.5" /></Link>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function ServiceStrip() {
   return (
     <div className="grid grid-cols-2 gap-3 rounded-2xl bg-primary px-4 py-4 text-primary-foreground shadow-lg shadow-primary/15 sm:grid-cols-3">
       <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0" /><span className="text-[0.68rem] font-bold leading-4">Delivered by email</span></div>
       <div className="flex items-center gap-2"><BookOpen className="h-4 w-4 shrink-0" /><span className="text-[0.68rem] font-bold leading-4">PDF + EPUB</span></div>
-      <div className="col-span-2 flex items-center gap-2 sm:col-span-1"><Sparkles className="h-4 w-4 shrink-0" /><span className="text-[0.68rem] font-bold leading-4">DRM-free forever</span></div>
+      <div className="col-span-2 flex items-center gap-2 sm:col-span-1"><span className="text-[0.68rem] font-bold leading-4">Keep your copy forever</span></div>
     </div>
   )
 }
@@ -119,14 +97,12 @@ export default function Home() {
         </div>
       ) : (
         <>
-          <section className="mt-8">
-            <SectionHeading eyebrow="Handpicked for you" title="Popular" />
-            {featured.length > 0 ? (
-              <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">{featured.slice(0, 8).map((book) => <BookCard key={book.id} book={book} />)}</div>
-            ) : (
-              <EmptyShelf />
-            )}
-          </section>
+           {featured.length > 0 && (
+             <section className="mt-8">
+               <SectionHeading eyebrow="A few from me" title="My books" />
+               <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">{featured.slice(0, 8).map((book) => <BookCard key={book.id} book={book} />)}</div>
+             </section>
+           )}
 
           <section className="mt-8">
             <ServiceStrip />
@@ -150,12 +126,6 @@ export default function Home() {
             </section>
           ))}
 
-          {!hasBooks && (
-            <div className="mt-9 rounded-2xl bg-secondary/70 p-5 text-center sm:p-8">
-              <p className="text-sm font-bold">A quieter kind of bookstore</p>
-              <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-muted-foreground">No algorithm, no lock-in, no waiting for a parcel. Just carefully selected digital books delivered as real attachments after payment.</p>
-            </div>
-          )}
         </>
       )}
     </main>

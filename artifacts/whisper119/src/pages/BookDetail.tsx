@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, Mail, ShoppingCart, Sparkles } from "lucide-react"
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, Mail, ShoppingCart } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link, useLocation, useParams } from "wouter"
 import { useGetBook, useListBooks } from "@workspace/api-client-react"
@@ -100,7 +100,7 @@ export default function BookDetail() {
             <div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">About this book</p><h2 className="mt-1 text-xl font-extrabold">Synopsis</h2></div>
             {expanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
           </button>
-          <p className={`mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground ${expanded ? "" : "line-clamp-4"}`}>{book.description || "A carefully chosen digital title from the Whisper 119 shelf."}</p>
+           <p className={`mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground ${expanded ? "" : "line-clamp-4"}`}>{book.description || "I hope this book gives you something good to carry with you."}</p>
           {!expanded && book.description.length > 260 && <button type="button" onClick={() => setExpanded(true)} className="mt-2 text-xs font-bold text-primary">Read more</button>}
           <div className="mt-5 flex flex-wrap gap-2">
             {descriptors.map((descriptor) => <span key={descriptor} className="rounded-full bg-primary/10 px-3 py-1.5 text-[0.68rem] font-bold text-primary">{descriptor}</span>)}
@@ -125,7 +125,7 @@ export default function BookDetail() {
         )}
 
         <section className="mt-8 rounded-2xl bg-secondary/70 p-5">
-          <div className="flex items-start gap-3"><Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-extrabold">A book you can keep</p><p className="mt-1 text-xs leading-5 text-muted-foreground">After Paystack confirms payment, your {book.format} file and receipt arrive as real email attachments. There are no public download links on this page.</p></div></div>
+           <div className="flex items-start gap-3"><Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-extrabold">I’ll send it to your inbox</p><p className="mt-1 text-xs leading-5 text-muted-foreground">After Paystack confirms payment, I’ll email your {book.format} file and receipt as real attachments. There are no public download links on this page.</p></div></div>
         </section>
       </div>
 
