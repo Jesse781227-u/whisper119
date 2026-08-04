@@ -90,6 +90,7 @@
     background-image:
       radial-gradient(circle at 84% 4%, hsl(342 52% 36% / 0.22), transparent 21rem),
       radial-gradient(ellipse at 5% 34%, hsl(276 48% 30% / 0.16), transparent 25rem),
+      radial-gradient(circle at 78% 7%, hsl(39 55% 86% / 0.12), transparent 7rem),
       linear-gradient(180deg, hsl(250 28% 8%), hsl(248 30% 7%) 58%, hsl(250 32% 5%));
     background-attachment: fixed;
     min-height: 100vh;
@@ -98,16 +99,13 @@
 
   body::before {
     background:
-      radial-gradient(circle at 50% 50%, hsl(39 55% 86% / 0.17) 0 8%, hsl(342 45% 70% / 0.08) 28%, transparent 65%);
-    border-radius: 9999px;
+      linear-gradient(180deg, hsl(250 32% 7% / 0.28), hsl(250 32% 7% / 0.72) 58%, hsl(250 32% 5% / 0.96)),
+      url("/dark-romance-background.jpg") center top / cover no-repeat;
     content: "";
-    height: 24rem;
-    opacity: 0.8;
+    inset: 0;
+    opacity: 0.42;
     pointer-events: none;
     position: fixed;
-    right: -7rem;
-    top: -8rem;
-    width: 24rem;
     z-index: 0;
   }
 
