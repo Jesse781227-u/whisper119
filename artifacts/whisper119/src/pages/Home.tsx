@@ -1,7 +1,6 @@
 import { ArrowRight, BookOpen, ChevronRight, Mail } from "lucide-react"
 import { Link } from "wouter"
-import { useState } from "react"
-import { useGetStorefrontSummary, useListBooks, useSubscribeNewsletter } from "@workspace/api-client-react"
+import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EMPTY_CATEGORIES } from "@/data/catalog"
@@ -58,39 +57,6 @@ function ServiceStrip() {
   )
 }
 
-function NewsletterSignup() {
-  const subscribe = useSubscribeNewsletter()
-  const [email, setEmail] = useState("")
-
-  function submit(event: React.FormEvent) {
-    event.preventDefault()
-    subscribe.mutate({ data: { email } }, {
-      onSuccess: () => setEmail(""),
-    })
-  }
-
-  return (
-    <section className="mt-9 overflow-hidden rounded-3xl border border-primary/20 bg-primary/[0.08] p-6 sm:p-8">
-      <div className="grid gap-6 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div>
-          <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">A little something from me</p>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight">Get a free chapter.</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Join my reader list for a free chapter and occasional notes when an actual completed ebook lands on the shelf.</p>
-        </div>
-        <form onSubmit={submit} className="flex w-full max-w-md flex-col gap-2 sm:min-w-[22rem]">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <label className="sr-only" htmlFor="newsletter-email">Email address</label>
-            <input id="newsletter-email" required minLength={3} type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-primary/10" />
-            <button type="submit" disabled={subscribe.isPending} className="h-11 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-60">{subscribe.isPending ? "Joining…" : "Send me the chapter"}</button>
-          </div>
-          {subscribe.isSuccess && <p className="text-xs font-semibold text-emerald-600">You’re on the list. Check your inbox for the chapter.</p>}
-          {subscribe.error && <p className="text-xs leading-5 text-destructive">The reader list is not connected yet. Please try again later.</p>}
-        </form>
-      </div>
-    </section>
-  )
-}
-
 export default function Home() {
   const { data: summary, isLoading, error, refetch, isRefetching } = useGetStorefrontSummary({
     query: {
@@ -133,14 +99,7 @@ export default function Home() {
             {isRefetching ? "Trying again…" : "Try again"}
           </button>
         </div>
-       ) : !hasBooks ? (
-         <section className="mt-8 overflow-hidden rounded-3xl border border-primary/20 bg-card/80 px-6 py-16 text-center shadow-xl shadow-primary/5 sm:px-12">
-            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><BookOpen className="h-6 w-6" /></span>
-           <p className="mt-6 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-primary">The first shelf is coming soon</p>
-           <h2 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">My completed ebooks will be here.</h2>
-           <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted-foreground">I’m preparing my actual non-exclusive books for this shop. Covers, descriptions, and DRM-free ebook files will appear here as soon as they’re ready.</p>
-         </section>
-       ) : (
+        ) : hasBooks ? (
          <>
            {featured.length > 0 && (
              <section className="mt-8">
@@ -171,10 +130,8 @@ export default function Home() {
             </section>
           ))}
 
-           <NewsletterSignup />
         </>
-      )}
-       {!isLoadingShelf && !shelfError && !hasBooks && <NewsletterSignup />}
+        ) : null}
     </main>
   )
 }

@@ -199,7 +199,7 @@ export default function Shop() {
           ) : (
             <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-20 text-center">
               <p className="text-2xl font-extrabold">Nothing on this shelf yet.</p>
-               <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">{hasFilters ? "Try clearing your filters or search for something else." : "My completed ebooks will appear here as soon as I finish preparing the shelf."}</p>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">{hasFilters ? "Try clearing your filters or search for something else." : "This shelf is empty right now."}</p>
               {hasFilters ? <button type="button" onClick={clearFilters} className="mt-5 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground">Clear filters</button> : <Link href="/about" className="mt-5 inline-block text-xs font-bold text-primary">About Whisper 119 →</Link>}
             </div>
           )}
