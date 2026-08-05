@@ -36,7 +36,7 @@ export function NewsletterPopup() {
         <form onSubmit={submit} className="mt-6 space-y-2">
           <div className="flex flex-col gap-2 sm:flex-row">
             <label className="sr-only" htmlFor="newsletter-popup-email">Email address</label>
-            <input id="newsletter-popup-email" required minLength={3} type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-primary/10" />
+            <input id="newsletter-popup-email" required autoComplete="email" minLength={3} type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-primary/10" />
             <button type="submit" disabled={subscribe.isPending} className="h-11 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-60">{subscribe.isPending ? "Joining…" : "Send me the chapter"}</button>
           </div>
           {subscribe.isSuccess && <p className="text-xs font-semibold text-emerald-600">You’re on the list. Check your inbox for the chapter.</p>}
