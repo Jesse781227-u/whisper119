@@ -8,13 +8,17 @@ import {
 } from "react"
 import {
   createUserWithEmailAndPassword,
+  reload,
+  sendEmailVerification,
+  sendPasswordResetEmail,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   type User,
 } from "firebase/auth"
-import { firebaseAuth, firebaseConfigured, googleProvider } from "@/lib/firebase"
+import { firebaseAuth, firebaseConfigured, firebaseDb, googleProvider } from "@/lib/firebase"
+import { doc, serverTimestamp, setDoc } from "firebase/firestore"
 
 type AuthContextValue = {
   user: User | null
@@ -23,6 +27,8 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
+  resetPassword: (email: string) => Promise<void>
+  refreshUser: () => Promise<void>
   signOutUser: () => Promise<void>
 }
 
@@ -40,6 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return onAuthStateChanged(firebaseAuth, (nextUser) => {
       setUser(nextUser)
       setLoading(false)
+      if (nextUser && firebaseDb) {
+        void setDoc(doc(firebaseDb, "users", nextUser.uid), {
+          email: nextUser.email,
+          displayName: nextUser.displayName,
+          photoURL: nextUser.photoURL,
+          createdAt: serverTimestamp(),
+          lastSeenAt: serverTimestamp(),
+        }, { merge: true })
+      }
     })
   }, [])
 
@@ -53,11 +68,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     signUp: async (email, password) => {
       if (!firebaseAuth) throw new Error("Firebase authentication is not configured yet.")
-      await createUserWithEmailAndPassword(firebaseAuth, email, password)
+      const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password)
+      await sendEmailVerification(credential.user)
     },
     signInWithGoogle: async () => {
       if (!firebaseAuth || !googleProvider) throw new Error("Firebase authentication is not configured yet.")
       await signInWithPopup(firebaseAuth, googleProvider)
+    },
+    resetPassword: async (email) => {
+      if (!firebaseAuth) throw new Error("Firebase authentication is not configured.")
+      await sendPasswordResetEmail(firebaseAuth, email)
+    },
+    refreshUser: async () => {
+      if (firebaseAuth?.currentUser) await reload(firebaseAuth.currentUser)
+      setUser(firebaseAuth?.currentUser ?? null)
     },
     signOutUser: async () => {
       if (firebaseAuth) await signOut(firebaseAuth)
