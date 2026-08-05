@@ -4,7 +4,7 @@ import { Link, useLocation } from "wouter"
 import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { DEMO_CATEGORIES, filterDemoBooks } from "@/data/demo-books"
+import { EMPTY_CATEGORIES } from "@/data/catalog"
 
 type FormatFilter = "" | "PDF" | "EPUB"
 
@@ -48,16 +48,8 @@ export default function Shop() {
     },
   )
   const { data: summary } = useGetStorefrontSummary()
-  const usingDemoBooks = !Array.isArray(booksData) || booksData.length === 0
-  const books = !usingDemoBooks
-    ? booksData
-    : filterDemoBooks({
-      search: search || undefined,
-      category: category || undefined,
-      format: format || undefined,
-      maxPrice: maxPrice ? Number(maxPrice) : undefined,
-    })
-  const categories = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : DEMO_CATEGORIES
+  const books = Array.isArray(booksData) ? booksData : []
+  const categories = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : EMPTY_CATEGORIES
   const hasFilters = Boolean(search || category || format || maxPrice)
 
   function updateUrl(next: { search?: string; category?: string; format?: FormatFilter; maxPrice?: string }) {
@@ -186,28 +178,28 @@ export default function Shop() {
           <div className="mb-5 flex items-end justify-between border-b border-border pb-4">
             <div>
               <p className="text-[0.65rem] font-bold uppercase tracking-[0.15em] text-primary">{category || (search ? "Search results" : "All titles")}</p>
-              <h2 className="mt-1 text-xl font-extrabold">{isLoading ? "Finding books…" : `${books?.length ?? 0} ${books?.length === 1 ? "book" : "books"}`}</h2>
+              <h2 className="mt-1 text-xl font-extrabold">{isLoading ? "Finding books…" : `${books.length} ${books.length === 1 ? "book" : "books"}`}</h2>
             </div>
             {hasFilters && <button type="button" onClick={clearFilters} aria-label="Clear filters" className="flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-primary">Reset <X className="h-4 w-4" /></button>}
           </div>
 
-          {isLoading && !usingDemoBooks ? (
+          {isLoading ? (
             <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
               {[1, 2, 3, 4, 5, 6].map((item) => <div key={item}><Skeleton className="aspect-[0.69] w-full rounded-xl" /><Skeleton className="mt-3 h-4 w-4/5" /><Skeleton className="mt-2 h-3 w-2/5" /></div>)}
             </div>
-          ) : error && !usingDemoBooks ? (
+          ) : error ? (
             <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center text-sm text-destructive">
               <p>Could not load the catalogue. Please try again shortly.</p>
               <button type="button" onClick={() => void refetch()} disabled={isRefetching} className="mt-4 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-opacity disabled:opacity-60">
                 {isRefetching ? "Trying again…" : "Try again"}
               </button>
             </div>
-          ) : books?.length ? (
+          ) : books.length ? (
             <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">{books.map((book) => <BookCard key={book.id} book={book} />)}</div>
           ) : (
             <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-20 text-center">
               <p className="text-2xl font-extrabold">Nothing on this shelf yet.</p>
-              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">{hasFilters ? "Try clearing your filters or search for something else." : "I’m adding more books as I make them available."}</p>
+               <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">{hasFilters ? "Try clearing your filters or search for something else." : "My completed ebooks will appear here as soon as I finish preparing the shelf."}</p>
               {hasFilters ? <button type="button" onClick={clearFilters} className="mt-5 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground">Clear filters</button> : <Link href="/about" className="mt-5 inline-block text-xs font-bold text-primary">About Whisper 119 →</Link>}
             </div>
           )}

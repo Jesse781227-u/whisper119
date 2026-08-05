@@ -37,13 +37,19 @@ router.post("/orders", async (req, res): Promise<void> => {
   }
   const orderId = randomUUID();
   const reference = `W119-${Date.now().toString(36).toUpperCase()}-${orderId.slice(0, 6).toUpperCase()}`;
-  const subtotal = selected.reduce((sum, book) => sum + book.price, 0);
+  const currency = parsed.data.country.toUpperCase() === "NG" ? "NGN" : "USD";
+  const subtotal = selected.reduce((sum, book) => sum + (currency === "NGN" ? book.priceNgn : book.price), 0);
+  if (subtotal <= 0 || selected.some((book) => currency === "NGN" ? book.priceNgn <= 0 : book.price <= 0)) {
+    res.status(400).json({ error: `One or more selected books does not have a valid ${currency} price yet.` });
+    return;
+  }
   await db.insert(ordersTable).values({
     id: orderId, reference, email: parsed.data.email, country: parsed.data.country,
-    currency: parsed.data.currency, subtotal, status: "pending", paymentStatus: "pending",
+    currency, subtotal, status: "pending", paymentStatus: "pending",
   });
   await db.insert(orderItemsTable).values(selected.map((book) => ({
-    id: randomUUID(), orderId, bookId: book.id, title: book.title, author: book.author, price: book.price, format: book.format,
+    id: randomUUID(), orderId, bookId: book.id, title: book.title, author: book.author,
+    price: currency === "NGN" ? book.priceNgn : book.price, format: book.format,
   })));
   try {
     res.status(201).json(CreateOrderResponse.parse(await paymentSession(orderId)));

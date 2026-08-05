@@ -18,12 +18,13 @@ export default function Checkout() {
 
   if (items.length === 0) return null
 
-  const currency = items[0]?.currency || "USD"
+  const currency = country === "NG" ? "NGN" : "USD"
+  const checkoutTotal = items.reduce((sum, item) => sum + (currency === "NGN" ? item.priceNgn : item.price), 0)
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     createOrder.mutate(
-      { data: { email, country, currency, bookIds: items.map((item) => item.id) } },
+      { data: { email, country, bookIds: items.map((item) => item.id) } },
       {
         onSuccess: (response) => {
           clearCart()
@@ -80,8 +81,8 @@ export default function Checkout() {
             </div>
           )}
 
-          <button type="submit" disabled={createOrder.isPending} className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60">
-            {createOrder.isPending ? "Connecting to payment…" : `Pay ${formatPrice(total, currency)}`}
+           <button type="submit" disabled={createOrder.isPending || checkoutTotal <= 0} className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60">
+             {createOrder.isPending ? "Connecting to payment…" : `Pay ${formatPrice(checkoutTotal, currency)}`}
           </button>
           <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-center text-[0.62rem] font-bold text-muted-foreground">
             <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5 text-primary" /> Secure payment</span>
@@ -96,11 +97,11 @@ export default function Checkout() {
             {items.map((item) => (
               <div key={item.id} className="flex items-start justify-between gap-4 py-4">
                 <div className="min-w-0"><p className="line-clamp-2 text-sm font-bold leading-5">{item.title}</p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-primary">{item.format}</p></div>
-                <span className="shrink-0 text-sm font-extrabold">{formatPrice(item.price, item.currency)}</span>
+                <span className="shrink-0 text-sm font-extrabold">{formatPrice(currency === "NGN" ? item.priceNgn : item.price, currency)}</span>
               </div>
             ))}
           </div>
-          <div className="mt-5 flex items-center justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-2xl font-extrabold">{formatPrice(total, currency)}</span></div>
+           <div className="mt-5 flex items-center justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-2xl font-extrabold">{formatPrice(checkoutTotal, currency)}</span></div>
           <div className="mt-5 space-y-3 rounded-xl bg-secondary/70 p-4 text-xs leading-5 text-muted-foreground">
             <p className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> No shipping or hidden fees</p>
             <p className="flex items-start gap-2"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Files arrive as attachments after payment.</p>

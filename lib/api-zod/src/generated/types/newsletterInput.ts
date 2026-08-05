@@ -6,14 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface OrderInput {
+export interface NewsletterInput {
   /** @minLength 3 */
   email: string;
-  /**
-     * @minLength 2
-     * @maxLength 2
-     */
-  country: string;
-  /** @minItems 1 */
-  bookIds: string[];
 }

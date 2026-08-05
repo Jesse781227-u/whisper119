@@ -8,6 +8,7 @@ export const booksTable = pgTable("books", {
   title: text("title").notNull(),
   author: text("author").notNull(),
   price: numeric("price", { precision: 10, scale: 2, mode: "number" }).notNull(),
+  priceNgn: numeric("price_ngn", { precision: 12, scale: 2, mode: "number" }).notNull().default(0),
   currency: text("currency").notNull().default("USD"),
   category: text("category").notNull(),
   description: text("description").notNull(),

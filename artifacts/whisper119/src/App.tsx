@@ -14,8 +14,10 @@ import BookDetail from '@/pages/BookDetail';
 import Cart from '@/pages/Cart';
 import Checkout from '@/pages/Checkout';
 import Order from '@/pages/Order';
+import Account from '@/pages/Account';
 import Admin, { AdminLogin } from '@/pages/Admin';
 import { Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
+import { AuthProvider } from '@/components/auth-provider';
 
 const queryClient = new QueryClient();
 
@@ -70,6 +72,7 @@ function Router() {
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/order/:orderId" component={Order} />
+      <Route path="/account" component={Account} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
@@ -83,11 +86,13 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <ThemeProvider defaultTheme="dark">
-            <CartProvider>
-              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-                <AppShell />
-              </WouterRouter>
-            </CartProvider>
+            <AuthProvider>
+              <CartProvider>
+                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+                  <AppShell />
+                </WouterRouter>
+              </CartProvider>
+            </AuthProvider>
           </ThemeProvider>
           <Toaster />
         </TooltipProvider>

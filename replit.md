@@ -31,8 +31,6 @@ Whisper 119 is a boutique, single-seller digital bookstore for international rea
 - `artifacts/whisper119/src/` — storefront, checkout, confirmation, admin shell, theme, and cart
 - `artifacts/api-server/src/routes/` — Express routes for catalogue, orders/Paystack, admin, and storage
 - `artifacts/api-server/src/lib/` — signed admin sessions, object storage, payment verification, and email delivery
-- `scripts/data/demo-books.json` — fictional development catalogue fixture
-- `pnpm --filter @workspace/scripts run seed:demo-books` — idempotently seed the development catalogue and private sample attachments
 - `lib/api-spec/openapi.yaml` — API source of truth
 - `lib/api-client-react/src/generated/` and `lib/api-zod/src/generated/` — generated clients and validation schemas
 - `lib/db/src/schema/` — Drizzle tables for books, orders, and order items
@@ -45,6 +43,8 @@ Whisper 119 is a boutique, single-seller digital bookstore for international rea
 - Ebook files remain private in Object Storage and are attached to the delivery email; the confirmation page deliberately has no download button.
 - Cover objects can be served publicly, but ebook object paths are rejected by the HTTP storage route.
 - Cart and light/dark theme preferences are local browser state; catalogue, orders, and admin data are database-backed.
+- Firebase reader authentication is prepared for email/password and Google sign-in through `VITE_FIREBASE_*` public configuration variables. Firestore rules deny client-side writes to books, orders, and subscribers; privileged Firestore synchronization requires a server credential setup before it is enabled.
+- Newsletter signup is server-owned and fails closed until `MAILCHIMP_API_KEY` and `MAILCHIMP_AUDIENCE_ID` are securely connected. The free-chapter offer is not reported as successful when the provider is unavailable.
 
 ## Product
 
@@ -65,7 +65,7 @@ The private admin desk provides cookie-backed login, dashboard totals, catalogue
 - `PAYSTACK_SECRET_KEY` and SMTP credentials are intentionally fail-closed; do not create fake payment or delivery behavior.
 - Run `pnpm --filter @workspace/api-spec run codegen` after changing `lib/api-spec/openapi.yaml`, then run `pnpm --filter @workspace/db run push` after schema changes.
 - Vite configs use build-safe defaults for `PORT` and `BASE_PATH`, because Render/build environments do not always provide runtime workflow variables.
-- Development includes 51 clearly fictional demo books across fiction, science fiction, adventure, poetry, mystery, travel, wellbeing, business, technology, history, biography, and cooking. They use local cover artwork and tiny private sample attachments for testing. Replace or remove these records before treating the catalogue as production inventory.
+- The development catalogue has been intentionally cleared. Real books must be added through the private admin desk with both USD and NGN prices; no placeholder/demo records or seed script remain.
 
 ## Pointers
 

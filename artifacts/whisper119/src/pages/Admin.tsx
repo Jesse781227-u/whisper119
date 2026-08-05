@@ -23,6 +23,7 @@ import {
 } from "@workspace/api-client-react"
 import type { BookInput, BookInputFormat } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
+import { GENRE_CATEGORIES } from "@/data/catalog"
 
 export function AdminLogin() {
   const [, setLocation] = useLocation()
@@ -86,7 +87,8 @@ function BookForm({ onCreated }: { onCreated: () => void }) {
   const [author, setAuthor] = useState("")
   const [slug, setSlug] = useState("")
   const [price, setPrice] = useState("")
-  const [category, setCategory] = useState("")
+  const [priceNgn, setPriceNgn] = useState("")
+   const [category, setCategory] = useState<(typeof GENRE_CATEGORIES)[number]>("Romance")
   const [description, setDescription] = useState("")
   const [format, setFormat] = useState<BookInputFormat>("EPUB")
   const [ebookFile, setEbookFile] = useState<File | null>(null)
@@ -110,10 +112,10 @@ function BookForm({ onCreated }: { onCreated: () => void }) {
       const [fileObjectPath, coverObjectPath] = await Promise.all([uploadFile(ebookFile), coverFile ? uploadFile(coverFile) : Promise.resolve(null)])
       const payload: BookInput = {
         title, author, slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
-        price: Number(price), currency: "USD", category, description, format, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString(),
+         price: Number(price), priceNgn: Number(priceNgn), currency: "USD", category, description, format, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString(),
       }
       await createBook.mutateAsync({ data: payload })
-      setTitle(""); setAuthor(""); setSlug(""); setPrice(""); setCategory(""); setDescription(""); setEbookFile(null); setCoverFile(null); onCreated()
+       setTitle(""); setAuthor(""); setSlug(""); setPrice(""); setPriceNgn(""); setCategory("Romance"); setDescription(""); setEbookFile(null); setCoverFile(null); onCreated()
     } catch (uploadError) { setError(uploadError instanceof Error ? uploadError.message : "Could not save this title.") }
   }
 
@@ -125,8 +127,9 @@ function BookForm({ onCreated }: { onCreated: () => void }) {
         <label className="block"><span className="mb-2 block text-xs font-bold">Title</span><input required value={title} onChange={(event) => setTitle(event.target.value)} className={fieldClass} /></label>
         <label className="block"><span className="mb-2 block text-xs font-bold">Author</span><input required value={author} onChange={(event) => setAuthor(event.target.value)} className={fieldClass} /></label>
         <label className="block"><span className="mb-2 block text-xs font-bold">Slug <span className="font-normal text-muted-foreground">(optional)</span></span><input value={slug} onChange={(event) => setSlug(event.target.value)} className={fieldClass} /></label>
-        <label className="block"><span className="mb-2 block text-xs font-bold">Price (USD)</span><input required min="0" step="0.01" type="number" value={price} onChange={(event) => setPrice(event.target.value)} className={fieldClass} /></label>
-        <label className="block"><span className="mb-2 block text-xs font-bold">Category</span><input required value={category} onChange={(event) => setCategory(event.target.value)} className={fieldClass} /></label>
+         <label className="block"><span className="mb-2 block text-xs font-bold">Price (USD)</span><input required min="0.01" step="0.01" type="number" value={price} onChange={(event) => setPrice(event.target.value)} className={fieldClass} /></label>
+         <label className="block"><span className="mb-2 block text-xs font-bold">Price (NGN)</span><input required min="0.01" step="0.01" type="number" value={priceNgn} onChange={(event) => setPriceNgn(event.target.value)} className={fieldClass} /></label>
+         <label className="block"><span className="mb-2 block text-xs font-bold">Genre</span><select required value={category} onChange={(event) => setCategory(event.target.value as (typeof GENRE_CATEGORIES)[number])} className={fieldClass}>{GENRE_CATEGORIES.map((genre) => <option key={genre} value={genre}>{genre}</option>)}</select></label>
         <label className="block"><span className="mb-2 block text-xs font-bold">Format</span><select value={format} onChange={(event) => setFormat(event.target.value as BookInputFormat)} className={fieldClass}><option value="EPUB">EPUB</option><option value="PDF">PDF</option></select></label>
         <label className="block"><span className="mb-2 block text-xs font-bold">Ebook file</span><input required accept={format === "PDF" ? ".pdf,application/pdf" : ".epub,application/epub+zip"} type="file" onChange={(event) => setEbookFile(event.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
         <label className="block"><span className="mb-2 block text-xs font-bold">Cover image <span className="font-normal text-muted-foreground">(optional)</span></span><input accept="image/png,image/jpeg,image/webp" type="file" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
