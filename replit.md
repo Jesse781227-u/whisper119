@@ -57,6 +57,7 @@ The private admin desk provides cookie-backed login, dashboard totals, catalogue
 - Keep the current cover-heavy bookstore direction: mobile-first app chrome, rounded cards and pills, bold sans-serif typography, a dark romance palette, and restrained motion. Use moonlit plum, wine, rose, silver, and antique-gold cues with subtle night-forest atmosphere; do not use a light theme. Do not copy chapter-reading, fake ratings/views, or customer download-link behavior from the reference.
 - Customer-facing copy should sound casual and personal, as if the author is speaking directly to visitors. Prefer first-person language about the author's books and avoid generic bookstore filler, curation disclaimers, and decorative sparkle icons.
 - Push commits to the connected GitHub repository after meaningful changes and report push failures explicitly.
+- Always open a new branch and pull request for each new request; do not update an existing pull request unless the user explicitly asks.
 - For visual redesign work, implement and push each meaningful page or section as its own segment before moving to the next.
 
 ## Gotchas
