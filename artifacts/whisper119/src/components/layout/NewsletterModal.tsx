@@ -5,7 +5,7 @@ import { useSubscribeNewsletter } from "@workspace/api-client-react"
 
 const DISMISS_KEY = "w119_newsletter_dismissed"
 
-export function NewsletterPopup() {
+export function NewsletterModal() {
   const subscribe = useSubscribeNewsletter()
   const [visible, setVisible] = useState(false)
   const [email, setEmail] = useState("")
