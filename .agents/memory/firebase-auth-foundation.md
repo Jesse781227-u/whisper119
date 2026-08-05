@@ -10,3 +10,9 @@ Firebase reader authentication can be safely enabled from public `VITE_FIREBASE_
 **How to apply:** Keep PostgreSQL/Paystack authoritative until a secure Firebase Admin/service-account setup is authorized. When adding Firestore server access, preserve the deny-by-default rules and update indexes with any new user-owned queries.
 
 The current generated Zod toolchain does not support OpenAPI `format: email` output as `zod.email()`, so newsletter input contracts should use compatible string constraints plus explicit server-side validation if stricter email validation is required.
+
+Replit's managed GitHub push uses the account-level GitHub source-control connection, not a project secret named `GITHUB_PERSONAL_ACCESS_TOKEN`.
+
+**Why:** The project secret was present, but the managed push operation still returned `NO_CREDENTIALS` until the separate GitHub connector authorization was available.
+
+**How to apply:** If a push is blocked by `NO_CREDENTIALS`, use the GitHub source-control connection flow rather than reading, copying, or embedding the project secret.
