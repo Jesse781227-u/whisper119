@@ -1,19 +1,38 @@
-import { X } from "lucide-react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { Mail, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useSubscribeNewsletter } from "@workspace/api-client-react"
 
+const DISMISS_KEY = "w119_newsletter_dismissed"
+
 export function NewsletterPopup() {
   const subscribe = useSubscribeNewsletter()
-  const [open, setOpen] = useState(false)
+  const [visible, setVisible] = useState(false)
   const [email, setEmail] = useState("")
+  const prefersReducedMotion = useReducedMotion()
+
+  function close() {
+    setVisible(false)
+    window.sessionStorage.setItem(DISMISS_KEY, "1")
+  }
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setOpen(true), 5000)
-    const openNewsletter = () => setOpen(true)
+    if (window.sessionStorage.getItem(DISMISS_KEY)) return
+
+    const timer = window.setTimeout(() => setVisible(true), 5000)
+    const openNewsletter = () => {
+      if (!window.sessionStorage.getItem(DISMISS_KEY)) setVisible(true)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close()
+    }
+
     window.addEventListener("open-newsletter", openNewsletter)
+    window.addEventListener("keydown", onKeyDown)
     return () => {
       window.clearTimeout(timer)
       window.removeEventListener("open-newsletter", openNewsletter)
+      window.removeEventListener("keydown", onKeyDown)
     }
   }, [])
 
@@ -24,25 +43,65 @@ export function NewsletterPopup() {
     })
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center">
-      <div role="dialog" aria-modal="true" aria-labelledby="newsletter-title" className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-primary/20 bg-card p-6 shadow-2xl sm:p-8">
-        <button type="button" onClick={() => setOpen(false)} aria-label="Close newsletter signup" className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"><X className="h-4 w-4" /></button>
-        <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">A little something from me</p>
-        <h2 id="newsletter-title" className="mt-2 pr-8 text-2xl font-extrabold tracking-tight">Get a free chapter.</h2>
-        <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">Join my reader list for a free chapter and occasional notes when a completed ebook lands on the shelf.</p>
-        <form onSubmit={submit} className="mt-6 space-y-2">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <label className="sr-only" htmlFor="newsletter-popup-email">Email address</label>
-            <input id="newsletter-popup-email" required autoComplete="email" minLength={3} type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-primary/10" />
-            <button type="submit" disabled={subscribe.isPending} className="h-11 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-60">{subscribe.isPending ? "Joining…" : "Send me the chapter"}</button>
-          </div>
-          {subscribe.isSuccess && <p className="text-xs font-semibold text-emerald-600">You’re on the list. Check your inbox for the chapter.</p>}
-          {subscribe.error && <p className="text-xs leading-5 text-destructive">The reader list is unavailable right now. Please try again later.</p>}
-        </form>
-      </div>
-    </div>
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={prefersReducedMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="newsletter-title"
+          onClick={close}
+        >
+          <motion.div
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 320, damping: 26 }}
+            className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-[hsl(224_70%_45%/0.45)] bg-card shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button type="button" onClick={close} aria-label="Close newsletter signup" className="absolute right-5 top-5 z-10 rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="border-b border-border/70 px-6 py-5 sm:px-8">
+              <span className="text-lg font-extrabold tracking-tight">Whisper 119</span>
+            </div>
+
+            <div className="grid items-center gap-7 p-6 sm:grid-cols-2 sm:gap-8 sm:p-8">
+              <div className="hidden sm:block">
+                <img src={`${import.meta.env.BASE_URL}newsletter-illustration.svg`} alt="" className="mx-auto w-full max-w-[15rem]" />
+              </div>
+
+              <div>
+                <h2 id="newsletter-title" className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">Get a Free Chapter</h2>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">Subscribe for new releases and updates from Whisper 119 — plus a free chapter, on us.</p>
+
+                {subscribe.isSuccess ? (
+                  <p className="mt-6 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm font-semibold leading-6 text-emerald-400">You&apos;re in! Check your inbox for your free chapter.</p>
+                ) : (
+                  <form onSubmit={submit} className="mt-6 space-y-3">
+                    <label className="flex h-12 items-center gap-2 rounded-xl border border-border bg-background/70 px-4 transition-colors focus-within:border-[hsl(224_70%_55%)] focus-within:ring-4 focus-within:ring-[hsl(224_70%_55%/0.15)]">
+                      <Mail className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+                      <span className="sr-only">Email address</span>
+                      <input required autoComplete="email" minLength={3} type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Your email" className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground/70" />
+                    </label>
+                    <button type="submit" disabled={subscribe.isPending} className="h-12 w-full rounded-xl bg-[hsl(224_70%_45%)] px-5 text-sm font-extrabold text-white shadow-lg shadow-[hsl(224_70%_30%/0.3)] transition-colors hover:bg-[hsl(224_70%_38%)] disabled:opacity-60">
+                      {subscribe.isPending ? "Subscribing…" : "Subscribe"}
+                    </button>
+                    {subscribe.error && <p className="text-sm leading-5 text-destructive">Something went wrong — try again.</p>}
+                  </form>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

@@ -1,0 +1,14 @@
+<svg width="320" height="260" viewBox="0 0 320 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">An open letter with a reader note</title>
+  <desc id="desc">A simple blue and rose illustration of an open envelope, a letter, and floating hearts.</desc>
+  <path d="M56 186C56 177.163 63.1634 170 72 170H246C254.837 170 262 177.163 262 186V216C262 224.837 254.837 232 246 232H72C63.1634 232 56 224.837 56 216V186Z" fill="#17264D"/>
+  <path d="M57 185L145.595 119.632C154.234 113.257 165.766 113.257 174.405 119.632L263 185L174.171 235.002C165.655 239.798 155.345 239.798 146.829 235.002L57 185Z" fill="#244B9A"/>
+  <rect x="93" y="54" width="131" height="126" rx="9" transform="rotate(-7 93 54)" fill="#F2E9F0"/>
+  <rect x="114" y="82" width="83" height="7" rx="3.5" transform="rotate(-7 114 82)" fill="#B9C5E6"/>
+  <rect x="117" y="103" width="61" height="7" rx="3.5" transform="rotate(-7 117 103)" fill="#B9C5E6"/>
+  <path d="M171 128C163.153 119.45 148.001 125.09 149.57 136.57C151.137 148.037 171 158 171 158C171 158 190.863 148.037 192.43 136.57C193.999 125.09 178.847 119.45 171 128Z" fill="#D96791"/>
+  <path d="M257 65C257 65 264 54 273 58C282 62 276 75 257 87C238 75 232 62 241 58C250 54 257 65 257 65Z" fill="#D96791" opacity=".8"/>
+  <circle cx="67" cy="74" r="7" fill="#D5A7C1" opacity=".7"/>
+  <circle cx="250" cy="123" r="5" fill="#7FA2E8" opacity=".75"/>
+  <path d="M51 125C58 119 65 119 72 125" stroke="#7FA2E8" stroke-width="4" stroke-linecap="round"/>
+</svg>
