@@ -1,9 +1,10 @@
 import { ArrowRight, BookOpen, ChevronRight, Mail } from "lucide-react"
 import { Link } from "wouter"
-import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
+import { useState } from "react"
+import { useGetStorefrontSummary, useListBooks, useSubscribeNewsletter } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { DEMO_BOOKS, DEMO_CATEGORIES } from "@/data/demo-books"
+import { EMPTY_CATEGORIES } from "@/data/catalog"
 
 function SectionHeading({ eyebrow, title, href = "/shop" }: { eyebrow?: string; title: string; href?: string }) {
   return (
@@ -32,8 +33,8 @@ function PromoBanner() {
       </div>
       <div className="relative max-w-[15rem] sm:max-w-sm">
         <p className="text-[0.62rem] font-bold uppercase tracking-[0.18em] text-rose-100/80">A note from me</p>
-        <h1 className="mt-2 text-2xl font-extrabold leading-[1.06] tracking-tight sm:text-4xl">I’m glad you found my books.</h1>
-        <p className="mt-2 text-xs leading-5 text-white/80 sm:text-sm">I make and share DRM-free EPUBs and PDFs, and send them straight to your inbox.</p>
+        <h1 className="mt-2 text-2xl font-extrabold leading-[1.06] tracking-tight sm:text-4xl">Welcome to my official ebook shelf.</h1>
+        <p className="mt-2 text-xs leading-5 text-white/80 sm:text-sm">By Whisper 119. Author of <em>Mated to My Mate&apos;s Worst Enemy</em>, with 225,000+ readers across platforms.</p>
         <Link href="/shop" className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[0.68rem] font-extrabold text-primary shadow-md transition-transform hover:-translate-y-0.5">
           See my books <ArrowRight className="h-3.5 w-3.5" />
         </Link>
@@ -57,6 +58,39 @@ function ServiceStrip() {
   )
 }
 
+function NewsletterSignup() {
+  const subscribe = useSubscribeNewsletter()
+  const [email, setEmail] = useState("")
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault()
+    subscribe.mutate({ data: { email } }, {
+      onSuccess: () => setEmail(""),
+    })
+  }
+
+  return (
+    <section className="mt-9 overflow-hidden rounded-3xl border border-primary/20 bg-primary/[0.08] p-6 sm:p-8">
+      <div className="grid gap-6 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div>
+          <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">A little something from me</p>
+          <h2 className="mt-2 text-2xl font-extrabold tracking-tight">Get a free chapter.</h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Join my reader list for a free chapter and occasional notes when an actual completed ebook lands on the shelf.</p>
+        </div>
+        <form onSubmit={submit} className="flex w-full max-w-md flex-col gap-2 sm:min-w-[22rem]">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <label className="sr-only" htmlFor="newsletter-email">Email address</label>
+            <input id="newsletter-email" required minLength={3} type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-primary/10" />
+            <button type="submit" disabled={subscribe.isPending} className="h-11 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-60">{subscribe.isPending ? "Joining…" : "Send me the chapter"}</button>
+          </div>
+          {subscribe.isSuccess && <p className="text-xs font-semibold text-emerald-600">You’re on the list. Check your inbox for the chapter.</p>}
+          {subscribe.error && <p className="text-xs leading-5 text-destructive">The reader list is not connected yet. Please try again later.</p>}
+        </form>
+      </div>
+    </section>
+  )
+}
+
 export default function Home() {
   const { data: summary, isLoading, error, refetch, isRefetching } = useGetStorefrontSummary({
     query: {
@@ -72,14 +106,13 @@ export default function Home() {
       retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
     },
   })
-  const catalogue = Array.isArray(catalogueData) && catalogueData.length > 0 ? catalogueData : DEMO_BOOKS
-  const isUsingDemoCatalogue = catalogue === DEMO_BOOKS
+  const catalogue = Array.isArray(catalogueData) ? catalogueData : []
   const featured = Array.isArray(summary?.featured) && summary.featured.length > 0 ? summary.featured : catalogue.slice(0, 8)
   const arrivals = Array.isArray(summary?.newArrivals) && summary.newArrivals.length > 0 ? summary.newArrivals : catalogue.slice(8, 16)
   const hasBooks = featured.length > 0 || arrivals.length > 0
-  const sections = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : DEMO_CATEGORIES
-  const isLoadingShelf = (isLoading || isCatalogueLoading) && !isUsingDemoCatalogue
-  const shelfError = Boolean(error && catalogueError && catalogue.length === 0)
+  const sections = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : EMPTY_CATEGORIES
+  const isLoadingShelf = isLoading || isCatalogueLoading
+  const shelfError = Boolean(error || catalogueError)
 
   function retryShelf() {
     void Promise.all([refetch(), refetchCatalogue()])
@@ -93,15 +126,22 @@ export default function Home() {
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[1, 2, 3, 4].map((item) => <div key={item}><Skeleton className="aspect-[0.69] w-full rounded-xl" /><Skeleton className="mt-3 h-4 w-4/5" /><Skeleton className="mt-2 h-3 w-2/5" /></div>)}
         </div>
-      ) : shelfError && !hasBooks ? (
+       ) : shelfError && !hasBooks ? (
         <div className="mt-8 rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center text-sm text-destructive">
           <p>The shelf could not load. Please try again shortly.</p>
           <button type="button" onClick={retryShelf} disabled={isRefetching} className="mt-4 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-opacity disabled:opacity-60">
             {isRefetching ? "Trying again…" : "Try again"}
           </button>
         </div>
-      ) : (
-        <>
+       ) : !hasBooks ? (
+         <section className="mt-8 overflow-hidden rounded-3xl border border-primary/20 bg-card/80 px-6 py-16 text-center shadow-xl shadow-primary/5 sm:px-12">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><BookOpen className="h-6 w-6" /></span>
+           <p className="mt-6 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-primary">The first shelf is coming soon</p>
+           <h2 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">My completed ebooks will be here.</h2>
+           <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted-foreground">I’m preparing my actual non-exclusive books for this shop. Covers, descriptions, and DRM-free ebook files will appear here as soon as they’re ready.</p>
+         </section>
+       ) : (
+         <>
            {featured.length > 0 && (
              <section className="mt-8">
                <SectionHeading eyebrow="A few from me" title="My books" />
@@ -131,8 +171,10 @@ export default function Home() {
             </section>
           ))}
 
+           <NewsletterSignup />
         </>
       )}
+       {!isLoadingShelf && !shelfError && !hasBooks && <NewsletterSignup />}
     </main>
   )
 }

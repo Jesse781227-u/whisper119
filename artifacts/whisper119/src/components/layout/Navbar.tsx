@@ -1,9 +1,9 @@
 import { Link, useLocation } from "wouter"
-import { BookOpen, ChevronDown, Menu, Search, ShoppingBag, UserCircle, X } from "lucide-react"
+import { BookOpen, ChevronDown, Menu, Search, ShoppingBag, UserRound, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useGetStorefrontSummary } from "@workspace/api-client-react"
 import { useCart } from "@/components/cart-provider"
-import { DEMO_CATEGORIES } from "@/data/demo-books"
+import { EMPTY_CATEGORIES } from "@/data/catalog"
 
 export function Navbar() {
   const { items } = useCart()
@@ -12,7 +12,7 @@ export function Navbar() {
   const [menuVisible, setMenuVisible] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [location] = useLocation()
-  const categories = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : DEMO_CATEGORIES
+  const categories = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : EMPTY_CATEGORIES
 
   useEffect(() => {
     if (!open) {
@@ -69,10 +69,8 @@ export function Navbar() {
             <ShoppingBag className="h-5 w-5" />
             {items.length > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.58rem] text-primary-foreground">{items.length}</span>}
           </Link>
+          <Link href="/account" aria-label="Reader account" className="hidden rounded-full p-2 text-muted-foreground hover:bg-secondary sm:block"><UserRound className="h-4 w-4" /></Link>
           <span aria-hidden="true" className="hidden h-8 w-px bg-border sm:block" />
-          <Link href="/admin/login" aria-label="Account" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20">
-            <UserCircle className="h-5 w-5" />
-          </Link>
         </div>
 
         <nav className="no-scrollbar mx-auto hidden max-w-7xl gap-2 overflow-x-auto px-4 pb-3 sm:px-6 md:flex" aria-label="Book categories">
@@ -139,6 +137,7 @@ export function Navbar() {
                   <span>Cart</span>
                   {items.length > 0 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-xs text-primary-foreground">{items.length}</span>}
                 </Link>
+                <Link href="/account" onClick={closeMenu} className="flex items-center rounded-xl px-4 py-3.5 text-sm font-bold transition-colors hover:bg-secondary">Reader account</Link>
 
                 <a href="mailto:hello@whisper119.shop" onClick={closeMenu} className="rounded-xl px-4 py-3.5 text-sm font-bold transition-colors hover:bg-secondary">
                   Contact

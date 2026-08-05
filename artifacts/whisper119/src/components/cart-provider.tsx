@@ -7,6 +7,7 @@ export type CartItem = {
   title: string
   author: string
   price: number
+  priceNgn: number
   currency: string
   format: string
   coverUrl: string | null
@@ -26,7 +27,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem("whisper119-cart")
-      return saved ? JSON.parse(saved) : []
+      const parsed = saved ? JSON.parse(saved) : []
+      if (!Array.isArray(parsed)) return []
+      return parsed
+        .filter((item): item is CartItem => item && typeof item === "object" && typeof item.id === "string" && !item.id.startsWith("demo-book-"))
+        .map((item) => ({
+          ...item,
+          priceNgn: typeof item.priceNgn === "number" && Number.isFinite(item.priceNgn) ? item.priceNgn : 0,
+        }))
     } catch (e) {
       return []
     }
@@ -48,6 +56,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           title: book.title,
           author: book.author,
           price: book.price,
+          priceNgn: book.priceNgn,
           currency: book.currency,
           format: book.format,
           coverUrl: book.coverUrl,

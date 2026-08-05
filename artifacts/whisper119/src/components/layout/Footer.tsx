@@ -1,4 +1,4 @@
-import { ArrowUpRight, BookOpen, Mail } from "lucide-react"
+import { BookOpen, Mail } from "lucide-react"
 import { Link } from "wouter"
 
 export function Footer() {
@@ -18,12 +18,11 @@ export function Footer() {
             <Link href="/shop" className="font-semibold text-muted-foreground hover:text-primary">Browse books</Link>
             <Link href="/about" className="font-semibold text-muted-foreground hover:text-primary">About me</Link>
             <a href="mailto:hello@whisper119.shop" className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-primary"><Mail className="h-3.5 w-3.5" /> Contact</a>
-            <Link href="/admin/login" className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-primary">Librarian login <ArrowUpRight className="h-3.5 w-3.5" /></Link>
           </div>
         </div>
         <div className="mt-8 flex flex-wrap justify-between gap-3 border-t border-border pt-5 text-[0.62rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">
           <span>© {new Date().getFullYear()} Whisper 119</span>
-          <span>Digital titles · Email delivery · Prices in USD</span>
+          <span>Digital titles · Email delivery · NGN for Nigeria · USD worldwide</span>
         </div>
       </div>
     </footer>

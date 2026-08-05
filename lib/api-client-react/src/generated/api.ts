@@ -33,6 +33,8 @@ import type {
   HealthStatus,
   ListAdminOrdersParams,
   ListBooksParams,
+  NewsletterInput,
+  NewsletterResponse,
   NotFoundResponse,
   Order,
   OrderInput,
@@ -386,6 +388,77 @@ export function useGetStorefrontSummary<TData = Awaited<ReturnType<typeof getSto
 
 
 
+
+export const getSubscribeNewsletterUrl = () => {
+
+
+
+
+  return `/api/newsletter/subscribe`
+}
+
+/**
+ * @summary Subscribe to the Whisper 119 newsletter
+ */
+export const subscribeNewsletter = async (newsletterInput: NewsletterInput, options?: Parameters<typeof customFetch>[1]): Promise<NewsletterResponse> => {
+
+  return customFetch<NewsletterResponse>(getSubscribeNewsletterUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(newsletterInput)
+  }
+);}
+
+
+
+
+
+export const getSubscribeNewsletterMutationOptions = <TError = ErrorType<BadRequestResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof subscribeNewsletter>>, TError,{data: BodyType<NewsletterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof subscribeNewsletter>>, TError,{data: BodyType<NewsletterInput>}, TContext> => {
+
+const mutationKey = ['subscribeNewsletter'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof subscribeNewsletter>>, {data: BodyType<NewsletterInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  subscribeNewsletter(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubscribeNewsletterMutationResult = NonNullable<Awaited<ReturnType<typeof subscribeNewsletter>>>
+    export type SubscribeNewsletterMutationBody = BodyType<NewsletterInput>
+    export type SubscribeNewsletterMutationError = ErrorType<BadRequestResponse | ErrorResponse>
+
+    /**
+ * @summary Subscribe to the Whisper 119 newsletter
+ */
+export const useSubscribeNewsletter = <TError = ErrorType<BadRequestResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof subscribeNewsletter>>, TError,{data: BodyType<NewsletterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof subscribeNewsletter>>,
+        TError,
+        {data: BodyType<NewsletterInput>},
+        TContext
+      > => {
+      return useMutation(getSubscribeNewsletterMutationOptions(options));
+    }
 
 export const getCreateOrderUrl = () => {
 

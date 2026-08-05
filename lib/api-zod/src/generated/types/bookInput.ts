@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BookInputCategory } from './bookInputCategory';
 import type { BookInputFormat } from './bookInputFormat';
 
 export interface BookInput {
@@ -16,13 +17,14 @@ export interface BookInput {
   author: string;
   /** @minimum 0 */
   price: number;
+  /** @minimum 0 */
+  priceNgn: number;
   /**
      * @minLength 3
      * @maxLength 3
      */
   currency: string;
-  /** @minLength 1 */
-  category: string;
+  category: BookInputCategory;
   description: string;
   format: BookInputFormat;
   /** @nullable */

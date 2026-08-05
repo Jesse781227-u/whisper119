@@ -79,6 +79,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StorefrontSummary"
+  /newsletter/subscribe:
+    post:
+      operationId: subscribeNewsletter
+      tags: [storefront]
+      summary: Subscribe to the Whisper 119 newsletter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterInput"
+      responses:
+        "201":
+          description: Newsletter subscription accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "503":
+          description: Newsletter provider is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /orders:
     post:
       operationId: createOrder
@@ -482,8 +508,9 @@ components:
         title: { type: string }
         author: { type: string }
         price: { type: number }
+        priceNgn: { type: number }
         currency: { type: string }
-        category: { type: string }
+        category: { type: string, enum: [Romance, Werewolf, Paranormal, Dark Romance, Billionaire Romance, Completed Series] }
         description: { type: string }
         format: { type: string, enum: [PDF, EPUB] }
         coverUrl: { type: ["string", "null"] }
@@ -491,7 +518,7 @@ components:
         featured: { type: boolean }
         publishedAt: { type: string }
         createdAt: { type: string }
-      required: [id, slug, title, author, price, currency, category, description, format, coverUrl, fileName, featured, publishedAt, createdAt]
+      required: [id, slug, title, author, price, priceNgn, currency, category, description, format, coverUrl, fileName, featured, publishedAt, createdAt]
     BookInput:
       type: object
       properties:
@@ -499,8 +526,9 @@ components:
         slug: { type: string, minLength: 1 }
         author: { type: string, minLength: 1 }
         price: { type: number, minimum: 0 }
+        priceNgn: { type: number, minimum: 0 }
         currency: { type: string, minLength: 3, maxLength: 3 }
-        category: { type: string, minLength: 1 }
+        category: { type: string, enum: [Romance, Werewolf, Paranormal, Dark Romance, Billionaire Romance, Completed Series] }
         description: { type: string }
         format: { type: string, enum: [PDF, EPUB] }
         coverObjectPath: { type: ["string", "null"] }
@@ -508,7 +536,7 @@ components:
         fileName: { type: string, minLength: 1 }
         featured: { type: boolean }
         publishedAt: { type: string }
-      required: [title, slug, author, price, currency, category, description, format, coverObjectPath, fileObjectPath, fileName, featured, publishedAt]
+      required: [title, slug, author, price, priceNgn, currency, category, description, format, coverObjectPath, fileObjectPath, fileName, featured, publishedAt]
     BookUpdate:
       type: object
       properties:
@@ -516,8 +544,9 @@ components:
         slug: { type: string, minLength: 1 }
         author: { type: string, minLength: 1 }
         price: { type: number, minimum: 0 }
+        priceNgn: { type: number, minimum: 0 }
         currency: { type: string, minLength: 3, maxLength: 3 }
-        category: { type: string, minLength: 1 }
+        category: { type: string, enum: [Romance, Werewolf, Paranormal, Dark Romance, Billionaire Romance, Completed Series] }
         description: { type: string }
         format: { type: string, enum: [PDF, EPUB] }
         coverObjectPath: { type: ["string", "null"] }
@@ -543,9 +572,18 @@ components:
       properties:
         email: { type: string, minLength: 3 }
         country: { type: string, minLength: 2, maxLength: 2 }
-        currency: { type: string, minLength: 3, maxLength: 3 }
         bookIds: { type: array, minItems: 1, items: { type: string } }
-      required: [email, country, currency, bookIds]
+      required: [email, country, bookIds]
+    NewsletterInput:
+      type: object
+      properties:
+        email: { type: string, minLength: 3 }
+      required: [email]
+    NewsletterResponse:
+      type: object
+      properties:
+        subscribed: { type: boolean }
+      required: [subscribed]
     CheckoutSession:
       type: object
       properties:

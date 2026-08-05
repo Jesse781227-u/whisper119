@@ -15,6 +15,7 @@ export function publicBook(book: Book) {
     title: book.title,
     author: book.author,
     price: book.price,
+    priceNgn: book.priceNgn,
     currency: book.currency,
     category: book.category,
     description: book.description,

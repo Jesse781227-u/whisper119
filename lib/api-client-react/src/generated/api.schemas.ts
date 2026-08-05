@@ -13,6 +13,18 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type BookCategory = typeof BookCategory[keyof typeof BookCategory];
+
+
+export const BookCategory = {
+  Romance: 'Romance',
+  Werewolf: 'Werewolf',
+  Paranormal: 'Paranormal',
+  Dark_Romance: 'Dark Romance',
+  Billionaire_Romance: 'Billionaire Romance',
+  Completed_Series: 'Completed Series',
+} as const;
+
 export type BookFormat = typeof BookFormat[keyof typeof BookFormat];
 
 
@@ -27,8 +39,9 @@ export interface Book {
   title: string;
   author: string;
   price: number;
+  priceNgn: number;
   currency: string;
-  category: string;
+  category: BookCategory;
   description: string;
   format: BookFormat;
   /** @nullable */
@@ -38,6 +51,18 @@ export interface Book {
   publishedAt: string;
   createdAt: string;
 }
+
+export type BookInputCategory = typeof BookInputCategory[keyof typeof BookInputCategory];
+
+
+export const BookInputCategory = {
+  Romance: 'Romance',
+  Werewolf: 'Werewolf',
+  Paranormal: 'Paranormal',
+  Dark_Romance: 'Dark Romance',
+  Billionaire_Romance: 'Billionaire Romance',
+  Completed_Series: 'Completed Series',
+} as const;
 
 export type BookInputFormat = typeof BookInputFormat[keyof typeof BookInputFormat];
 
@@ -56,13 +81,14 @@ export interface BookInput {
   author: string;
   /** @minimum 0 */
   price: number;
+  /** @minimum 0 */
+  priceNgn: number;
   /**
      * @minLength 3
      * @maxLength 3
      */
   currency: string;
-  /** @minLength 1 */
-  category: string;
+  category: BookInputCategory;
   description: string;
   format: BookInputFormat;
   /** @nullable */
@@ -74,6 +100,18 @@ export interface BookInput {
   featured: boolean;
   publishedAt: string;
 }
+
+export type BookUpdateCategory = typeof BookUpdateCategory[keyof typeof BookUpdateCategory];
+
+
+export const BookUpdateCategory = {
+  Romance: 'Romance',
+  Werewolf: 'Werewolf',
+  Paranormal: 'Paranormal',
+  Dark_Romance: 'Dark Romance',
+  Billionaire_Romance: 'Billionaire Romance',
+  Completed_Series: 'Completed Series',
+} as const;
 
 export type BookUpdateFormat = typeof BookUpdateFormat[keyof typeof BookUpdateFormat];
 
@@ -92,13 +130,14 @@ export interface BookUpdate {
   author?: string;
   /** @minimum 0 */
   price?: number;
+  /** @minimum 0 */
+  priceNgn?: number;
   /**
      * @minLength 3
      * @maxLength 3
      */
   currency?: string;
-  /** @minLength 1 */
-  category?: string;
+  category?: BookUpdateCategory;
   description?: string;
   format?: BookUpdateFormat;
   /** @nullable */
@@ -130,13 +169,17 @@ export interface OrderInput {
      * @maxLength 2
      */
   country: string;
-  /**
-     * @minLength 3
-     * @maxLength 3
-     */
-  currency: string;
   /** @minItems 1 */
   bookIds: string[];
+}
+
+export interface NewsletterInput {
+  /** @minLength 3 */
+  email: string;
+}
+
+export interface NewsletterResponse {
+  subscribed: boolean;
 }
 
 export interface CheckoutSession {

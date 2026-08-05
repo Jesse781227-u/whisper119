@@ -6,7 +6,6 @@ import { BookCard, BookCover } from "@/components/book-card"
 import { useCart } from "@/components/cart-provider"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDate, formatPrice } from "@/lib/utils"
-import { DEMO_BOOKS } from "@/data/demo-books"
 
 function ShareButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
   return (
@@ -38,7 +37,7 @@ export default function BookDetail() {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const catalogue = Array.isArray(apiBooks) && apiBooks.length > 0 ? apiBooks : DEMO_BOOKS
+  const catalogue = Array.isArray(apiBooks) ? apiBooks : []
   const book = apiBook ?? catalogue.find((item) => item.id === bookId || item.slug === bookId)
   const related = useMemo(() => (
     catalogue

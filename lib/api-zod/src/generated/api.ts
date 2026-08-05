@@ -33,8 +33,9 @@ export const ListBooksResponseItem = zod.object({
   "title": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
+  "priceNgn": zod.number(),
   "currency": zod.string(),
-  "category": zod.string(),
+  "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "coverUrl": zod.string().nullable(),
@@ -59,8 +60,9 @@ export const GetBookResponse = zod.object({
   "title": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
+  "priceNgn": zod.number(),
   "currency": zod.string(),
-  "category": zod.string(),
+  "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "coverUrl": zod.string().nullable(),
@@ -81,8 +83,9 @@ export const GetStorefrontSummaryResponse = zod.object({
   "title": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
+  "priceNgn": zod.number(),
   "currency": zod.string(),
-  "category": zod.string(),
+  "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "coverUrl": zod.string().nullable(),
@@ -97,8 +100,9 @@ export const GetStorefrontSummaryResponse = zod.object({
   "title": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
+  "priceNgn": zod.number(),
   "currency": zod.string(),
-  "category": zod.string(),
+  "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "coverUrl": zod.string().nullable(),
@@ -115,6 +119,22 @@ export const GetStorefrontSummaryResponse = zod.object({
 
 
 /**
+ * @summary Subscribe to the Whisper 119 newsletter
+ */
+export const subscribeNewsletterBodyEmailMin = 3;
+
+
+
+export const SubscribeNewsletterBody = zod.object({
+  "email": zod.string().min(subscribeNewsletterBodyEmailMin)
+})
+
+export const SubscribeNewsletterResponse = zod.object({
+  "subscribed": zod.boolean()
+})
+
+
+/**
  * @summary Create a pending order and initialize payment
  */
 export const createOrderBodyEmailMin = 3;
@@ -122,16 +142,12 @@ export const createOrderBodyEmailMin = 3;
 export const createOrderBodyCountryMin = 2;
 export const createOrderBodyCountryMax = 2;
 
-export const createOrderBodyCurrencyMin = 3;
-export const createOrderBodyCurrencyMax = 3;
-
 
 
 
 export const CreateOrderBody = zod.object({
   "email": zod.string().min(createOrderBodyEmailMin),
   "country": zod.string().min(createOrderBodyCountryMin).max(createOrderBodyCountryMax),
-  "currency": zod.string().min(createOrderBodyCurrencyMin).max(createOrderBodyCurrencyMax),
   "bookIds": zod.array(zod.string()).min(1)
 })
 
@@ -298,8 +314,9 @@ export const ListAdminBooksResponseItem = zod.object({
   "title": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
+  "priceNgn": zod.number(),
   "currency": zod.string(),
-  "category": zod.string(),
+  "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "coverUrl": zod.string().nullable(),
@@ -319,9 +336,10 @@ export const ListAdminBooksResponse = zod.array(ListAdminBooksResponseItem)
 
 export const createBookBodyPriceMin = 0;
 
+export const createBookBodyPriceNgnMin = 0;
+
 export const createBookBodyCurrencyMin = 3;
 export const createBookBodyCurrencyMax = 3;
-
 
 
 
@@ -332,8 +350,9 @@ export const CreateBookBody = zod.object({
   "slug": zod.string().min(1),
   "author": zod.string().min(1),
   "price": zod.number().min(createBookBodyPriceMin),
+  "priceNgn": zod.number().min(createBookBodyPriceNgnMin),
   "currency": zod.string().min(createBookBodyCurrencyMin).max(createBookBodyCurrencyMax),
-  "category": zod.string().min(1),
+  "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "coverObjectPath": zod.string().nullable(),
@@ -349,8 +368,9 @@ export const CreateBookResponse = zod.object({
   "title": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
+  "priceNgn": zod.number(),
   "currency": zod.string(),
-  "category": zod.string(),
+  "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "coverUrl": zod.string().nullable(),
@@ -373,9 +393,10 @@ export const UpdateBookParams = zod.object({
 
 export const updateBookBodyPriceMin = 0;
 
+export const updateBookBodyPriceNgnMin = 0;
+
 export const updateBookBodyCurrencyMin = 3;
 export const updateBookBodyCurrencyMax = 3;
-
 
 
 
@@ -386,8 +407,9 @@ export const UpdateBookBody = zod.object({
   "slug": zod.string().min(1).optional(),
   "author": zod.string().min(1).optional(),
   "price": zod.number().min(updateBookBodyPriceMin).optional(),
+  "priceNgn": zod.number().min(updateBookBodyPriceNgnMin).optional(),
   "currency": zod.string().min(updateBookBodyCurrencyMin).max(updateBookBodyCurrencyMax).optional(),
-  "category": zod.string().min(1).optional(),
+  "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']).optional(),
   "description": zod.string().optional(),
   "format": zod.enum(['PDF', 'EPUB']).optional(),
   "coverObjectPath": zod.string().nullish(),
@@ -403,8 +425,9 @@ export const UpdateBookResponse = zod.object({
   "title": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
+  "priceNgn": zod.number(),
   "currency": zod.string(),
-  "category": zod.string(),
+  "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "coverUrl": zod.string().nullable(),

@@ -95,6 +95,7 @@ router.post("/admin/books", async (req, res): Promise<void> => {
   const [book] = await db.insert(booksTable).values({
     id: randomUUID(),
     ...parsed.data,
+    priceNgn: parsed.data.priceNgn,
     fileObjectPath: parsed.data.fileObjectPath,
     publishedAt: new Date(parsed.data.publishedAt),
   }).returning();

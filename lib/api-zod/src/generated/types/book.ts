@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BookCategory } from './bookCategory';
 import type { BookFormat } from './bookFormat';
 
 export interface Book {
@@ -13,8 +14,9 @@ export interface Book {
   title: string;
   author: string;
   price: number;
+  priceNgn: number;
   currency: string;
-  category: string;
+  category: BookCategory;
   description: string;
   format: BookFormat;
   /** @nullable */
