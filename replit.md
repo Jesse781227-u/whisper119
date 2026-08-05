@@ -44,7 +44,7 @@ Whisper 119 is a boutique, single-seller digital bookstore for international rea
 - Cover objects can be served publicly, but ebook object paths are rejected by the HTTP storage route.
 - Cart and light/dark theme preferences are local browser state; catalogue, orders, and admin data are database-backed.
 - Firebase reader authentication is prepared for email/password and Google sign-in through `VITE_FIREBASE_*` public configuration variables. Firestore rules deny client-side writes to books, orders, and subscribers; privileged Firestore synchronization requires a server credential setup before it is enabled.
-- Newsletter signup is server-owned and fails closed until `MAILCHIMP_API_KEY` and `MAILCHIMP_AUDIENCE_ID` are securely connected. The free-chapter offer is not reported as successful when the provider is unavailable.
+- Newsletter signup is server-owned and fails closed until `MAILCHIMP_API_KEY`, `MAILCHIMP_LIST_ID`, and `MAILCHIMP_SERVER_PREFIX` are securely connected. Existing Mailchimp members are treated as successful subscriptions. The free-chapter delivery remains a provider automation TODO.
 
 ## Product
 
