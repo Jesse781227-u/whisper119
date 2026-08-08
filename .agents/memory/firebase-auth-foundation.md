@@ -3,7 +3,7 @@ name: Firebase auth foundation
 description: Constraints around the prepared Firebase reader authentication and Firestore security model
 ---
 
-Firebase reader authentication is enabled from public `VITE_FIREBASE_*` web configuration. Firestore books, orders, and subscriber writes remain server-owned; the browser Firebase config is not a server credential.
+Firebase reader authentication is enabled from public `VITE_FIREBASE_*` web configuration and uses the Firebase Web SDK directly; it does not require a Replit connector. Firestore books, orders, and subscriber writes remain server-owned; the browser Firebase config is not a server credential.
 
 **Why:** Public Firebase settings are sufficient for reader authentication and user-owned profile reads/writes, but privileged catalogue, order, and subscriber synchronization still needs server authorization.
 

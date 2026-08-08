@@ -35,10 +35,7 @@ function statusLabel(order: ReaderOrder) {
   return status.charAt(0).toUpperCase() + status.slice(1)
 }
 
-function authErrorMessage(cause: unknown, fallback: string, configured: boolean) {
-  if (!configured) {
-    return "The account connection is not configured in this environment. Your form is ready — connect Firebase to complete this action."
-  }
+function authErrorMessage(cause: unknown, fallback: string) {
   if (cause instanceof Error && cause.message) return cause.message
   return fallback
 }
@@ -134,7 +131,7 @@ export default function Account() {
         setNotice("Account created. Check your inbox to verify your email.")
       }
     } catch (cause) {
-      setError(authErrorMessage(cause, "We could not complete that request.", configured))
+      setError(authErrorMessage(cause, "We could not complete that request."))
     } finally {
       setPending(false)
     }
@@ -147,7 +144,7 @@ export default function Account() {
     try {
       await signInWithGoogle()
     } catch (cause) {
-      setError(authErrorMessage(cause, "Google sign-in was not completed.", configured))
+      setError(authErrorMessage(cause, "Google sign-in was not completed."))
     } finally {
       setPending(false)
     }
@@ -165,7 +162,7 @@ export default function Account() {
       await resetPassword(email)
       setNotice("Password reset instructions are on their way.")
     } catch (cause) {
-      setError(authErrorMessage(cause, "We could not send password reset instructions.", configured))
+      setError(authErrorMessage(cause, "We could not send password reset instructions."))
     } finally {
       setPending(false)
     }
@@ -180,7 +177,7 @@ export default function Account() {
       await sendEmailVerification(user)
       setNotice("A new verification email is on its way.")
     } catch (cause) {
-      setError(authErrorMessage(cause, "We could not send a verification email.", configured))
+      setError(authErrorMessage(cause, "We could not send a verification email."))
     } finally {
       setPending(false)
     }
@@ -192,7 +189,7 @@ export default function Account() {
     try {
       await signOutUser()
     } catch (cause) {
-      setError(authErrorMessage(cause, "We could not sign you out.", configured))
+      setError(authErrorMessage(cause, "We could not sign you out."))
     }
   }
 
