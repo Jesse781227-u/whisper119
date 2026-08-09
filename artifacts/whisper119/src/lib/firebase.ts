@@ -18,10 +18,15 @@ const config = {
 // Detect any missing values in a clear, actionable way.
 const missing = Object.entries(config).filter(([, value]) => !value).map(([key]) => key)
 
-// In development, fail loudly so missing envs are obvious during local runs.
-if (missing.length > 0 && import.meta.env.MODE !== 'production') {
-  throw new Error(
-    `Firebase config is missing: ${missing.join(", ")}. Check your VITE_FIREBASE_* environment variables.`
+// Warn in development when env vars are missing, but do NOT throw at module
+// load time. A top-level throw propagates through React's module system and
+// gets caught by the nearest error boundary (AppErrorBoundary) before any
+// component even mounts — bypassing all the null guards in auth-provider and
+// Admin that already handle the firebaseConfigured === false case gracefully.
+if (missing.length > 0) {
+  console.warn(
+    `[Whisper 119] Firebase config is incomplete. Missing: ${missing.join(", ")}. ` +
+    `Check your VITE_FIREBASE_* environment variables. Firebase features will be disabled.`
   )
 }
 
