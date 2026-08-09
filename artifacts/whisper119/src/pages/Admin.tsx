@@ -3,12 +3,12 @@ import { Link, useLocation } from "wouter"
 import { useQueryClient } from "@tanstack/react-query"
 import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Upload, Users, Eye, WalletCards } from "lucide-react"
 import {
-  getGetAdminDashboardQueryKey, getListAdminBooksQueryKey, useAdminLogin, useAdminLogout,
-  useGetAdminDashboard, useGetAdminSession, useListAdminBooks, useListAdminOrders,
+  getGetAdminDashboardQueryKey, getListAdminBooksQueryKey,
+  useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
   useCreateBook, useUpdateBook, useRequestUploadUrl,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
-import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc } from "firebase/firestore"
+import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
 import { firebaseDb } from "@/lib/firebase"
 import type { Book, BookInput, BookInputFormat, BookUpdate } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
@@ -17,26 +17,42 @@ import { GENRE_CATEGORIES } from "@/data/catalog"
 const fieldClass = "h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
 
 export function AdminLogin() {
-  const [, setLocation] = useLocation()
-  const login = useAdminLogin()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  function submit(event: React.FormEvent) {
-    event.preventDefault()
-    login.mutate({ data: { email, password } }, { onSuccess: () => setLocation("/admin") })
+  const [location, setLocation] = useLocation()
+  const { user, loading, isAdmin } = useAuth()
+
+  useEffect(() => {
+    if (!loading && user && isAdmin) {
+      setLocation("/admin")
+    }
+  }, [loading, user, isAdmin, setLocation])
+
+  if (loading) {
+    return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090f2d] px-4 py-10 text-white"><p>Loading admin access…</p></main>
   }
+
   return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090f2d] px-4 py-10 text-white">
     <div className="absolute inset-0 bg-cover bg-center opacity-55" style={{ backgroundImage: "linear-gradient(180deg,rgba(7,12,35,.35),#090f2d 83%),url('/covers/cover-3.jpg')" }} />
     <div className="relative w-full max-w-md">
       <Link href="/" className="mb-8 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary"><BookOpen className="h-5 w-5" /></span><div><p className="text-lg font-extrabold">Whisper 119</p><p className="text-xs text-white/60">Private librarian desk</p></div></Link>
       <div className="rounded-3xl border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary-foreground/70">Welcome back</p><h1 className="mt-2 text-3xl font-extrabold tracking-tight">Manage your shelf.</h1><p className="mt-2 text-sm leading-6 text-white/65">Sign in to add books, check orders, and understand your readership.</p>
-        <form onSubmit={submit} className="mt-7 space-y-4">
-          <label className="block"><span className="mb-2 block text-xs font-bold text-white/80">Email</span><input data-testid="input-admin-email" required type="email" value={email} onChange={e => setEmail(e.target.value)} className="h-12 w-full rounded-xl border border-white/15 bg-black/20 px-4 text-sm text-white outline-none focus:border-primary" /></label>
-          <label className="block"><span className="mb-2 block text-xs font-bold text-white/80">Password</span><input data-testid="input-admin-password" required type="password" value={password} onChange={e => setPassword(e.target.value)} className="h-12 w-full rounded-xl border border-white/15 bg-black/20 px-4 text-sm text-white outline-none focus:border-primary" /></label>
-          {login.error && <p className="rounded-xl border border-red-300/20 bg-red-400/10 p-3 text-sm text-red-100">Login was not accepted. Check the configured admin credentials.</p>}
-          <button data-testid="button-admin-login" type="submit" disabled={login.isPending} className="h-12 w-full rounded-xl bg-primary text-sm font-extrabold text-primary-foreground disabled:opacity-60">{login.isPending ? "Signing in…" : "Sign in to the desk"}</button>
-        </form>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary-foreground/70">Admin access</p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Access your librarian desk</h1>
+        <p className="mt-2 text-sm leading-6 text-white/65">Sign in with a registered admin email to manage books, orders, and the storefront.</p>
+        <div className="mt-7 space-y-4">
+          {user ? (
+            <div className="rounded-2xl border border-border bg-black/20 p-5 text-sm text-white">
+              <p className="font-semibold">Signed in as <span className="text-primary">{user.email}</span>.</p>
+              <p className="mt-2 text-white/70">If this email is configured in Firestore under the <code>admins</code> collection, you will be redirected automatically.</p>
+              {!isAdmin && <p className="mt-3 text-sm text-destructive">This account is not authorized yet. Ask a current admin to add your email.</p>}
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-border bg-black/20 p-5 text-sm text-white">Please sign in first using the reader account page, then return here to access admin features.</p>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => setLocation("/account")} className="inline-flex h-12 items-center justify-center rounded-xl bg-primary text-sm font-extrabold text-primary-foreground">Go to account sign-in</button>
+            <button type="button" onClick={() => setLocation("/")} className="inline-flex h-12 items-center justify-center rounded-xl border border-white/15 text-sm font-extrabold text-white">Return to storefront</button>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -117,14 +133,12 @@ function BookForm({ book, onDone }: BookFormProps) {
 }
 
 export default function Admin() {
-  const { user, loading: authLoading, isAdmin } = useAuth()
+  const { user, loading: authLoading, isAdmin, signOutUser } = useAuth()
   const [, setLocation] = useLocation()
-  const session = useGetAdminSession()
-  const enabled = Boolean(session.data?.authenticated && isAdmin)
+  const enabled = Boolean(isAdmin)
   const dashboard = useGetAdminDashboard({ query: { queryKey: getGetAdminDashboardQueryKey(), enabled } })
   const books = useListAdminBooks({ query: { queryKey: getListAdminBooksQueryKey(), enabled } })
   const orders = useListAdminOrders(undefined, { query: { queryKey: ["/api/admin/orders"], enabled } })
-  const logout = useAdminLogout()
   const [form, setForm] = useState<"new" | Book | null>(null)
   const [adminEmail, setAdminEmail] = useState("")
   const [adminEmails, setAdminEmails] = useState<string[]>([])
@@ -154,12 +168,12 @@ export default function Admin() {
   }, [])
 
   useEffect(() => {
-    if (!authLoading && (!session.data?.authenticated || !isAdmin)) {
+    if (!authLoading && !isAdmin) {
       setLocation("/admin/login")
     }
-  }, [session.data, session.isError, isAdmin, authLoading, setLocation])
+  }, [isAdmin, authLoading, setLocation])
 
-  if (authLoading || session.isLoading) {
+  if (authLoading) {
     return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading librarian desk…</main>
   }
 
@@ -167,7 +181,7 @@ export default function Admin() {
     return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">You must be an admin to access this page.</main>
   }
   const stats = [{ label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" }, { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" }, { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" }, { label: "Revenue", value: formatPrice(dashboard.data?.totalRevenue ?? 0, "USD"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }]
-  return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={() => logout.mutate(undefined, { onSuccess: () => setLocation("/admin/login") })} />
+  return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Private desk</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">A clear view of the shelf.</h1><p className="mt-1 text-sm text-muted-foreground">Catalogue, readership, and real orders in one place.</p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Analytics</p><h2 className="mt-1 text-2xl font-extrabold">Storefront pulse</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(s => <div key={s.label} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm"><div><p className="text-xs font-bold text-muted-foreground">{s.label}</p><p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-1 text-2xl font-extrabold">{s.value}</p></div><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span></div>)}</div></section>
     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">

@@ -2,9 +2,6 @@ import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { desc, eq, sql } from "drizzle-orm";
 import {
-  AdminLoginBody,
-  AdminLoginResponse,
-  AdminLogoutResponse,
   GetAdminDashboardResponse,
   GetAdminOrderParams,
   GetAdminOrderResponse,
@@ -22,7 +19,7 @@ import {
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { analyticsEventsTable, booksTable, db, ordersTable } from "@workspace/db";
-import { clearAdminSession, getAdminEmail, requireAdmin, setAdminSession } from "../lib/auth";
+import { requireAdmin } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook } from "../lib/bookstore";
 import { initializePaystack } from "../lib/payments";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -42,34 +39,8 @@ function validatePaymentLink(paymentLink: string | null | undefined): string | n
   }
 }
 
-function configuredAdmin(): { email: string; password: string } | null {
-  const email = process.env.ADMIN_EMAIL;
-  const password = process.env.ADMIN_PASSWORD;
-  return email && password ? { email, password } : null;
-}
-
-router.post("/admin/login", async (req, res): Promise<void> => {
-  const parsed = AdminLoginBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const admin = configuredAdmin();
-  if (!admin || parsed.data.email.toLowerCase() !== admin.email.toLowerCase() || parsed.data.password !== admin.password) {
-    res.status(401).json({ error: "Invalid admin credentials." });
-    return;
-  }
-  setAdminSession(res, admin.email);
-  res.json(AdminLoginResponse.parse({ authenticated: true, email: admin.email }));
-});
-
-router.post("/admin/logout", (req, res): void => {
-  clearAdminSession(res);
-  res.status(204).send();
-});
-
-router.get("/admin/session", (req, res): void => {
-  res.json(GetAdminSessionResponse.parse({ authenticated: Boolean(getAdminEmail(req)), email: getAdminEmail(req) }));
+router.post("/admin/login", async (_req, res): Promise<void> => {
+  res.status(410).json({ error: "Admin password login is disabled. Authenticate using Firebase and admin email access." });
 });
 
 router.use("/admin/dashboard", requireAdmin);

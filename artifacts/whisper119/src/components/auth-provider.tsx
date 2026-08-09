@@ -19,6 +19,7 @@ import {
 } from "firebase/auth"
 import { firebaseAuth, firebaseConfigured, firebaseDb, googleProvider } from "@/lib/firebase"
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore"
+import { setAuthTokenGetter } from "@workspace/api-client-react"
 
 type AuthContextValue = {
   user: User | null
@@ -87,6 +88,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Could not update user profile", error)
       }
     })
+  }, [])
+
+  useEffect(() => {
+    setAuthTokenGetter(async () => {
+      if (!firebaseAuth?.currentUser) return null
+      return firebaseAuth.currentUser.getIdToken()
+    })
+
+    return () => {
+      setAuthTokenGetter(null)
+    }
   }, [])
 
   const value = useMemo<AuthContextValue>(() => ({
