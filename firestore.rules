@@ -25,6 +25,16 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    function isAdmin() {
+      return signedIn() && request.auth.token.email != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email.toLowerCase()));
+    }
+
+    match /admins/{adminEmail} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /subscribers/{subscriberId} {
       allow read, write: if false;
     }
