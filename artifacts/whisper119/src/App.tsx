@@ -64,6 +64,43 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryS
   }
 }
 
+class AdminErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Whisper 119 admin panel error', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main className="flex min-h-screen items-center justify-center bg-background px-6 py-16 text-center text-foreground">
+          <div className="max-w-md">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Librarian desk</p>
+            <h1 className="mt-3 text-3xl font-extrabold tracking-tight">Something went wrong.</h1>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              The admin panel hit an unexpected error. Check the browser console for details, then reload to try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-6 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground"
+            >
+              Reload admin panel
+            </button>
+          </div>
+        </main>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function Router() {
   return (
     <Switch>
@@ -75,8 +112,16 @@ function Router() {
       <Route path="/checkout" component={Checkout} />
       <Route path="/order/:orderId" component={Order} />
       <Route path="/account" component={Account} />
-      <Route path="/admin/login" component={AdminLogin} />
-      <Route path="/admin" component={Admin} />
+      <Route path="/admin/login">
+        <AdminErrorBoundary>
+          <AdminLogin />
+        </AdminErrorBoundary>
+      </Route>
+      <Route path="/admin">
+        <AdminErrorBoundary>
+          <Admin />
+        </AdminErrorBoundary>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
