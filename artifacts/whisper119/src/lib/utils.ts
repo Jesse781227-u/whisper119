@@ -5,11 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatPrice(amount: number, currency?: string | null) {
+export function formatPrice(amount: number, currency?: string | null, locale = "en-US") {
   const safeCurrency = (currency && typeof currency === "string" && currency.trim()) ? currency.trim().toUpperCase() : "USD"
   const safeAmount = typeof amount === "number" ? (isNaN(amount) ? 0 : amount) : (Number(amount) || 0)
   try {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: safeCurrency,
     }).format(safeAmount)

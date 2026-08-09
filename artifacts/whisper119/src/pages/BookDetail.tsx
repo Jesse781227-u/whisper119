@@ -3,9 +3,10 @@ import { useMemo, useState } from "react"
 import { Link, useLocation, useParams } from "wouter"
 import { useGetBook, useListBooks } from "@workspace/api-client-react"
 import { BookCard, BookCover } from "@/components/book-card"
+import { ConvertedPrice } from "@/components/converted-price"
 import { useCart } from "@/components/cart-provider"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatDate, formatPrice } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
 
 function ShareButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
   return (
@@ -102,6 +103,9 @@ export default function BookDetail() {
               <span className="rounded-md bg-primary px-2.5 py-1 text-[0.65rem] font-extrabold">{book.category}</span>
               <span className="rounded-md bg-white/15 px-2.5 py-1 text-[0.65rem] font-bold text-white/85">{book.format}</span>
             </div>
+            <div className="mt-4 text-center">
+              <p className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl"><ConvertedPrice amountNgn={book.priceNgn} /></p>
+            </div>
             <h1 className="mt-4 text-3xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">{book.title}</h1>
             <p className="mt-2 text-sm text-white/70">by <span className="font-semibold text-white/90">{book.author}</span></p>
             <p className="mt-3 text-xs text-white/60">Published {formatDate(book.publishedAt)} · Digital edition</p>
@@ -112,7 +116,7 @@ export default function BookDetail() {
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <section className="-mt-1 rounded-b-2xl border border-t-0 border-border bg-card shadow-sm">
           <div className="grid grid-cols-3 divide-x divide-border px-2 py-5 text-center">
-            <div><p className="text-lg font-extrabold text-primary">{formatPrice(book.price, book.currency)}</p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">Price</p></div>
+            <div><p className="text-lg font-extrabold text-primary"><ConvertedPrice amountNgn={book.priceNgn} /></p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">Price</p></div>
             <div><p className="text-lg font-extrabold">{book.format}</p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">Format</p></div>
             <div><p className="text-lg font-extrabold">Email</p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">Delivery</p></div>
           </div>
@@ -165,7 +169,7 @@ export default function BookDetail() {
             {inCart ? <Check className="h-4 w-4 text-primary" /> : <ShoppingCart className="h-4 w-4" />} {inCart ? "In cart" : "Add to cart"}
           </button>
           <button type="button" onClick={() => addAndNavigate("/checkout")} className="flex h-12 flex-[1.25] items-center justify-center gap-2 rounded-xl bg-primary text-[0.68rem] font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:-translate-y-0.5">
-            Buy now · {formatPrice(book.price, book.currency)}
+            Buy now · <ConvertedPrice amountNgn={book.priceNgn} />
           </button>
         </div>
       </div>
