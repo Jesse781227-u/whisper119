@@ -11,5 +11,9 @@ export interface AdminDashboard {
   totalOrders: number;
   pendingOrders: number;
   totalBooks: number;
+  totalPageViews: number;
+  uniqueVisitors: number;
+  paidOrders: number;
+  totalRevenue: number;
   recentOrders: Order[];
 }

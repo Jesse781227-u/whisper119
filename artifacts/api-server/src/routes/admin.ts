@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import {
   AdminLoginBody,
   AdminLoginResponse,
@@ -21,13 +21,26 @@ import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
-import { booksTable, db, ordersTable } from "@workspace/db";
+import { analyticsEventsTable, booksTable, db, ordersTable } from "@workspace/db";
 import { clearAdminSession, getAdminEmail, requireAdmin, setAdminSession } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook } from "../lib/bookstore";
 import { initializePaystack } from "../lib/payments";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
+
+function validatePaymentLink(paymentLink: string | null | undefined): string | null | undefined {
+  if (paymentLink === undefined || paymentLink === null || paymentLink.trim() === "") {
+    return paymentLink === undefined ? undefined : null;
+  }
+  try {
+    const url = new URL(paymentLink);
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error("Unsupported protocol");
+    return paymentLink;
+  } catch {
+    throw new Error("Payment link must be a valid HTTP or HTTPS URL.");
+  }
+}
 
 function configuredAdmin(): { email: string; password: string } | null {
   const email = process.env.ADMIN_EMAIL;
@@ -65,10 +78,18 @@ router.use("/admin/orders", requireAdmin);
 router.use("/storage/uploads", requireAdmin);
 
 router.get("/admin/dashboard", async (_req, res): Promise<void> => {
-  const [orders, books] = await Promise.all([
+  const [orders, books, [analytics]] = await Promise.all([
     db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt)),
     db.select().from(booksTable),
+    db.select({
+      totalPageViews: sql<number>`count(*)`,
+      uniqueVisitors: sql<number>`count(distinct ${analyticsEventsTable.visitorId})`,
+    }).from(analyticsEventsTable).where(eq(analyticsEventsTable.eventType, "page_view")),
   ]);
+  const [sales] = await db.select({
+    paidOrders: sql<number>`count(*)`,
+    totalRevenue: sql<number>`coalesce(sum(${ordersTable.subtotal}), 0)`,
+  }).from(ordersTable).where(eq(ordersTable.status, "paid"));
   const recent = await Promise.all(orders.slice(0, 8).map(async (order) => {
     const result = await getOrderById(order.id);
     return result ? orderResponse(result.order, result.items) : null;
@@ -77,6 +98,10 @@ router.get("/admin/dashboard", async (_req, res): Promise<void> => {
     totalOrders: orders.length,
     pendingOrders: orders.filter((order) => order.status === "pending").length,
     totalBooks: books.length,
+    totalPageViews: Number(analytics?.totalPageViews ?? 0),
+    uniqueVisitors: Number(analytics?.uniqueVisitors ?? 0),
+    paidOrders: Number(sales?.paidOrders ?? 0),
+    totalRevenue: Number(sales?.totalRevenue ?? 0),
     recentOrders: recent.filter((order): order is NonNullable<typeof order> => Boolean(order)),
   }));
 });
@@ -90,6 +115,12 @@ router.post("/admin/books", async (req, res): Promise<void> => {
   const parsed = CreateBookBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  try {
+    validatePaymentLink(parsed.data.paymentLink);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "Invalid payment link." });
     return;
   }
   const [book] = await db.insert(booksTable).values({
@@ -111,6 +142,12 @@ router.patch("/admin/books/:bookId", async (req, res): Promise<void> => {
   }
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  try {
+    validatePaymentLink(parsed.data.paymentLink);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "Invalid payment link." });
     return;
   }
   const [book] = await db.update(booksTable).set({

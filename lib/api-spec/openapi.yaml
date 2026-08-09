@@ -688,8 +688,12 @@ components:
         totalOrders: { type: number }
         pendingOrders: { type: number }
         totalBooks: { type: number }
+        totalPageViews: { type: number }
+        uniqueVisitors: { type: number }
+        paidOrders: { type: number }
+        totalRevenue: { type: number }
         recentOrders: { type: array, items: { $ref: "#/components/schemas/Order" } }
-      required: [totalOrders, pendingOrders, totalBooks, recentOrders]
+      required: [totalOrders, pendingOrders, totalBooks, totalPageViews, uniqueVisitors, paidOrders, totalRevenue, recentOrders]
     UploadInput:
       type: object
       properties:

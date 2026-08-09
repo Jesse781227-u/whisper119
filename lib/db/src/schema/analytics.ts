@@ -1,7 +1,6 @@
 import { createInsertSchema } from "drizzle-zod";
-import { text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { text, timestamp, uuid, pgTable } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
-import { pgTable } from "drizzle-orm/pg-core";
 
 export const analyticsEventsTable = pgTable("analytics_events", {
   id: uuid("id").defaultRandom().primaryKey(),

@@ -20,6 +20,7 @@ export function publicBook(book: Book) {
     category: book.category,
     description: book.description,
     format: book.format,
+    paymentLink: book.paymentLink,
     coverUrl: coverUrl(book),
     fileName: book.fileName,
     featured: book.featured,
