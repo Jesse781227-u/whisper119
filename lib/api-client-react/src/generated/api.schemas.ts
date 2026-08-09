@@ -45,6 +45,8 @@ export interface Book {
   description: string;
   format: BookFormat;
   /** @nullable */
+  paymentLink: string | null;
+  /** @nullable */
   coverUrl: string | null;
   fileName: string;
   featured: boolean;
@@ -91,6 +93,8 @@ export interface BookInput {
   category: BookInputCategory;
   description: string;
   format: BookInputFormat;
+  /** @nullable */
+  paymentLink: string | null;
   /** @nullable */
   coverObjectPath: string | null;
   /** @minLength 1 */
@@ -141,6 +145,8 @@ export interface BookUpdate {
   description?: string;
   format?: BookUpdateFormat;
   /** @nullable */
+  paymentLink?: string | null;
+  /** @nullable */
   coverObjectPath?: string | null;
   /** @minLength 1 */
   fileObjectPath?: string;
@@ -148,6 +154,19 @@ export interface BookUpdate {
   fileName?: string;
   featured?: boolean;
   publishedAt?: string;
+}
+
+export interface PageViewInput {
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  path: string;
+  /**
+     * @maxLength 128
+     * @nullable
+     */
+  visitorId?: string | null;
 }
 
 export interface Category {
@@ -264,6 +283,10 @@ export interface AdminDashboard {
   totalOrders: number;
   pendingOrders: number;
   totalBooks: number;
+  totalPageViews: number;
+  uniqueVisitors: number;
+  paidOrders: number;
+  totalRevenue: number;
   recentOrders: Order[];
 }
 

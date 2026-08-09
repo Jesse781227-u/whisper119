@@ -20,6 +20,8 @@ export interface Book {
   description: string;
   format: BookFormat;
   /** @nullable */
+  paymentLink: string | null;
+  /** @nullable */
   coverUrl: string | null;
   fileName: string;
   featured: boolean;

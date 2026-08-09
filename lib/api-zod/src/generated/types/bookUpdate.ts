@@ -28,6 +28,8 @@ export interface BookUpdate {
   description?: string;
   format?: BookUpdateFormat;
   /** @nullable */
+  paymentLink?: string | null;
+  /** @nullable */
   coverObjectPath?: string | null;
   /** @minLength 1 */
   fileObjectPath?: string;

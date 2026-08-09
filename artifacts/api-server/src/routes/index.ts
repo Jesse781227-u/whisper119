@@ -5,6 +5,7 @@ import ordersRouter from "./orders";
 import adminRouter from "./admin";
 import storageRouter from "./storage";
 import newsletterRouter from "./newsletter";
+import analyticsRouter from "./analytics";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(ordersRouter);
 router.use(adminRouter);
 router.use(storageRouter);
 router.use(newsletterRouter);
+router.use(analyticsRouter);
 
 export default router;

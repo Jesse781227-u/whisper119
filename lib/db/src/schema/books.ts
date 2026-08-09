@@ -13,6 +13,7 @@ export const booksTable = pgTable("books", {
   category: text("category").notNull(),
   description: text("description").notNull(),
   format: text("format").notNull(),
+  paymentLink: text("payment_link"),
   coverObjectPath: text("cover_object_path"),
   fileObjectPath: text("file_object_path").notNull(),
   fileName: text("file_name").notNull(),
