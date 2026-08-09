@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        // Admins can be managed either via an `admins` collection keyed by email,
+        // or by a `users/{uid}` document that carries `isAdmin: true`.
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
+      );
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Users can read their own profile; admins can read all
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+
+      // Users may create their own profile but may not set `isAdmin` themselves
+      allow create: if isSignedIn() && request.auth.uid == userId
+        && !(request.resource.data.keys().hasAny(['isAdmin']) && request.resource.data.isAdmin == true);
+
+      // Users may update their own profile but cannot escalate `isAdmin`.
+      // Admins may update any profile including `isAdmin`.
+      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId
+        && ( !request.resource.data.keys().hasAny(['isAdmin']) || request.resource.data.isAdmin == resource.data.isAdmin ));
+
+      allow delete: if isAdmin();
+    }
+
+    // Admins collection (manage admin emails)
+    // Documents in `admins` should be keyed by the admin email (example: "alice@example.com").
+    // Only admins may manage this list.
+    match /admins/{adminEmail} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Books: public read, admin write
+    match /books/{bookId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Orders: users create their own orders; users may read their orders; admins may read/modify all
+    match /orders/{orderId} {
+      allow create: if isSignedIn() && request.resource.data.email == request.auth.token.email;
+      allow read: if isAdmin() || (isSignedIn() && resource.data.email == request.auth.token.email);
+      // Allow users to update non-critical fields of their own order (e.g. downloaded flag), admins may update anything
+      allow update: if isAdmin() || (isSignedIn() && resource.data.email == request.auth.token.email
+        && request.resource.data.keys().hasOnly(['downloaded']));
+      allow delete: if isAdmin();
+    }
+
+    // Analytics: allow clients to create events with a constrained shape; only admins may read/delete
+    match /analytics/{eventId} {
+      allow create: if (
+        request.resource.data.eventType is string
+        && request.resource.data.path is string
+        && (request.resource.data.visitorId is string || isSignedIn())
+      );
+      allow read, delete: if isAdmin();
+      allow update: if false; // immutable events
+    }
+
+    // Fallback: deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
