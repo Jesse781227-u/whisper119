@@ -49,10 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return onAuthStateChanged(firebaseAuth, async (nextUser) => {
       setUser(nextUser)
-      setLoading(false)
 
       if (!nextUser || !firebaseDb) {
         setIsAdmin(false)
+        setLoading(false)
         return
       }
 
@@ -75,6 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Could not resolve admin status", error)
         setIsAdmin(false)
       }
+
+      setLoading(false)
 
       try {
         await setDoc(userRef, {
