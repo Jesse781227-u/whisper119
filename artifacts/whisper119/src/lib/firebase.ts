@@ -15,7 +15,17 @@ const config = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-export const firebaseConfigured = Object.values(config).every((value) => typeof value === "string" && value.length > 0)
+// Detect any missing values in a clear, actionable way.
+const missing = Object.entries(config).filter(([, value]) => !value).map(([key]) => key)
+
+// In development, fail loudly so missing envs are obvious during local runs.
+if (missing.length > 0 && import.meta.env.MODE !== 'production') {
+  throw new Error(
+    `Firebase config is missing: ${missing.join(", ")}. Check your VITE_FIREBASE_* environment variables.`
+  )
+}
+
+export const firebaseConfigured = missing.length === 0
 
 const app = firebaseConfigured ? (getApps().length ? getApp() : initializeApp(config)) : null
 export const firebaseAuth: Auth | null = app ? getAuth(app) : null
