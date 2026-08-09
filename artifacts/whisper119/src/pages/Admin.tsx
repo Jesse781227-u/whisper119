@@ -164,9 +164,10 @@ export default function Admin() {
     setAdminLoading(true)
     setAdminError(null)
 
+    let unsubscribe: (() => void) | undefined
     try {
       const adminCollection = collection(firebaseDb, "admins")
-      const unsubscribe = onSnapshot(adminCollection, (snapshot) => {
+      unsubscribe = onSnapshot(adminCollection, (snapshot) => {
         setAdminEmails(snapshot.docs.map((doc) => doc.id))
         setAdminLoading(false)
         setAdminError(null)
@@ -175,12 +176,14 @@ export default function Admin() {
         setAdminLoading(false)
         setAdminError("Could not load admin list.")
       })
-
-      return () => unsubscribe()
     } catch (err) {
       console.error("Failed to subscribe to admin collection", err)
       setAdminLoading(false)
       setAdminError("Could not load admin list.")
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe()
     }
   }, [authLoading, firebaseDb, isAdmin])
 
@@ -198,8 +201,8 @@ export default function Admin() {
     return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">You must be an admin to access this page.</main>
   }
   const stats = [{ label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" }, { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" }, { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" }, { label: "Revenue", value: formatPrice(dashboard.data?.totalRevenue ?? 0, "USD"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }]
-  const bookList = Array.isArray(books.data) ? books.data : []
-  const orderList = Array.isArray(orders.data) ? orders.data : []
+  const bookList = books.data ?? []
+  const orderList = orders.data ?? []
 
   return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Private desk</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">A clear view of the shelf.</h1><p className="mt-1 text-sm text-muted-foreground">Catalogue, readership, and real orders in one place.</p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
