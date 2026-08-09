@@ -64,7 +64,8 @@ async function isAdminToken(idToken: string): Promise<boolean> {
   const applicant = await verifyFirebaseIdToken(idToken);
   if (!applicant) return false;
 
-  const emailDocPath = `projects/${projectId}/databases/(default)/documents/admins/${encodeURIComponent(applicant.email)}`;
+  const normalizedEmail = applicant.email.toLowerCase();
+  const emailDocPath = `projects/${projectId}/databases/(default)/documents/admins/${encodeURIComponent(normalizedEmail)}`;
   const userDocPath = `projects/${projectId}/databases/(default)/documents/users/${encodeURIComponent(applicant.uid)}`;
 
   const [adminDoc, userDoc] = await Promise.all([
