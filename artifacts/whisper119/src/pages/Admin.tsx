@@ -8,6 +8,8 @@ import {
   useCreateBook, useUpdateBook, useRequestUploadUrl,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
+import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc } from "firebase/firestore"
+import { firebaseDb } from "@/lib/firebase"
 import type { Book, BookInput, BookInputFormat, BookUpdate } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { GENRE_CATEGORIES } from "@/data/catalog"
@@ -124,6 +126,32 @@ export default function Admin() {
   const orders = useListAdminOrders(undefined, { query: { queryKey: ["/api/admin/orders"], enabled } })
   const logout = useAdminLogout()
   const [form, setForm] = useState<"new" | Book | null>(null)
+  const [adminEmail, setAdminEmail] = useState("")
+  const [adminEmails, setAdminEmails] = useState<string[]>([])
+  const [adminLoading, setAdminLoading] = useState(true)
+  const [adminError, setAdminError] = useState<string | null>(null)
+  const [adminSaving, setAdminSaving] = useState(false)
+
+  useEffect(() => {
+    if (!firebaseDb) {
+      setAdminLoading(false)
+      setAdminError("Firestore is not configured for admin management.")
+      return
+    }
+
+    const adminCollection = collection(firebaseDb, "admins")
+    const unsubscribe = onSnapshot(adminCollection, (snapshot) => {
+      setAdminEmails(snapshot.docs.map((doc) => doc.id))
+      setAdminLoading(false)
+      setAdminError(null)
+    }, (error) => {
+      console.error("Could not load admin list", error)
+      setAdminLoading(false)
+      setAdminError("Could not load admin list.")
+    })
+
+    return () => unsubscribe()
+  }, [])
 
   useEffect(() => {
     if (!authLoading && (!session.data?.authenticated || !isAdmin)) {
@@ -142,6 +170,89 @@ export default function Admin() {
   return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={() => logout.mutate(undefined, { onSuccess: () => setLocation("/admin/login") })} />
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Private desk</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">A clear view of the shelf.</h1><p className="mt-1 text-sm text-muted-foreground">Catalogue, readership, and real orders in one place.</p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Analytics</p><h2 className="mt-1 text-2xl font-extrabold">Storefront pulse</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(s => <div key={s.label} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm"><div><p className="text-xs font-bold text-muted-foreground">{s.label}</p><p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-1 text-2xl font-extrabold">{s.value}</p></div><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span></div>)}</div></section>
+    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Admin team</p>
+          <h2 className="mt-1 text-2xl font-extrabold">Manage admin access</h2>
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className="sm:col-span-2">
+          <span className="mb-2 block text-xs font-bold">Admin email</span>
+          <input
+            value={adminEmail}
+            onChange={(e) => setAdminEmail(e.target.value)}
+            placeholder="admin@example.com"
+            className={fieldClass}
+          />
+        </label>
+        <button
+          type="button"
+          onClick={async () => {
+            if (!firebaseDb) return
+            const normalized = adminEmail.trim().toLowerCase()
+            if (!normalized) {
+              setAdminError("Enter a valid email before adding an admin.")
+              return
+            }
+            setAdminSaving(true)
+            setAdminError(null)
+            try {
+              await setDoc(doc(firebaseDb, "admins", normalized), { email: normalized })
+              setAdminEmail("")
+            } catch (error) {
+              console.error("Could not save admin email", error)
+              setAdminError("Could not add admin email.")
+            } finally {
+              setAdminSaving(false)
+            }
+          }}
+          disabled={adminSaving}
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60"
+        >
+          {adminSaving ? "Saving…" : "Add admin"}
+        </button>
+      </div>
+      {adminError && <p className="mt-4 text-sm text-destructive">{adminError}</p>}
+      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-background/60">
+        <div className="grid gap-0 text-left text-xs uppercase tracking-[0.16em] text-muted-foreground sm:grid-cols-[1fr_auto]">
+          <div className="px-4 py-3">Admin email</div>
+          <div className="px-4 py-3">Actions</div>
+        </div>
+        <div className="divide-y divide-border">
+          {adminLoading ? (
+            <div className="p-5 text-sm text-muted-foreground">Loading admin list…</div>
+          ) : adminEmails.length ? (
+            adminEmails.map((email) => (
+              <div key={email} className="grid gap-0 text-sm sm:grid-cols-[1fr_auto]">
+                <div className="px-4 py-4 text-sm text-foreground">{email}</div>
+                <div className="px-4 py-4">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!firebaseDb) return
+                      setAdminError(null)
+                      try {
+                        await deleteDoc(doc(firebaseDb, "admins", email))
+                      } catch (error) {
+                        console.error("Could not remove admin email", error)
+                        setAdminError("Could not remove admin email.")
+                      }
+                    }}
+                    className="rounded-full border border-border px-3 py-2 text-[0.72rem] font-bold text-destructive hover:bg-destructive/10"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-5 text-sm text-muted-foreground">No admin emails configured yet.</div>
+          )}
+        </div>
+      </div>
+    </section>
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add title"}</button></div>
     {form === "new" && <BookForm onDone={() => setForm(null)} />}{form && form !== "new" && <BookForm book={form} onDone={() => setForm(null)} />}
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"><div className="divide-y divide-border">{books.data?.map(book => <div key={book.id} className="flex items-center gap-3 p-4 sm:p-5"><div className="flex h-11 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">{book.coverUrl ? <img src={book.coverUrl} alt="" className="h-full w-full object-cover" /> : <FileText className="h-4 w-4" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold">{book.title}</p><p className="mt-1 truncate text-xs text-muted-foreground">{book.author} · {book.format}</p></div><div className="flex items-center gap-3"><div className="text-right"><p className="text-sm font-extrabold">{formatPrice(book.price, book.currency)}</p><span className="text-[0.62rem] font-bold text-primary">{book.category}</span></div><button data-testid={`button-edit-book-${book.id}`} onClick={() => setForm(book)} className="rounded-lg border border-border p-2 text-muted-foreground hover:text-primary" aria-label={`Edit ${book.title}`}><Pencil className="h-4 w-4" /></button></div></div>)}{!books.data?.length && <div className="p-10 text-center"><BookOpen className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No books listed yet.</p></div>}</div></section>
