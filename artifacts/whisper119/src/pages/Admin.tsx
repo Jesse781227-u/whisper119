@@ -10,7 +10,7 @@ import {
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
 import { firebaseDb } from "@/lib/firebase"
-import type { Book, BookInput, BookInputFormat, BookUpdate } from "@workspace/api-client-react"
+import type { Book, BookInput, BookInputFormat, BookUpdate, Order } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { GENRE_CATEGORIES } from "@/data/catalog"
 
@@ -201,8 +201,8 @@ export default function Admin() {
     return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">You must be an admin to access this page.</main>
   }
   const stats = [{ label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" }, { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" }, { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" }, { label: "Revenue", value: formatPrice(dashboard.data?.totalRevenue ?? 0, "USD"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }]
-  const bookList = books.data ?? []
-  const orderList = orders.data ?? []
+  const bookList: Book[] = Array.isArray(books.data) ? books.data : []
+  const orderList: Order[] = Array.isArray(orders.data) ? orders.data : []
 
   return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Private desk</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">A clear view of the shelf.</h1><p className="mt-1 text-sm text-muted-foreground">Catalogue, readership, and real orders in one place.</p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
