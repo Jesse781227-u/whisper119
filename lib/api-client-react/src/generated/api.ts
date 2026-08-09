@@ -38,6 +38,7 @@ import type {
   NotFoundResponse,
   Order,
   OrderInput,
+  PageViewInput,
   PaystackWebhook,
   StorefrontSummary,
   UnauthorizedResponse,
@@ -1122,6 +1123,78 @@ export function useGetAdminDashboard<TData = Awaited<ReturnType<typeof getAdminD
 
 
 
+
+export const getRecordPageViewUrl = () => {
+
+
+
+
+  return `/api/analytics/page-view`
+}
+
+/**
+ * Records an anonymous page view for aggregate traffic reporting. It never records payment confirmation.
+ * @summary Record a storefront page view
+ */
+export const recordPageView = async (pageViewInput: PageViewInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getRecordPageViewUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pageViewInput)
+  }
+);}
+
+
+
+
+
+export const getRecordPageViewMutationOptions = <TError = ErrorType<BadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordPageView>>, TError,{data: BodyType<PageViewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordPageView>>, TError,{data: BodyType<PageViewInput>}, TContext> => {
+
+const mutationKey = ['recordPageView'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordPageView>>, {data: BodyType<PageViewInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordPageView(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordPageViewMutationResult = NonNullable<Awaited<ReturnType<typeof recordPageView>>>
+    export type RecordPageViewMutationBody = BodyType<PageViewInput>
+    export type RecordPageViewMutationError = ErrorType<BadRequestResponse>
+
+    /**
+ * @summary Record a storefront page view
+ */
+export const useRecordPageView = <TError = ErrorType<BadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordPageView>>, TError,{data: BodyType<PageViewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordPageView>>,
+        TError,
+        {data: BodyType<PageViewInput>},
+        TContext
+      > => {
+      return useMutation(getRecordPageViewMutationOptions(options));
+    }
 
 export const getListAdminBooksUrl = () => {
 

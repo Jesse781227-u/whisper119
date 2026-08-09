@@ -36,6 +36,7 @@ export * from './order';
 export * from './orderInput';
 export * from './orderItem';
 export * from './orderStatus';
+export * from './pageViewInput';
 export * from './paystackWebhook';
 export * from './paystackWebhookData';
 export * from './searchQueryParameter';

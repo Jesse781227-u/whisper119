@@ -38,6 +38,7 @@ export const ListBooksResponseItem = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
+  "paymentLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -65,6 +66,7 @@ export const GetBookResponse = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
+  "paymentLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -88,6 +90,7 @@ export const GetStorefrontSummaryResponse = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
+  "paymentLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -105,6 +108,7 @@ export const GetStorefrontSummaryResponse = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
+  "paymentLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -306,6 +310,24 @@ export const GetAdminDashboardResponse = zod.object({
 
 
 /**
+ * Records an anonymous page view for aggregate traffic reporting. It never records payment confirmation.
+ * @summary Record a storefront page view
+ */
+export const recordPageViewBodyPathMax = 500;
+
+export const recordPageViewBodyVisitorIdMax = 128;
+
+
+
+export const RecordPageViewBody = zod.object({
+  "path": zod.string().min(1).max(recordPageViewBodyPathMax),
+  "visitorId": zod.string().max(recordPageViewBodyVisitorIdMax).nullish()
+})
+
+export const RecordPageViewResponse = zod.void()
+
+
+/**
  * @summary List all books for administration
  */
 export const ListAdminBooksResponseItem = zod.object({
@@ -319,6 +341,7 @@ export const ListAdminBooksResponseItem = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
+  "paymentLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -355,6 +378,7 @@ export const CreateBookBody = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
+  "paymentLink": zod.string().nullable(),
   "coverObjectPath": zod.string().nullable(),
   "fileObjectPath": zod.string().min(1),
   "fileName": zod.string().min(1),
@@ -373,6 +397,7 @@ export const CreateBookResponse = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
+  "paymentLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -412,6 +437,7 @@ export const UpdateBookBody = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']).optional(),
   "description": zod.string().optional(),
   "format": zod.enum(['PDF', 'EPUB']).optional(),
+  "paymentLink": zod.string().nullish(),
   "coverObjectPath": zod.string().nullish(),
   "fileObjectPath": zod.string().min(1).optional(),
   "fileName": zod.string().min(1).optional(),
@@ -430,6 +456,7 @@ export const UpdateBookResponse = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
+  "paymentLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),

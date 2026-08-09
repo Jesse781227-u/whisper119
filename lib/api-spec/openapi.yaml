@@ -287,6 +287,23 @@ paths:
                 $ref: "#/components/schemas/AdminDashboard"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /analytics/page-view:
+    post:
+      operationId: recordPageView
+      tags: [storefront]
+      summary: Record a storefront page view
+      description: Records an anonymous page view for aggregate traffic reporting. It never records payment confirmation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PageViewInput"
+      responses:
+        "204":
+          description: Page view accepted
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /admin/books:
     get:
       operationId: listAdminBooks
@@ -513,12 +530,13 @@ components:
         category: { type: string, enum: [Romance, Werewolf, Paranormal, Dark Romance, Billionaire Romance, Completed Series] }
         description: { type: string }
         format: { type: string, enum: [PDF, EPUB] }
+        paymentLink: { type: ["string", "null"] }
         coverUrl: { type: ["string", "null"] }
         fileName: { type: string }
         featured: { type: boolean }
         publishedAt: { type: string }
         createdAt: { type: string }
-      required: [id, slug, title, author, price, priceNgn, currency, category, description, format, coverUrl, fileName, featured, publishedAt, createdAt]
+      required: [id, slug, title, author, price, priceNgn, currency, category, description, format, paymentLink, coverUrl, fileName, featured, publishedAt, createdAt]
     BookInput:
       type: object
       properties:
@@ -531,12 +549,13 @@ components:
         category: { type: string, enum: [Romance, Werewolf, Paranormal, Dark Romance, Billionaire Romance, Completed Series] }
         description: { type: string }
         format: { type: string, enum: [PDF, EPUB] }
+        paymentLink: { type: ["string", "null"] }
         coverObjectPath: { type: ["string", "null"] }
         fileObjectPath: { type: string, minLength: 1 }
         fileName: { type: string, minLength: 1 }
         featured: { type: boolean }
         publishedAt: { type: string }
-      required: [title, slug, author, price, priceNgn, currency, category, description, format, coverObjectPath, fileObjectPath, fileName, featured, publishedAt]
+      required: [title, slug, author, price, priceNgn, currency, category, description, format, paymentLink, coverObjectPath, fileObjectPath, fileName, featured, publishedAt]
     BookUpdate:
       type: object
       properties:
@@ -549,11 +568,18 @@ components:
         category: { type: string, enum: [Romance, Werewolf, Paranormal, Dark Romance, Billionaire Romance, Completed Series] }
         description: { type: string }
         format: { type: string, enum: [PDF, EPUB] }
+        paymentLink: { type: ["string", "null"] }
         coverObjectPath: { type: ["string", "null"] }
         fileObjectPath: { type: string, minLength: 1 }
         fileName: { type: string, minLength: 1 }
         featured: { type: boolean }
         publishedAt: { type: string }
+    PageViewInput:
+      type: object
+      properties:
+        path: { type: string, minLength: 1, maxLength: 500 }
+        visitorId: { type: ["string", "null"], maxLength: 128 }
+      required: [path]
     StorefrontSummary:
       type: object
       properties:

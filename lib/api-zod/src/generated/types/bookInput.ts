@@ -28,6 +28,8 @@ export interface BookInput {
   description: string;
   format: BookInputFormat;
   /** @nullable */
+  paymentLink: string | null;
+  /** @nullable */
   coverObjectPath: string | null;
   /** @minLength 1 */
   fileObjectPath: string;
