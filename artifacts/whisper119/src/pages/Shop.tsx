@@ -86,7 +86,7 @@ export default function Shop() {
       <div className="mb-7">
         <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">My books</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">Have a look around.</h1>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">These are the books I’ve written, chosen, and made available as DRM-free PDF and EPUB files.</p>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">These are the books I’ve written, chosen, and made available as  PDF and EPUB files.</p>
       </div>
 
       <div className="relative mb-5 md:hidden">

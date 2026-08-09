@@ -60,7 +60,7 @@ export function BookCard({ book }: { book: Book }) {
           </button>
         </div>
         <p className="mt-1 truncate text-[0.68rem] text-muted-foreground sm:text-xs">{book.author}</p>
-        <p className="mt-1 text-[0.58rem] font-semibold uppercase tracking-[0.08em] text-primary/80">DRM-free · email delivery</p>
+        <p className="mt-1 text-[0.58rem] font-semibold uppercase tracking-[0.08em] text-primary/80"> · email delivery</p>
       </div>
     </article>
   )

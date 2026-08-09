@@ -45,7 +45,7 @@ export default function Cart() {
                       <span className="shrink-0 text-sm font-extrabold"><ConvertedPrice amountNgn={item.priceNgn} /></span>
                     </div>
                     <div className="mt-auto flex items-end justify-between gap-3 pt-5">
-                      <p className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-primary">{item.format} · DRM-free</p>
+                      <p className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-primary">{item.format} · </p>
                       <button type="button" onClick={() => removeItem(item.id)} className="inline-flex items-center gap-1 text-[0.65rem] font-bold text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /> Remove</button>
                     </div>
                   </div>

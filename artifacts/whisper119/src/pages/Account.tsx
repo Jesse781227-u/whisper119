@@ -81,10 +81,10 @@ function ReaderOrders({ userId }: { userId: string }) {
       <div className="absolute -right-10 -top-12 h-32 w-32 rounded-full border border-primary/10" />
       <div className="absolute -bottom-16 -left-8 h-28 w-28 rounded-full border border-accent/10" />
       <BookOpen className="relative mx-auto h-7 w-7 text-primary" strokeWidth={1.5} />
-      <p className="relative mt-4 font-display text-lg font-semibold">The shelf is waiting.</p>
+      <p className="relative mt-4 font-display text-lg font-semibold">Your shelf is empty.</p>
       <p className="relative mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground">There are no purchases connected to this account yet. When you find the right story, it will be recorded here.</p>
       <Link href="/shop" data-testid="link-browse-shelf" className="relative mt-5 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.12em] text-primary transition-colors hover:text-accent">
-        Browse the shelf <ChevronRight className="h-3.5 w-3.5" />
+        Find a book <ChevronRight className="h-3.5 w-3.5" />
       </Link>
     </div>
   )
@@ -103,7 +103,7 @@ function ReaderOrders({ userId }: { userId: string }) {
           <div className="mt-4 divide-y divide-border/70">
             {(order.items ?? []).map((item, index) => <div key={`${order.id}-${index}`} data-testid={`row-order-item-${order.id}-${index}`} className="flex items-center justify-between gap-3 py-2 text-sm"><span className="font-semibold">{item.title ?? "Digital title"}</span><span className="shrink-0 text-xs uppercase tracking-[0.12em] text-muted-foreground">{item.format ?? "ebook"}</span></div>)}
           </div>
-          <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground"><Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />Your DRM-free files are delivered as email attachments after payment.</p>
+          <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground"><Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />Your  files are delivered as email attachments after payment.</p>
         </article>
       ))}
     </div>

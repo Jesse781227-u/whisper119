@@ -68,7 +68,7 @@ export default function BookDetail() {
 
   const inCart = items.some((item) => item.id === book.id)
   const heroStyle = book.coverUrl ? { backgroundImage: `linear-gradient(180deg, hsl(229 45% 10% / .2), hsl(229 45% 8% / .94)), url("${book.coverUrl}")` } : undefined
-  const descriptors = [book.category, book.format, "DRM-free", "Email delivery"]
+  const descriptors = [book.category, book.format, "", "Email delivery"]
 
   function addAndNavigate(path: string) {
     if (!inCart && book) addItem(book)
