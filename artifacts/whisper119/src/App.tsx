@@ -19,6 +19,7 @@ import Account from '@/pages/Account';
 import Admin, { AdminLogin } from '@/pages/Admin';
 import { Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 import { AuthProvider } from '@/components/auth-provider';
+import { PageViewTracker } from '@/components/page-view-tracker';
 
 const queryClient = new QueryClient();
 
@@ -108,6 +109,7 @@ function AppShell() {
 
   return (
     <>
+      {!isAdmin && <PageViewTracker />}
       {!isAdmin && <Navbar />}
       <Router />
       {!isAdmin && <Footer />}
