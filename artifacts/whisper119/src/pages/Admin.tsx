@@ -18,7 +18,7 @@ const fieldClass = "h-11 w-full rounded-xl border border-border bg-background px
 
 export function AdminLogin() {
   const [location, setLocation] = useLocation()
-  const { user, loading, isAdmin } = useAuth()
+  const { user, loading, isAdmin, signInWithGoogle } = useAuth()
 
   useEffect(() => {
     if (!loading && user && isAdmin) {
@@ -46,10 +46,10 @@ export function AdminLogin() {
               {!isAdmin && <p className="mt-3 text-sm text-destructive">This account is not authorized yet. Ask a current admin to add your email.</p>}
             </div>
           ) : (
-            <p className="rounded-2xl border border-border bg-black/20 p-5 text-sm text-white">Please sign in first using the reader account page, then return here to access admin features.</p>
+            <p className="rounded-2xl border border-border bg-black/20 p-5 text-sm text-white">Use Google sign-in to authenticate your admin account.</p>
           )}
           <div className="grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={() => setLocation("/account")} className="inline-flex h-12 items-center justify-center rounded-xl bg-primary text-sm font-extrabold text-primary-foreground">Go to account sign-in</button>
+            <button type="button" onClick={() => void signInWithGoogle()} className="inline-flex h-12 items-center justify-center rounded-xl bg-primary text-sm font-extrabold text-primary-foreground">Sign in with Google</button>
             <button type="button" onClick={() => setLocation("/")} className="inline-flex h-12 items-center justify-center rounded-xl border border-white/15 text-sm font-extrabold text-white">Return to storefront</button>
           </div>
         </div>
