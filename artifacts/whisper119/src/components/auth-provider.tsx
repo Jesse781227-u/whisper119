@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const userRef = doc(firebaseDb, "users", nextUser.uid)
-      const adminEmail = nextUser.email
+      const adminEmail = nextUser.email?.toLowerCase() ?? null
       const adminByEmailRef = adminEmail ? doc(firebaseDb, "admins", adminEmail) : null
 
       try {

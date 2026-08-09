@@ -152,6 +152,17 @@ export default function Admin() {
       setAdminError("Firestore is not configured for admin management.")
       return
     }
+    if (authLoading) {
+      return
+    }
+    if (!isAdmin) {
+      setAdminLoading(false)
+      setAdminError(null)
+      return
+    }
+
+    setAdminLoading(true)
+    setAdminError(null)
 
     const adminCollection = collection(firebaseDb, "admins")
     const unsubscribe = onSnapshot(adminCollection, (snapshot) => {
@@ -165,7 +176,7 @@ export default function Admin() {
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [authLoading, firebaseDb, isAdmin])
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
