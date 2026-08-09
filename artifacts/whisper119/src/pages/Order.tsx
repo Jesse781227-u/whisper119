@@ -49,7 +49,7 @@ export default function Order() {
       {isPaid && (
         <section className="mt-5 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/[0.06] p-5 sm:p-6">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><MailCheck className="h-5 w-5" /></span>
-          <div><h2 className="text-lg font-extrabold">Check your inbox</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Your DRM-free file(s) are delivered as actual email attachments alongside your receipt. There is no download button on this page.</p><p className="mt-3 text-xs leading-5 text-muted-foreground">If the message does not arrive, check spam and contact hello@whisper119.shop.</p></div>
+          <div><h2 className="text-lg font-extrabold">Check your inbox</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Your  file(s) are delivered as actual email attachments alongside your receipt. There is no download button on this page.</p><p className="mt-3 text-xs leading-5 text-muted-foreground">If the message does not arrive, check spam and contact hello@whisper119.shop.</p></div>
         </section>
       )}
 

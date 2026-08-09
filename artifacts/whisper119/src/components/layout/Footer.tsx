@@ -22,7 +22,7 @@ export function Footer() {
         </div>
         <div className="mt-8 flex flex-wrap justify-between gap-3 border-t border-border pt-5 text-[0.62rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">
           <span>© {new Date().getFullYear()} Whisper 119</span>
-          <span>Digital titles · Email delivery · NGN for Nigeria · USD worldwide</span>
+          <span>Digital copies · Email delivery · Available worldwide.</span>
         </div>
       </div>
     </footer>

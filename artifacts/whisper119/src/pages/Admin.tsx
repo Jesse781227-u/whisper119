@@ -33,10 +33,10 @@ export function AdminLogin() {
   return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090f2d] px-4 py-10 text-white">
     <div className="absolute inset-0 bg-cover bg-center opacity-55" style={{ backgroundImage: "linear-gradient(180deg,rgba(7,12,35,.35),#090f2d 83%),url('/covers/cover-3.jpg')" }} />
     <div className="relative w-full max-w-md">
-      <Link href="/" className="mb-8 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary"><BookOpen className="h-5 w-5" /></span><div><p className="text-lg font-extrabold">Whisper 119</p><p className="text-xs text-white/60">Private librarian desk</p></div></Link>
+      <Link href="/" className="mb-8 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary"><BookOpen className="h-5 w-5" /></span><div><p className="text-lg font-extrabold">Whisper 119</p><p className="text-xs text-white/60">Private Administrative controls</p></div></Link>
       <div className="rounded-3xl border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary-foreground/70">Admin access</p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Access your librarian desk</h1>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Access your Administrative controls</h1>
         <p className="mt-2 text-sm leading-6 text-white/65">Sign in with a registered admin email to manage books, orders, and the storefront.</p>
         <div className="mt-7 space-y-4">
           {user ? (
@@ -59,7 +59,7 @@ export function AdminLogin() {
 }
 
 function AdminNav({ onLogout }: { onLogout: () => void }) {
-  return <div className="flex flex-wrap items-center justify-between gap-4"><Link href="/admin" className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen className="h-5 w-5" /></span><div><p className="text-sm font-extrabold">Whisper 119</p><p className="text-xs text-muted-foreground">Librarian desk</p></div></Link><div className="flex items-center gap-2"><Link href="/" className="hidden rounded-full px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-secondary sm:block">View storefront</Link><button data-testid="button-admin-logout" onClick={onLogout} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:border-destructive hover:text-destructive"><LogOut className="h-3.5 w-3.5" /> Sign out</button></div></div>
+  return <div className="flex flex-wrap items-center justify-between gap-4"><Link href="/admin" className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen className="h-5 w-5" /></span><div><p className="text-sm font-extrabold">Whisper 119</p><p className="text-xs text-muted-foreground">Administrative controls</p></div></Link><div className="flex items-center gap-2"><Link href="/" className="hidden rounded-full px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-secondary sm:block">View storefront</Link><button data-testid="button-admin-logout" onClick={onLogout} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:border-destructive hover:text-destructive"><LogOut className="h-3.5 w-3.5" /> Sign out</button></div></div>
 }
 
 type BookFormProps = { book?: Book; onDone: () => void }
@@ -185,7 +185,7 @@ export default function Admin() {
   }, [isAdmin, authLoading, setLocation])
 
   if (authLoading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading librarian desk…</main>
+    return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading Administrative controls…</main>
   }
 
   if (!isAdmin) {
@@ -193,8 +193,8 @@ export default function Admin() {
   }
   const stats = [{ label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" }, { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" }, { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" }, { label: "Revenue", value: formatPrice(dashboard.data?.totalRevenue ?? 0, "USD"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }]
   return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Private desk</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">A clear view of the shelf.</h1><p className="mt-1 text-sm text-muted-foreground">Catalogue, readership, and real orders in one place.</p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
-    <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Analytics</p><h2 className="mt-1 text-2xl font-extrabold">Storefront pulse</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(s => <div key={s.label} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm"><div><p className="text-xs font-bold text-muted-foreground">{s.label}</p><p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-1 text-2xl font-extrabold">{s.value}</p></div><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span></div>)}</div></section>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Panel</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Mnage your website effectively</h1><p className="mt-1 text-sm text-muted-foreground"></p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
+    <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary"></p><h2 className="mt-1 text-2xl font-extrabold">Overview</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(s => <div key={s.label} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm"><div><p className="text-xs font-bold text-muted-foreground">{s.label}</p><p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-1 text-2xl font-extrabold">{s.value}</p></div><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span></div>)}</div></section>
     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>

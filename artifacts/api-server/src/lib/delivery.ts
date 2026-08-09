@@ -37,7 +37,7 @@ export async function deliverOrderEmail(orderId: string): Promise<void> {
     from,
     to: order.email,
     subject: `Your Whisper 119 order ${order.reference}`,
-    text: `Thank you for your order.\n\nOrder ${order.reference}\nTotal: ${order.currency} ${order.subtotal.toFixed(2)}\n\nYour DRM-free ebook files are attached, along with your receipt details.`,
+    text: `Thank you for your order.\n\nOrder ${order.reference}\nTotal: ${order.currency} ${order.subtotal.toFixed(2)}\n\nYour  ebook files are attached, along with your receipt details.`,
     attachments,
   });
   await db.update(ordersTable).set({ deliveryEmailSent: true }).where(eq(ordersTable.id, order.id));
