@@ -9,7 +9,7 @@ import {
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
-import { firebaseDb } from "@/lib/firebase"
+import { firebaseAuth, firebaseDb } from "@/lib/firebase"
 import type { Book, BookInput, BookInputFormat, BookUpdate } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { GENRE_CATEGORIES } from "@/data/catalog"
@@ -81,10 +81,25 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   async function uploadFile(file: File) {
-    const response = await requestUploadUrl.mutateAsync({ data: { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" } })
-    const upload = await fetch(response.uploadURL, { method: "PUT", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file })
+    const token = await firebaseAuth?.currentUser?.getIdToken()
+    const response = await fetch("/api/storage/uploads/request-url", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type || "application/octet-stream" }),
+    })
+    const payload = await response.json().catch(() => null) as { uploadURL?: unknown; objectPath?: unknown; error?: unknown } | null
+    if (!response.ok) {
+      throw new Error(typeof payload?.error === "string" ? payload.error : "Could not prepare the upload. Please sign in again and try again.")
+    }
+    if (typeof payload?.uploadURL !== "string" || typeof payload.objectPath !== "string") {
+      throw new Error("The server returned an invalid upload response. Please try again.")
+    }
+    const upload = await fetch(payload.uploadURL, { method: "PUT", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file })
     if (!upload.ok) throw new Error(`Could not upload ${file.name}.`)
-    return response.objectPath
+    return payload.objectPath
   }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(null)
