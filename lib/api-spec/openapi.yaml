@@ -504,13 +504,14 @@ components:
         category: { type: string, enum: [Romance, Werewolf, Paranormal, Dark Romance, Billionaire Romance, Completed Series] }
         description: { type: string }
         format: { type: string, enum: [PDF, EPUB] }
-        paymentLink: { type: ["string", "null"] }
+        paystackLink: { type: ["string", "null"] }
+        payoneerLink: { type: ["string", "null"] }
         coverUrl: { type: ["string", "null"] }
         fileName: { type: string }
         featured: { type: boolean }
         publishedAt: { type: string }
         createdAt: { type: string }
-      required: [id, slug, title, author, price, priceNgn, currency, category, description, format, paymentLink, coverUrl, fileName, featured, publishedAt, createdAt]
+      required: [id, slug, title, author, price, priceNgn, currency, category, description, format, paystackLink, payoneerLink, coverUrl, fileName, featured, publishedAt, createdAt]
     BookInput:
       type: object
       properties:
@@ -523,13 +524,14 @@ components:
         category: { type: string, enum: [Romance, Werewolf, Paranormal, Dark Romance, Billionaire Romance, Completed Series] }
         description: { type: string }
         format: { type: string, enum: [PDF, EPUB] }
-        paymentLink: { type: ["string", "null"] }
+        paystackLink: { type: ["string", "null"] }
+        payoneerLink: { type: ["string", "null"] }
         coverObjectPath: { type: ["string", "null"] }
         fileObjectPath: { type: string, minLength: 1 }
         fileName: { type: string, minLength: 1 }
         featured: { type: boolean }
         publishedAt: { type: string }
-      required: [title, slug, author, price, priceNgn, currency, category, description, format, paymentLink, coverObjectPath, fileObjectPath, fileName, featured, publishedAt]
+      required: [title, slug, author, price, priceNgn, currency, category, description, format, paystackLink, payoneerLink, coverObjectPath, fileObjectPath, fileName, featured, publishedAt]
     BookUpdate:
       type: object
       properties:
@@ -542,7 +544,8 @@ components:
         category: { type: string, enum: [Romance, Werewolf, Paranormal, Dark Romance, Billionaire Romance, Completed Series] }
         description: { type: string }
         format: { type: string, enum: [PDF, EPUB] }
-        paymentLink: { type: ["string", "null"] }
+        paystackLink: { type: ["string", "null"] }
+        payoneerLink: { type: ["string", "null"] }
         coverObjectPath: { type: ["string", "null"] }
         fileObjectPath: { type: string, minLength: 1 }
         fileName: { type: string, minLength: 1 }

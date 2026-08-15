@@ -20,7 +20,9 @@ export interface Book {
   description: string;
   format: BookFormat;
   /** @nullable */
-  paymentLink: string | null;
+  paystackLink: string | null;
+  /** @nullable */
+  payoneerLink: string | null;
   /** @nullable */
   coverUrl: string | null;
   fileName: string;

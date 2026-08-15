@@ -75,7 +75,8 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [priceNgn, setPriceNgn] = useState(String(book?.priceNgn ?? ""))
   const [category, setCategory] = useState<(typeof GENRE_CATEGORIES)[number]>((book?.category as (typeof GENRE_CATEGORIES)[number]) ?? "Romance")
   const [description, setDescription] = useState(book?.description ?? "")
-  const [paymentLink, setPaymentLink] = useState(book?.paymentLink ?? "")
+  const [paystackLink, setPaystackLink] = useState(book?.paystackLink ?? "")
+  const [payoneerLink, setPayoneerLink] = useState(book?.payoneerLink ?? "")
   const [format, setFormat] = useState<BookInputFormat>(book?.format ?? "EPUB")
   const [ebookFile, setEbookFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
@@ -103,7 +104,7 @@ function BookForm({ book, onDone }: BookFormProps) {
     event.preventDefault(); setError(null)
     try {
       if (book) {
-        const data: BookUpdate = { title, description, price: Number(price), priceNgn: Number(priceNgn), paymentLink: paymentLink || null }
+        const data: BookUpdate = { title, description, price: Number(price), priceNgn: Number(priceNgn), paystackLink: paystackLink || null, payoneerLink: payoneerLink || null }
         if (ebookFile) {
           const extension = ebookFile.name.split(".").pop()?.toUpperCase()
           if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
@@ -117,7 +118,7 @@ function BookForm({ book, onDone }: BookFormProps) {
         const extension = ebookFile.name.split(".").pop()?.toUpperCase()
         if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
         const [fileObjectPath, coverObjectPath] = await Promise.all([uploadFile(ebookFile), coverFile ? uploadFile(coverFile) : Promise.resolve(null)])
-        const payload: BookInput = { title, author, slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), price: Number(price), priceNgn: Number(priceNgn), currency: "USD", category, description, format, paymentLink: paymentLink || null, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString() }
+        const payload: BookInput = { title, author, slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), price: Number(price), priceNgn: Number(priceNgn), currency: "USD", category, description, format, paystackLink: paystackLink || null, payoneerLink: payoneerLink || null, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString() }
         await createBook.mutateAsync({ data: payload })
       }
       await queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
@@ -138,7 +139,8 @@ function BookForm({ book, onDone }: BookFormProps) {
       <label><span className="mb-2 block text-xs font-bold">Ebook file {book && <span className="font-normal text-muted-foreground">(optional replacement)</span>}</span><input data-testid="input-book-file" required={!book} accept={format === "PDF" ? ".pdf,application/pdf" : ".epub,application/epub+zip"} type="file" onChange={e => setEbookFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
       {!book && <label><span className="mb-2 block text-xs font-bold">Cover image <span className="font-normal text-muted-foreground">(optional)</span></span><input accept="image/png,image/jpeg,image/webp" type="file" onChange={e => setCoverFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>}
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
-      <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">External checkout / info link <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payment-link" type="url" value={paymentLink} onChange={e => setPaymentLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">This informational URL can point to Paystack or Flutterwave checkout; it is not treated as payment confirmation.</span></label>
+       <label><span className="mb-2 block text-xs font-bold">Paystack link (Nigeria) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-paystack-link" type="url" value={paystackLink} onChange={e => setPaystackLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For Nigerian buyers. This link never confirms payment by itself.</span></label>
+       <label><span className="mb-2 block text-xs font-bold">Payoneer link (International) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payoneer-link" type="url" value={payoneerLink} onChange={e => setPayoneerLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For international buyers. This link never confirms payment by itself.</span></label>
       <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{pending ? "Saving…" : book ? "Save changes" : "Add title"}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
       {error && <p className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
     </form>

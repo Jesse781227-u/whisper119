@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, Mail, ShoppingCart } from "lucide-react"
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, ExternalLink, Mail, ShoppingCart } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link, useLocation, useParams } from "wouter"
 import { useGetBook, useListBooks } from "@workspace/api-client-react"
@@ -157,6 +157,14 @@ export default function BookDetail() {
             <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{suggestions.map((item) => <BookCard key={item.id} book={item} />)}</div>
           </section>
         )}
+
+        <section className="mt-8 rounded-2xl border border-primary/20 bg-secondary/70 p-5">
+           <div className="flex items-start gap-3"><ExternalLink className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-extrabold">Choose how you’d like to pay</p><p className="mt-1 text-xs leading-5 text-muted-foreground">You’ll pay on the provider’s website, then return here to confirm your payment with your transaction reference.</p></div></div>
+           <div className="mt-4 grid gap-3 sm:grid-cols-2">
+             {book.paystackLink ? <a href={book.paystackLink} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5">Pay with Paystack <ExternalLink className="h-3.5 w-3.5" /></a> : <span className="inline-flex h-11 items-center justify-center rounded-xl border border-border px-4 text-xs font-bold text-muted-foreground">Paystack link coming soon</span>}
+             {book.payoneerLink ? <a href={book.payoneerLink} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/40 bg-background px-4 text-xs font-extrabold text-foreground transition-colors hover:border-primary hover:text-primary">Pay with Payoneer <ExternalLink className="h-3.5 w-3.5" /></a> : <span className="inline-flex h-11 items-center justify-center rounded-xl border border-border px-4 text-xs font-bold text-muted-foreground">Payoneer link coming soon</span>}
+           </div>
+        </section>
 
         <section className="mt-8 rounded-2xl bg-secondary/70 p-5">
            <div className="flex items-start gap-3"><Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-extrabold">I’ll send it to your inbox</p><p className="mt-1 text-xs leading-5 text-muted-foreground">After Paystack confirms payment, I’ll email your {book.format} file and receipt as real attachments. There are no public download links on this page.</p></div></div>
