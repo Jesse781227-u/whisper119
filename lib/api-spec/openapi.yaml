@@ -105,6 +105,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /orders/payment-confirmation:
+    post:
+      operationId: submitPaymentConfirmation
+      tags: [orders]
+      summary: Submit a payment reference for manual review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentConfirmationInput"
+      responses:
+        "201":
+          description: Pending confirmation order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Payment reference was already submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /orders/{orderId}:
     get:
       operationId: getOrder
@@ -390,6 +418,36 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /admin/orders/{orderId}/confirm:
+    post:
+      operationId: confirmAdminOrderPayment
+      tags: [admin]
+      summary: Confirm a manually reviewed payment and deliver the ebook
+      parameters:
+        - $ref: "#/components/parameters/OrderIdPath"
+      responses:
+        "200":
+          description: Fulfilled order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Order is not awaiting confirmation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Email delivery is not configured or failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
@@ -457,7 +515,7 @@ components:
       required: false
       schema:
         type: string
-        enum: [pending, paid, failed]
+        enum: [pending, processing, paid, fulfilled, failed]
   responses:
     BadRequest:
       description: Invalid request
@@ -577,6 +635,14 @@ components:
         country: { type: string, minLength: 2, maxLength: 2 }
         bookIds: { type: array, minItems: 1, items: { type: string } }
       required: [email, country, bookIds]
+    PaymentConfirmationInput:
+      type: object
+      properties:
+        email: { type: string, minLength: 3 }
+        bookId: { type: string, minLength: 1 }
+        paymentMethod: { type: string, enum: [paystack, payoneer] }
+        paymentReference: { type: string, minLength: 1, maxLength: 160 }
+      required: [email, bookId, paymentMethod, paymentReference]
     CheckoutSession:
       type: object
       properties:
@@ -594,14 +660,16 @@ components:
         country: { type: string }
         currency: { type: string }
         subtotal: { type: number }
-        status: { type: string, enum: [pending, paid, failed] }
+        status: { type: string, enum: [pending, processing, paid, fulfilled, failed] }
         paymentStatus: { type: string }
+        paymentMethod: { type: string, enum: [paystack, payoneer] }
+        paymentReference: { type: ["string", "null"] }
         deliveryEmailSent: { type: boolean }
         downloaded: { type: boolean }
         createdAt: { type: string }
         paidAt: { type: ["string", "null"] }
         items: { type: array, items: { $ref: "#/components/schemas/OrderItem" } }
-      required: [id, reference, email, country, currency, subtotal, status, paymentStatus, deliveryEmailSent, downloaded, createdAt, paidAt, items]
+      required: [id, reference, email, country, currency, subtotal, status, paymentStatus, paymentMethod, paymentReference, deliveryEmailSent, downloaded, createdAt, paidAt, items]
     OrderItem:
       type: object
       properties:

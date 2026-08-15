@@ -198,6 +198,27 @@ export interface OrderInput {
   bookIds: string[];
 }
 
+export type PaymentConfirmationInputPaymentMethod = typeof PaymentConfirmationInputPaymentMethod[keyof typeof PaymentConfirmationInputPaymentMethod];
+
+
+export const PaymentConfirmationInputPaymentMethod = {
+  paystack: 'paystack',
+  payoneer: 'payoneer',
+} as const;
+
+export interface PaymentConfirmationInput {
+  /** @minLength 3 */
+  email: string;
+  /** @minLength 1 */
+  bookId: string;
+  paymentMethod: PaymentConfirmationInputPaymentMethod;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  paymentReference: string;
+}
+
 export interface CheckoutSession {
   orderId: string;
   reference: string;
@@ -210,8 +231,18 @@ export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
 
 export const OrderStatus = {
   pending: 'pending',
+  processing: 'processing',
   paid: 'paid',
+  fulfilled: 'fulfilled',
   failed: 'failed',
+} as const;
+
+export type OrderPaymentMethod = typeof OrderPaymentMethod[keyof typeof OrderPaymentMethod];
+
+
+export const OrderPaymentMethod = {
+  paystack: 'paystack',
+  payoneer: 'payoneer',
 } as const;
 
 export interface OrderItem {
@@ -234,6 +265,9 @@ export interface Order {
   subtotal: number;
   status: OrderStatus;
   paymentStatus: string;
+  paymentMethod: OrderPaymentMethod;
+  /** @nullable */
+  paymentReference: string | null;
   deliveryEmailSent: boolean;
   downloaded: boolean;
   createdAt: string;
@@ -335,7 +369,9 @@ export type StatusQueryParameter = typeof StatusQueryParameter[keyof typeof Stat
 
 export const StatusQueryParameter = {
   pending: 'pending',
+  processing: 'processing',
   paid: 'paid',
+  fulfilled: 'fulfilled',
   failed: 'failed',
 } as const;
 

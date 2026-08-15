@@ -152,6 +152,50 @@ export const CreateOrderResponse = zod.object({
 
 
 /**
+ * @summary Submit a payment reference for manual review
+ */
+export const submitPaymentConfirmationBodyEmailMin = 3;
+
+
+export const submitPaymentConfirmationBodyPaymentReferenceMax = 160;
+
+
+
+export const SubmitPaymentConfirmationBody = zod.object({
+  "email": zod.string().min(submitPaymentConfirmationBodyEmailMin),
+  "bookId": zod.string().min(1),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().min(1).max(submitPaymentConfirmationBodyPaymentReferenceMax)
+})
+
+export const SubmitPaymentConfirmationResponse = zod.object({
+  "id": zod.string(),
+  "reference": zod.string(),
+  "email": zod.string(),
+  "country": zod.string(),
+  "currency": zod.string(),
+  "subtotal": zod.number(),
+  "status": zod.enum(['pending', 'processing', 'paid', 'fulfilled', 'failed']),
+  "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
+  "deliveryEmailSent": zod.boolean(),
+  "downloaded": zod.boolean(),
+  "createdAt": zod.string(),
+  "paidAt": zod.string().nullable(),
+  "items": zod.array(zod.object({
+  "bookId": zod.string(),
+  "title": zod.string(),
+  "author": zod.string(),
+  "price": zod.number(),
+  "format": zod.string(),
+  "downloadUrl": zod.string().nullable(),
+  "downloaded": zod.boolean()
+}))
+})
+
+
+/**
  * @summary Get order status and purchased books
  */
 export const GetOrderParams = zod.object({
@@ -165,8 +209,10 @@ export const GetOrderResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'processing', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
   "createdAt": zod.string(),
@@ -282,8 +328,10 @@ export const GetAdminDashboardResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'processing', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
   "createdAt": zod.string(),
@@ -476,7 +524,7 @@ export const DeleteBookResponse = zod.void()
  * @summary List customer orders
  */
 export const ListAdminOrdersQueryParams = zod.object({
-  "status": zod.enum(['pending', 'paid', 'failed']).optional()
+  "status": zod.enum(['pending', 'processing', 'paid', 'fulfilled', 'failed']).optional()
 })
 
 export const ListAdminOrdersResponseItem = zod.object({
@@ -486,8 +534,10 @@ export const ListAdminOrdersResponseItem = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'processing', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
   "createdAt": zod.string(),
@@ -519,8 +569,44 @@ export const GetAdminOrderResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'processing', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
+  "deliveryEmailSent": zod.boolean(),
+  "downloaded": zod.boolean(),
+  "createdAt": zod.string(),
+  "paidAt": zod.string().nullable(),
+  "items": zod.array(zod.object({
+  "bookId": zod.string(),
+  "title": zod.string(),
+  "author": zod.string(),
+  "price": zod.number(),
+  "format": zod.string(),
+  "downloadUrl": zod.string().nullable(),
+  "downloaded": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Confirm a manually reviewed payment and deliver the ebook
+ */
+export const ConfirmAdminOrderPaymentParams = zod.object({
+  "orderId": zod.coerce.string()
+})
+
+export const ConfirmAdminOrderPaymentResponse = zod.object({
+  "id": zod.string(),
+  "reference": zod.string(),
+  "email": zod.string(),
+  "country": zod.string(),
+  "currency": zod.string(),
+  "subtotal": zod.number(),
+  "status": zod.enum(['pending', 'processing', 'paid', 'fulfilled', 'failed']),
+  "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
   "createdAt": zod.string(),

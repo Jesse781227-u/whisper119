@@ -3,6 +3,7 @@ import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
 import {
   CreateOrderBody, CreateOrderResponse, GetOrderParams, GetOrderResponse, ListOrderDownloadsParams, ListOrderDownloadsResponse,
+  SubmitPaymentConfirmationBody, SubmitPaymentConfirmationResponse,
   PaystackWebhookBody, PaystackWebhookResponse, RetryOrderPaymentParams, RetryOrderPaymentResponse,
 } from "@workspace/api-zod";
 import { booksTable, db, orderItemsTable, ordersTable } from "@workspace/db";
@@ -59,6 +60,75 @@ router.post("/orders", async (req, res): Promise<void> => {
   }
 });
 
+router.post("/orders/payment-confirmation", async (req, res): Promise<void> => {
+  const parsed = SubmitPaymentConfirmationBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const email = parsed.data.email.trim().toLowerCase();
+  const paymentReference = parsed.data.paymentReference.trim();
+  if (!email.includes("@") || !email.includes(".")) {
+    res.status(400).json({ error: "Enter a valid email address." });
+    return;
+  }
+
+  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, parsed.data.bookId));
+  if (!book) {
+    res.status(404).json({ error: "That book is no longer available." });
+    return;
+  }
+
+  const [duplicate] = await db.select({ id: ordersTable.id }).from(ordersTable).where(and(
+    eq(ordersTable.paymentMethod, parsed.data.paymentMethod),
+    eq(ordersTable.paymentReference, paymentReference),
+  ));
+  if (duplicate) {
+    res.status(409).json({ error: "That payment reference has already been submitted." });
+    return;
+  }
+
+  const orderId = randomUUID();
+  const reference = `W119-${Date.now().toString(36).toUpperCase()}-${orderId.slice(0, 6).toUpperCase()}`;
+  const isPaystack = parsed.data.paymentMethod === "paystack";
+  const currency = isPaystack ? "NGN" : "USD";
+  const price = isPaystack ? book.priceNgn : book.price;
+  if (price <= 0) {
+    res.status(400).json({ error: `This book does not have a valid ${currency} price yet.` });
+    return;
+  }
+
+  await db.insert(ordersTable).values({
+    id: orderId,
+    reference,
+    email,
+    country: isPaystack ? "NG" : "INTL",
+    currency,
+    subtotal: price,
+    status: "pending",
+    paymentStatus: "pending",
+    paymentMethod: parsed.data.paymentMethod,
+    paymentReference,
+  });
+  await db.insert(orderItemsTable).values({
+    id: randomUUID(),
+    orderId,
+    bookId: book.id,
+    title: book.title,
+    author: book.author,
+    price,
+    format: book.format,
+  });
+
+  const result = await getOrderById(orderId);
+  if (!result) {
+    res.status(500).json({ error: "The order could not be created." });
+    return;
+  }
+  res.status(201).json(SubmitPaymentConfirmationResponse.parse(orderResponse(result.order, result.items)));
+});
+
 router.get("/orders/:orderId", async (req, res): Promise<void> => {
   const parsed = GetOrderParams.safeParse(req.params);
   if (!parsed.success) {
@@ -84,7 +154,7 @@ router.post("/orders/:orderId/retry", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Order not found" });
     return;
   }
-  if (result.order.status === "paid") {
+  if (["paid", "processing", "fulfilled"].includes(result.order.status)) {
     res.status(409).json({ error: "This order is already paid." });
     return;
   }
@@ -107,7 +177,7 @@ router.get("/orders/:orderId/downloads", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Order not found" });
     return;
   }
-  if (result.order.status !== "paid") {
+  if (!["paid", "fulfilled"].includes(result.order.status)) {
     res.status(403).json({ error: "Downloads unlock after payment is confirmed." });
     return;
   }

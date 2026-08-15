@@ -164,6 +164,11 @@ export default function BookDetail() {
              {book.paystackLink ? <a href={book.paystackLink} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5">Pay with Paystack <ExternalLink className="h-3.5 w-3.5" /></a> : <span className="inline-flex h-11 items-center justify-center rounded-xl border border-border px-4 text-xs font-bold text-muted-foreground">Paystack link coming soon</span>}
              {book.payoneerLink ? <a href={book.payoneerLink} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/40 bg-background px-4 text-xs font-extrabold text-foreground transition-colors hover:border-primary hover:text-primary">Pay with Payoneer <ExternalLink className="h-3.5 w-3.5" /></a> : <span className="inline-flex h-11 items-center justify-center rounded-xl border border-border px-4 text-xs font-bold text-muted-foreground">Payoneer link coming soon</span>}
            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+              <span className="font-semibold text-muted-foreground">Already paid?</span>
+              <Link href={`/confirm-payment?bookId=${encodeURIComponent(book.id)}&method=paystack`} className="font-extrabold text-primary hover:underline">Confirm Paystack payment</Link>
+              <Link href={`/confirm-payment?bookId=${encodeURIComponent(book.id)}&method=payoneer`} className="font-extrabold text-primary hover:underline">Confirm Payoneer payment</Link>
+            </div>
         </section>
 
         <section className="mt-8 rounded-2xl bg-secondary/70 p-5">
@@ -190,6 +195,7 @@ export default function BookDetail() {
           ) : (
             <span className="flex h-12 items-center justify-center rounded-xl border border-border px-3 text-center text-[0.62rem] font-bold text-muted-foreground sm:text-[0.68rem]">Payoneer link coming soon</span>
           )}
+           <Link href={`/confirm-payment?bookId=${encodeURIComponent(book.id)}`} className="col-span-full text-center text-[0.65rem] font-extrabold text-primary hover:underline">Already paid? Confirm your payment here</Link>
         </div>
       </div>
     </main>

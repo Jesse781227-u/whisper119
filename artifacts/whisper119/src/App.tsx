@@ -13,6 +13,7 @@ import Shop from '@/pages/Shop';
 import BookDetail from '@/pages/BookDetail';
 import Cart from '@/pages/Cart';
 import Checkout from '@/pages/Checkout';
+import ConfirmPayment from '@/pages/ConfirmPayment';
 import Order from '@/pages/Order';
 import Account from '@/pages/Account';
 import Admin, { AdminLogin } from '@/pages/Admin';
@@ -109,6 +110,7 @@ function Router() {
       <Route path="/book/:bookId" component={BookDetail} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/confirm-payment" component={ConfirmPayment} />
       <Route path="/order/:orderId" component={Order} />
       <Route path="/account" component={Account} />
       <Route path="/admin/login">

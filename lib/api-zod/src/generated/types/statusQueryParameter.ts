@@ -11,6 +11,8 @@ export type StatusQueryParameter = typeof StatusQueryParameter[keyof typeof Stat
 
 export const StatusQueryParameter = {
   pending: 'pending',
+  processing: 'processing',
   paid: 'paid',
+  fulfilled: 'fulfilled',
   failed: 'failed',
 } as const;
