@@ -18,7 +18,8 @@ export default function Order() {
   }
 
   const handleRetry = () => retryPayment.mutate({ orderId: order.id }, { onSuccess: (response) => { window.location.href = response.authorizationUrl } })
-  const isPaid = order.status === "paid"
+  const isPaid = order.status === "paid" || order.status === "fulfilled"
+  const isFulfilled = order.status === "fulfilled"
   const isFailed = order.status === "failed"
   const statusTone = isPaid ? "bg-emerald-500/10 text-emerald-600" : isFailed ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-600"
 
@@ -34,7 +35,7 @@ export default function Order() {
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Order status</p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">{isPaid ? "Payment successful" : isFailed ? "Payment failed" : "Payment pending"}</h1>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">Reference <span className="font-mono font-bold text-foreground">{order.reference}</span></p>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">Your receipt and ebook files will be sent to <span className="font-semibold text-foreground">{order.email}</span> after Paystack confirms payment.</p>
+           <p className="mt-1 text-sm leading-6 text-muted-foreground">Your receipt and ebook files will be sent to <span className="font-semibold text-foreground">{order.email}</span> after your payment is confirmed.</p>
         </div>
       </section>
 
@@ -49,7 +50,7 @@ export default function Order() {
       {isPaid && (
         <section className="mt-5 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/[0.06] p-5 sm:p-6">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><MailCheck className="h-5 w-5" /></span>
-          <div><h2 className="text-lg font-extrabold">Check your inbox</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Your  file(s) are delivered as actual email attachments alongside your receipt. There is no download button on this page.</p><p className="mt-3 text-xs leading-5 text-muted-foreground">If the message does not arrive, check spam and contact hello@whisper119.shop.</p></div>
+           <div><h2 className="text-lg font-extrabold">{isFulfilled ? "Your book is on its way" : "Check your inbox"}</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">Your file(s) are delivered as actual email attachments alongside your receipt. There is no download button on this page.</p><p className="mt-3 text-xs leading-5 text-muted-foreground">If the message does not arrive, check spam and contact hello@whisper119.shop.</p></div>
         </section>
       )}
 
