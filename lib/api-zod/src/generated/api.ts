@@ -199,7 +199,7 @@ export const GetOrderResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.enum(['paystack', 'payoneer']),
   "paymentReference": zod.string().nullable(),
@@ -318,7 +318,7 @@ export const GetAdminDashboardResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.enum(['paystack', 'payoneer']),
   "paymentReference": zod.string().nullable(),
@@ -514,7 +514,7 @@ export const DeleteBookResponse = zod.void()
  * @summary List customer orders
  */
 export const ListAdminOrdersQueryParams = zod.object({
-  "status": zod.enum(['pending', 'paid', 'failed']).optional()
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']).optional()
 })
 
 export const ListAdminOrdersResponseItem = zod.object({
@@ -524,7 +524,7 @@ export const ListAdminOrdersResponseItem = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.enum(['paystack', 'payoneer']),
   "paymentReference": zod.string().nullable(),
@@ -559,7 +559,42 @@ export const GetAdminOrderResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
+  "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
+  "deliveryEmailSent": zod.boolean(),
+  "downloaded": zod.boolean(),
+  "createdAt": zod.string(),
+  "paidAt": zod.string().nullable(),
+  "items": zod.array(zod.object({
+  "bookId": zod.string(),
+  "title": zod.string(),
+  "author": zod.string(),
+  "price": zod.number(),
+  "format": zod.string(),
+  "downloadUrl": zod.string().nullable(),
+  "downloaded": zod.boolean()
+}))
+})
+
+
+/**
+ * Marks a pending manual payment as confirmed after the librarian verifies it in Paystack or Payoneer.
+ * @summary Confirm a manually reported payment and fulfill the order
+ */
+export const ConfirmAdminOrderParams = zod.object({
+  "orderId": zod.coerce.string()
+})
+
+export const ConfirmAdminOrderResponse = zod.object({
+  "id": zod.string(),
+  "reference": zod.string(),
+  "email": zod.string(),
+  "country": zod.string(),
+  "currency": zod.string(),
+  "subtotal": zod.number(),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.enum(['paystack', 'payoneer']),
   "paymentReference": zod.string().nullable(),
