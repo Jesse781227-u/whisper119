@@ -5,11 +5,12 @@ import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, Refresh
 import {
   getGetAdminDashboardQueryKey, getListAdminBooksQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
-  useCreateBook, useUpdateBook, useRequestUploadUrl,
+  useCreateBook, useUpdateBook,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
-import { firebaseDb } from "@/lib/firebase"
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage"
+import { firebaseDb, firebaseStorage } from "@/lib/firebase"
 import type { Book, BookInput, BookInputFormat, BookUpdate, Order } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { GENRE_CATEGORIES } from "@/data/catalog"
@@ -66,7 +67,6 @@ type BookFormProps = { book?: Book; onDone: () => void }
 function BookForm({ book, onDone }: BookFormProps) {
   const createBook = useCreateBook()
   const updateBook = useUpdateBook()
-  const requestUploadUrl = useRequestUploadUrl()
   const queryClient = useQueryClient()
   const [title, setTitle] = useState(book?.title ?? "")
   const [author, setAuthor] = useState(book?.author ?? "")
@@ -81,13 +81,23 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   async function uploadFile(file: File) {
-    const response = await requestUploadUrl.mutateAsync({ data: { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" } })
-    if (!response?.uploadURL || !response.objectPath) {
-      throw new Error("The upload service returned an empty response. Please try again.")
+    if (!firebaseStorage) {
+      throw new Error("Firebase Storage is not configured. Check the Firebase environment settings and try again.")
     }
-    const upload = await fetch(response.uploadURL, { method: "PUT", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file })
-    if (!upload.ok) throw new Error(`Could not upload ${file.name}.`)
-    return response.objectPath
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-")
+    const folder = file.type.startsWith("image/") ? "covers" : "ebooks"
+    const storageRef = ref(firebaseStorage, `${folder}/${crypto.randomUUID()}-${safeName}`)
+
+    try {
+      await uploadBytes(storageRef, file, {
+        contentType: file.type || "application/octet-stream",
+      })
+      return await getDownloadURL(storageRef)
+    } catch (uploadError) {
+      console.error("Firebase Storage upload failed", uploadError)
+      throw new Error(`Could not upload ${file.name}. Check your admin access and try again.`)
+    }
   }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(null)
@@ -115,7 +125,7 @@ function BookForm({ book, onDone }: BookFormProps) {
       onDone()
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "Could not save this title.") }
   }
-  const pending = createBook.isPending || updateBook.isPending || requestUploadUrl.isPending
+  const pending = createBook.isPending || updateBook.isPending
   return <section className="rounded-2xl border border-primary/25 bg-card p-5 shadow-lg shadow-primary/5 sm:p-7"><div className="flex items-start gap-3 border-b border-border pb-5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{book ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}</span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{book ? "Edit title" : "New title"}</p><h2 className="mt-1 text-xl font-extrabold">{book ? "Refine this listing" : "Add a book to the shelf"}</h2></div></div>
     <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
       <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>

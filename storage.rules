@@ -1,0 +1,27 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && firestore.exists(
+          /databases/(default)/documents/admins/$(request.auth.token.email.lower())
+        );
+    }
+
+    match /covers/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /ebooks/{fileName} {
+      allow read: if false;
+      allow write: if isAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

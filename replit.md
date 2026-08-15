@@ -13,7 +13,7 @@ Whisper 119 is a boutique, single-seller digital bookstore for international rea
 - Required env: `DATABASE_URL`, `SESSION_SECRET`
 - Required for checkout: `PAYSTACK_SECRET_KEY`
 - Required for admin login: `ADMIN_EMAIL`, `ADMIN_PASSWORD`
-- Required for attachment delivery: `SMTP_HOST`, `SMTP_PORT` (optional, defaults to 587), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- Required for attachment delivery: `SMTP_HOST`, `SMTP_PORT` (optional, defaults to 587), `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM_ADDRESS`
 - Object Storage values are provisioned by Replit: `DEFAULT_OBJECT_STORAGE_BUCKET_ID`, `PRIVATE_OBJECT_DIR`, and `PUBLIC_OBJECT_SEARCH_PATHS`
 
 ## Stack
@@ -40,8 +40,8 @@ Whisper 119 is a boutique, single-seller digital bookstore for international rea
 
 - Paystack payment initialization and confirmation are server-owned. A client redirect never marks an order paid.
 - The Paystack webhook verifies the `x-paystack-signature`, calls Paystack's verify endpoint, then marks the order paid.
-- Ebook files remain private in Object Storage and are attached to the delivery email; the confirmation page deliberately has no download button.
-- Cover objects can be served publicly, but ebook object paths are rejected by the HTTP storage route.
+- Ebook files are uploaded from the admin browser to Firebase Storage and attached to the delivery email; the confirmation page deliberately has no download button.
+- Cover objects can be served publicly, while ebook objects are never exposed as download links.
 - Cart and light/dark theme preferences are local browser state; catalogue, orders, and admin data are database-backed.
 - Firebase reader authentication is prepared for email/password and Google sign-in through `VITE_FIREBASE_*` public configuration variables. Firestore rules deny client-side writes to books, orders, and subscribers; privileged Firestore synchronization requires a server credential setup before it is enabled.
 - Firebase reader forms use the Firebase Web SDK directly. No Replit connector is involved in the authentication path, and the former account-page connection wording was application fallback copy rather than a Firebase SDK error.
