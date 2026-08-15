@@ -45,7 +45,9 @@ export interface Book {
   description: string;
   format: BookFormat;
   /** @nullable */
-  paymentLink: string | null;
+  paystackLink: string | null;
+  /** @nullable */
+  payoneerLink: string | null;
   /** @nullable */
   coverUrl: string | null;
   fileName: string;
@@ -94,7 +96,9 @@ export interface BookInput {
   description: string;
   format: BookInputFormat;
   /** @nullable */
-  paymentLink: string | null;
+  paystackLink: string | null;
+  /** @nullable */
+  payoneerLink: string | null;
   /** @nullable */
   coverObjectPath: string | null;
   /** @minLength 1 */
@@ -145,7 +149,9 @@ export interface BookUpdate {
   description?: string;
   format?: BookUpdateFormat;
   /** @nullable */
-  paymentLink?: string | null;
+  paystackLink?: string | null;
+  /** @nullable */
+  payoneerLink?: string | null;
   /** @nullable */
   coverObjectPath?: string | null;
   /** @minLength 1 */

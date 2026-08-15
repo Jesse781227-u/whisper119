@@ -23,16 +23,16 @@ import { initializePaystack } from "../lib/payments";
 
 const router: IRouter = Router();
 
-function validatePaymentLink(paymentLink: string | null | undefined): string | null | undefined {
-  if (paymentLink === undefined || paymentLink === null || paymentLink.trim() === "") {
-    return paymentLink === undefined ? undefined : null;
+function validateExternalLink(link: string | null | undefined): string | null | undefined {
+  if (link === undefined || link === null || link.trim() === "") {
+    return link === undefined ? undefined : null;
   }
   try {
-    const url = new URL(paymentLink);
+    const url = new URL(link);
     if (!["http:", "https:"].includes(url.protocol)) throw new Error("Unsupported protocol");
-    return paymentLink;
+    return link;
   } catch {
-    throw new Error("Payment link must be a valid HTTP or HTTPS URL.");
+    throw new Error("Payment links must be valid HTTP or HTTPS URLs.");
   }
 }
 
@@ -85,7 +85,8 @@ router.post("/admin/books", async (req, res): Promise<void> => {
     return;
   }
   try {
-    validatePaymentLink(parsed.data.paymentLink);
+    validateExternalLink(parsed.data.paystackLink);
+    validateExternalLink(parsed.data.payoneerLink);
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : "Invalid payment link." });
     return;
@@ -112,7 +113,8 @@ router.patch("/admin/books/:bookId", async (req, res): Promise<void> => {
     return;
   }
   try {
-    validatePaymentLink(parsed.data.paymentLink);
+    validateExternalLink(parsed.data.paystackLink);
+    validateExternalLink(parsed.data.payoneerLink);
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : "Invalid payment link." });
     return;
