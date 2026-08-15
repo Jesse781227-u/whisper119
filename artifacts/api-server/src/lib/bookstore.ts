@@ -2,6 +2,9 @@ import { and, desc, eq, ilike, inArray, lte, or } from "drizzle-orm";
 import { db, booksTable, orderItemsTable, ordersTable, type Book, type Order, type OrderItem } from "@workspace/db";
 
 export function coverUrl(book: Book): string | null {
+  if (book.coverObjectPath?.startsWith("http://") || book.coverObjectPath?.startsWith("https://")) {
+    return book.coverObjectPath;
+  }
   if (book.coverObjectPath?.startsWith("/covers/")) {
     return book.coverObjectPath;
   }
