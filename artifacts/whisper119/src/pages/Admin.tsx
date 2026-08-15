@@ -82,6 +82,9 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [error, setError] = useState<string | null>(null)
   async function uploadFile(file: File) {
     const response = await requestUploadUrl.mutateAsync({ data: { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" } })
+    if (!response?.uploadURL || !response.objectPath) {
+      throw new Error("The upload service returned an empty response. Please try again.")
+    }
     const upload = await fetch(response.uploadURL, { method: "PUT", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file })
     if (!upload.ok) throw new Error(`Could not upload ${file.name}.`)
     return response.objectPath
