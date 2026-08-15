@@ -11,6 +11,8 @@ export const ordersTable = pgTable("orders", {
   subtotal: numeric("subtotal", { precision: 10, scale: 2, mode: "number" }).notNull(),
   status: text("status").notNull().default("pending"),
   paymentStatus: text("payment_status").notNull().default("pending"),
+  paymentMethod: text("payment_method").notNull().default("paystack"),
+  paymentReference: text("payment_reference"),
   deliveryEmailSent: boolean("delivery_email_sent").notNull().default(false),
   downloaded: boolean("downloaded").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

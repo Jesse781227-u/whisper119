@@ -63,6 +63,8 @@ export function orderResponse(order: Order, items: OrderItem[]) {
     subtotal: order.subtotal,
     status: order.status,
     paymentStatus: order.paymentStatus,
+    paymentMethod: order.paymentMethod,
+    paymentReference: order.paymentReference,
     deliveryEmailSent: order.deliveryEmailSent,
     downloaded: order.downloaded,
     createdAt: order.createdAt.toISOString(),

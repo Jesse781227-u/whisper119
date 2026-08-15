@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OrderItem } from './orderItem';
+import type { OrderPaymentMethod } from './orderPaymentMethod';
 import type { OrderStatus } from './orderStatus';
 
 export interface Order {
@@ -17,6 +18,9 @@ export interface Order {
   subtotal: number;
   status: OrderStatus;
   paymentStatus: string;
+  paymentMethod: OrderPaymentMethod;
+  /** @nullable */
+  paymentReference: string | null;
   deliveryEmailSent: boolean;
   downloaded: boolean;
   createdAt: string;

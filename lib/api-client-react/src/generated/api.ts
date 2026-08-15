@@ -37,6 +37,8 @@ import type {
   Order,
   OrderInput,
   PageViewInput,
+  PaymentConfirmation,
+  PaymentConfirmationInput,
   PaystackWebhook,
   StorefrontSummary,
   UnauthorizedResponse,
@@ -457,6 +459,77 @@ export const useCreateOrder = <TError = ErrorType<BadRequestResponse | ErrorResp
         TContext
       > => {
       return useMutation(getCreateOrderMutationOptions(options));
+    }
+
+export const getConfirmPaymentUrl = () => {
+
+
+
+
+  return `/api/orders/confirm-payment`
+}
+
+/**
+ * @summary Submit a customer payment confirmation for review
+ */
+export const confirmPayment = async (paymentConfirmationInput: PaymentConfirmationInput, options?: Parameters<typeof customFetch>[1]): Promise<PaymentConfirmation> => {
+
+  return customFetch<PaymentConfirmation>(getConfirmPaymentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(paymentConfirmationInput)
+  }
+);}
+
+
+
+
+
+export const getConfirmPaymentMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPayment>>, TError,{data: BodyType<PaymentConfirmationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmPayment>>, TError,{data: BodyType<PaymentConfirmationInput>}, TContext> => {
+
+const mutationKey = ['confirmPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmPayment>>, {data: BodyType<PaymentConfirmationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmPayment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof confirmPayment>>>
+    export type ConfirmPaymentMutationBody = BodyType<PaymentConfirmationInput>
+    export type ConfirmPaymentMutationError = ErrorType<BadRequestResponse | NotFoundResponse>
+
+    /**
+ * @summary Submit a customer payment confirmation for review
+ */
+export const useConfirmPayment = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPayment>>, TError,{data: BodyType<PaymentConfirmationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmPayment>>,
+        TError,
+        {data: BodyType<PaymentConfirmationInput>},
+        TContext
+      > => {
+      return useMutation(getConfirmPaymentMutationOptions(options));
     }
 
 export const getGetOrderUrl = (orderId: string,) => {

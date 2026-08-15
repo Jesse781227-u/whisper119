@@ -198,6 +198,55 @@ export interface OrderInput {
   bookIds: string[];
 }
 
+export type PaymentConfirmationInputPaymentMethod = typeof PaymentConfirmationInputPaymentMethod[keyof typeof PaymentConfirmationInputPaymentMethod];
+
+
+export const PaymentConfirmationInputPaymentMethod = {
+  paystack: 'paystack',
+  payoneer: 'payoneer',
+} as const;
+
+export interface PaymentConfirmationInput {
+  /** @minLength 3 */
+  email: string;
+  /** @minLength 1 */
+  bookId: string;
+  paymentMethod: PaymentConfirmationInputPaymentMethod;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  paymentReference: string;
+}
+
+export type PaymentConfirmationPaymentMethod = typeof PaymentConfirmationPaymentMethod[keyof typeof PaymentConfirmationPaymentMethod];
+
+
+export const PaymentConfirmationPaymentMethod = {
+  paystack: 'paystack',
+  payoneer: 'payoneer',
+} as const;
+
+export type PaymentConfirmationStatus = typeof PaymentConfirmationStatus[keyof typeof PaymentConfirmationStatus];
+
+
+export const PaymentConfirmationStatus = {
+  pending: 'pending',
+} as const;
+
+export interface PaymentConfirmation {
+  orderId: string;
+  orderReference: string;
+  bookId: string;
+  bookTitle: string;
+  /** @minLength 3 */
+  email: string;
+  paymentMethod: PaymentConfirmationPaymentMethod;
+  paymentReference: string;
+  status: PaymentConfirmationStatus;
+  createdAt: string;
+}
+
 export interface CheckoutSession {
   orderId: string;
   reference: string;
@@ -212,6 +261,14 @@ export const OrderStatus = {
   pending: 'pending',
   paid: 'paid',
   failed: 'failed',
+} as const;
+
+export type OrderPaymentMethod = typeof OrderPaymentMethod[keyof typeof OrderPaymentMethod];
+
+
+export const OrderPaymentMethod = {
+  paystack: 'paystack',
+  payoneer: 'payoneer',
 } as const;
 
 export interface OrderItem {
@@ -234,6 +291,9 @@ export interface Order {
   subtotal: number;
   status: OrderStatus;
   paymentStatus: string;
+  paymentMethod: OrderPaymentMethod;
+  /** @nullable */
+  paymentReference: string | null;
   deliveryEmailSent: boolean;
   downloaded: boolean;
   createdAt: string;
