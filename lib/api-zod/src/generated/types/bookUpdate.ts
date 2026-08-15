@@ -28,7 +28,9 @@ export interface BookUpdate {
   description?: string;
   format?: BookUpdateFormat;
   /** @nullable */
-  paymentLink?: string | null;
+  paystackLink?: string | null;
+  /** @nullable */
+  payoneerLink?: string | null;
   /** @nullable */
   coverObjectPath?: string | null;
   /** @minLength 1 */
