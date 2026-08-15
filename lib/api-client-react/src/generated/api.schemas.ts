@@ -192,15 +192,6 @@ export interface OrderInput {
   bookIds: string[];
 }
 
-export interface NewsletterInput {
-  /** @minLength 3 */
-  email: string;
-}
-
-export interface NewsletterResponse {
-  subscribed: boolean;
-}
-
 export interface CheckoutSession {
   orderId: string;
   reference: string;

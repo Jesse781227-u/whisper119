@@ -29,8 +29,6 @@ export * from './healthStatus';
 export * from './listAdminOrdersParams';
 export * from './listBooksParams';
 export * from './maxPriceQueryParameter';
-export * from './newsletterInput';
-export * from './newsletterResponse';
 export * from './notFoundResponse';
 export * from './order';
 export * from './orderInput';
