@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   GetAdminDashboardResponse,
   GetAdminOrderParams,
   GetAdminOrderResponse,
+  ConfirmAdminOrderPaymentParams,
+  ConfirmAdminOrderPaymentResponse,
   GetAdminSessionResponse,
   ListAdminBooksResponse,
   ListAdminOrdersQueryParams,
@@ -20,6 +22,7 @@ import { analyticsEventsTable, booksTable, db, ordersTable } from "@workspace/db
 import { requireAdmin } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook } from "../lib/bookstore";
 import { initializePaystack } from "../lib/payments";
+import { deliverOrderEmail } from "../lib/delivery";
 
 const router: IRouter = Router();
 
@@ -56,7 +59,7 @@ router.get("/admin/dashboard", async (_req, res): Promise<void> => {
   const [sales] = await db.select({
     paidOrders: sql<number>`count(*)`,
     totalRevenue: sql<number>`coalesce(sum(${ordersTable.subtotal}), 0)`,
-  }).from(ordersTable).where(eq(ordersTable.status, "paid"));
+  }).from(ordersTable).where(inArray(ordersTable.status, ["paid", "fulfilled"]));
   const recent = await Promise.all(orders.slice(0, 8).map(async (order) => {
     const result = await getOrderById(order.id);
     return result ? orderResponse(result.order, result.items) : null;
@@ -172,6 +175,65 @@ router.get("/admin/orders/:orderId", async (req, res): Promise<void> => {
     return;
   }
   res.json(GetAdminOrderResponse.parse(orderResponse(result.order, result.items)));
+});
+
+router.post("/admin/orders/:orderId/confirm", async (req, res): Promise<void> => {
+  const parsed = ConfirmAdminOrderPaymentParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const result = await getOrderById(parsed.data.orderId);
+  if (!result) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+  if (result.order.status === "fulfilled") {
+    res.json(ConfirmAdminOrderPaymentResponse.parse(orderResponse(result.order, result.items)));
+    return;
+  }
+  if (result.order.status !== "pending" || !result.order.paymentReference) {
+    res.status(409).json({ error: "This order is not awaiting manual payment confirmation." });
+    return;
+  }
+
+  const [claimed] = await db.update(ordersTable)
+    .set({ status: "processing", paymentStatus: "confirmed", paidAt: new Date() })
+    .where(and(
+      eq(ordersTable.id, parsed.data.orderId),
+      eq(ordersTable.status, "pending"),
+      eq(ordersTable.paymentStatus, "pending"),
+    ))
+    .returning();
+  if (!claimed) {
+    res.status(409).json({ error: "This order is already being processed." });
+    return;
+  }
+
+  try {
+    await deliverOrderEmail(parsed.data.orderId);
+  } catch (error) {
+    req.log.error({ err: error, orderId: parsed.data.orderId }, "Manual order email delivery failed");
+    await db.update(ordersTable).set({ status: "pending", paymentStatus: "pending", paidAt: null }).where(eq(ordersTable.id, parsed.data.orderId));
+    res.status(503).json({ error: "Payment was not marked fulfilled because the delivery email could not be sent. Check mail settings and try again." });
+    return;
+  }
+
+  const [fulfilled] = await db.update(ordersTable)
+    .set({ status: "fulfilled", paymentStatus: "confirmed" })
+    .where(eq(ordersTable.id, parsed.data.orderId))
+    .returning();
+  if (!fulfilled) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+  const finalResult = await getOrderById(fulfilled.id);
+  if (!finalResult) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+  res.json(ConfirmAdminOrderPaymentResponse.parse(orderResponse(finalResult.order, finalResult.items)));
 });
 
 export default router;
