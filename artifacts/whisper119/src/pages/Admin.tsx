@@ -5,11 +5,12 @@ import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, Refresh
 import {
   getGetAdminDashboardQueryKey, getListAdminBooksQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
-  useCreateBook, useUpdateBook, useRequestUploadUrl,
+  useCreateBook, useUpdateBook,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
-import { firebaseDb } from "@/lib/firebase"
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage"
+import { firebaseDb, firebaseStorage } from "@/lib/firebase"
 import type { Book, BookInput, BookInputFormat, BookUpdate, Order } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { GENRE_CATEGORIES } from "@/data/catalog"
@@ -66,7 +67,6 @@ type BookFormProps = { book?: Book; onDone: () => void }
 function BookForm({ book, onDone }: BookFormProps) {
   const createBook = useCreateBook()
   const updateBook = useUpdateBook()
-  const requestUploadUrl = useRequestUploadUrl()
   const queryClient = useQueryClient()
   const [title, setTitle] = useState(book?.title ?? "")
   const [author, setAuthor] = useState(book?.author ?? "")
@@ -75,25 +75,36 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [priceNgn, setPriceNgn] = useState(String(book?.priceNgn ?? ""))
   const [category, setCategory] = useState<(typeof GENRE_CATEGORIES)[number]>((book?.category as (typeof GENRE_CATEGORIES)[number]) ?? "Romance")
   const [description, setDescription] = useState(book?.description ?? "")
-  const [paymentLink, setPaymentLink] = useState(book?.paymentLink ?? "")
+  const [paystackLink, setPaystackLink] = useState(book?.paystackLink ?? "")
+  const [payoneerLink, setPayoneerLink] = useState(book?.payoneerLink ?? "")
   const [format, setFormat] = useState<BookInputFormat>(book?.format ?? "EPUB")
   const [ebookFile, setEbookFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   async function uploadFile(file: File) {
-    const response = await requestUploadUrl.mutateAsync({ data: { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" } })
-    if (!response?.uploadURL || !response.objectPath) {
-      throw new Error("The upload service returned an empty response. Please try again.")
+    if (!firebaseStorage) {
+      throw new Error("Firebase Storage is not configured. Check the Firebase environment settings and try again.")
     }
-    const upload = await fetch(response.uploadURL, { method: "PUT", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file })
-    if (!upload.ok) throw new Error(`Could not upload ${file.name}.`)
-    return response.objectPath
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-")
+    const folder = file.type.startsWith("image/") ? "covers" : "ebooks"
+    const storageRef = ref(firebaseStorage, `${folder}/${crypto.randomUUID()}-${safeName}`)
+
+    try {
+      await uploadBytes(storageRef, file, {
+        contentType: file.type || "application/octet-stream",
+      })
+      return await getDownloadURL(storageRef)
+    } catch (uploadError) {
+      console.error("Firebase Storage upload failed", uploadError)
+      throw new Error(`Could not upload ${file.name}. Check your admin access and try again.`)
+    }
   }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(null)
     try {
       if (book) {
-        const data: BookUpdate = { title, description, price: Number(price), priceNgn: Number(priceNgn), paymentLink: paymentLink || null }
+        const data: BookUpdate = { title, description, price: Number(price), priceNgn: Number(priceNgn), paystackLink: paystackLink || null, payoneerLink: payoneerLink || null }
         if (ebookFile) {
           const extension = ebookFile.name.split(".").pop()?.toUpperCase()
           if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
@@ -107,7 +118,7 @@ function BookForm({ book, onDone }: BookFormProps) {
         const extension = ebookFile.name.split(".").pop()?.toUpperCase()
         if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
         const [fileObjectPath, coverObjectPath] = await Promise.all([uploadFile(ebookFile), coverFile ? uploadFile(coverFile) : Promise.resolve(null)])
-        const payload: BookInput = { title, author, slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), price: Number(price), priceNgn: Number(priceNgn), currency: "USD", category, description, format, paymentLink: paymentLink || null, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString() }
+        const payload: BookInput = { title, author, slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), price: Number(price), priceNgn: Number(priceNgn), currency: "USD", category, description, format, paystackLink: paystackLink || null, payoneerLink: payoneerLink || null, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString() }
         await createBook.mutateAsync({ data: payload })
       }
       await queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
@@ -115,7 +126,7 @@ function BookForm({ book, onDone }: BookFormProps) {
       onDone()
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "Could not save this title.") }
   }
-  const pending = createBook.isPending || updateBook.isPending || requestUploadUrl.isPending
+  const pending = createBook.isPending || updateBook.isPending
   return <section className="rounded-2xl border border-primary/25 bg-card p-5 shadow-lg shadow-primary/5 sm:p-7"><div className="flex items-start gap-3 border-b border-border pb-5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{book ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}</span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{book ? "Edit title" : "New title"}</p><h2 className="mt-1 text-xl font-extrabold">{book ? "Refine this listing" : "Add a book to the shelf"}</h2></div></div>
     <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
       <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>
@@ -128,7 +139,8 @@ function BookForm({ book, onDone }: BookFormProps) {
       <label><span className="mb-2 block text-xs font-bold">Ebook file {book && <span className="font-normal text-muted-foreground">(optional replacement)</span>}</span><input data-testid="input-book-file" required={!book} accept={format === "PDF" ? ".pdf,application/pdf" : ".epub,application/epub+zip"} type="file" onChange={e => setEbookFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
       {!book && <label><span className="mb-2 block text-xs font-bold">Cover image <span className="font-normal text-muted-foreground">(optional)</span></span><input accept="image/png,image/jpeg,image/webp" type="file" onChange={e => setCoverFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>}
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
-      <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">External checkout / info link <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payment-link" type="url" value={paymentLink} onChange={e => setPaymentLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">This informational URL can point to Paystack or Flutterwave checkout; it is not treated as payment confirmation.</span></label>
+       <label><span className="mb-2 block text-xs font-bold">Paystack link (Nigeria) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-paystack-link" type="url" value={paystackLink} onChange={e => setPaystackLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For Nigerian buyers. This link never confirms payment by itself.</span></label>
+       <label><span className="mb-2 block text-xs font-bold">Payoneer link (International) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payoneer-link" type="url" value={payoneerLink} onChange={e => setPayoneerLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For international buyers. This link never confirms payment by itself.</span></label>
       <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{pending ? "Saving…" : book ? "Save changes" : "Add title"}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
       {error && <p className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
     </form>

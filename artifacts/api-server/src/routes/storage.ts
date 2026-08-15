@@ -64,7 +64,9 @@ router.post(
       );
     } catch (error) {
       req.log.error({ err: error }, 'Error generating upload URL');
-      res.status(500).json({ error: 'Failed to generate upload URL' });
+      res.status(503).json({
+        error: 'The legacy object-storage upload service is unavailable. Uploads now use Firebase Storage.',
+      });
     }
   },
 );
