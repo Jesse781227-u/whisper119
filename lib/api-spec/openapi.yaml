@@ -412,6 +412,37 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /admin/orders/{orderId}/confirm:
+    post:
+      operationId: confirmAdminOrder
+      tags: [admin]
+      summary: Confirm a manually reported payment and fulfill the order
+      description: Marks a pending manual payment as confirmed after the librarian verifies it in Paystack or Payoneer.
+      parameters:
+        - $ref: "#/components/parameters/OrderIdPath"
+      responses:
+        "200":
+          description: Fulfilled order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Order cannot be confirmed in its current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Delivery email could not be sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
@@ -479,7 +510,7 @@ components:
       required: false
       schema:
         type: string
-        enum: [pending, paid, failed]
+        enum: [pending, paid, fulfilled, failed]
   responses:
     BadRequest:
       description: Invalid request
@@ -637,7 +668,7 @@ components:
         country: { type: string }
         currency: { type: string }
         subtotal: { type: number }
-        status: { type: string, enum: [pending, paid, failed] }
+        status: { type: string, enum: [pending, paid, fulfilled, failed] }
         paymentStatus: { type: string }
         paymentMethod: { type: string, enum: [paystack, payoneer] }
         paymentReference: { type: ["string", "null"] }

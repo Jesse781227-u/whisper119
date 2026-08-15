@@ -5,6 +5,30 @@ import { ObjectStorageService } from "./objectStorage";
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
+export async function confirmManualOrder(orderId: string): Promise<{ order: typeof ordersTable.$inferSelect; items: typeof orderItemsTable.$inferSelect[] } | null> {
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
+  if (!order) return null;
+  if (order.status === "fulfilled") {
+    const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
+    return { order, items };
+  }
+  if (order.status !== "pending") {
+    throw new Error("ORDER_NOT_PENDING");
+  }
+
+  const [updated] = await db.update(ordersTable)
+    .set({
+      status: "fulfilled",
+      paymentStatus: "confirmed",
+      paidAt: new Date(),
+    })
+    .where(eq(ordersTable.id, order.id))
+    .returning();
+  if (!updated) return null;
+  const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, updated.id));
+  return { order: updated, items };
+}
+
 export async function deliverOrderEmail(orderId: string): Promise<void> {
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
   if (!order || order.status !== "paid" || order.deliveryEmailSent) return;

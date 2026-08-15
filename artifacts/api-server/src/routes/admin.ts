@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, or, sql } from "drizzle-orm";
 import {
+  ConfirmAdminOrderParams,
+  ConfirmAdminOrderResponse,
   GetAdminDashboardResponse,
   GetAdminOrderParams,
   GetAdminOrderResponse,
@@ -19,6 +21,7 @@ import {
 import { analyticsEventsTable, booksTable, db, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook } from "../lib/bookstore";
+import { confirmManualOrder } from "../lib/delivery";
 import { initializePaystack } from "../lib/payments";
 
 const router: IRouter = Router();
@@ -56,7 +59,7 @@ router.get("/admin/dashboard", async (_req, res): Promise<void> => {
   const [sales] = await db.select({
     paidOrders: sql<number>`count(*)`,
     totalRevenue: sql<number>`coalesce(sum(${ordersTable.subtotal}), 0)`,
-  }).from(ordersTable).where(eq(ordersTable.status, "paid"));
+  }).from(ordersTable).where(or(eq(ordersTable.status, "paid"), eq(ordersTable.status, "fulfilled")));
   const recent = await Promise.all(orders.slice(0, 8).map(async (order) => {
     const result = await getOrderById(order.id);
     return result ? orderResponse(result.order, result.items) : null;
@@ -172,6 +175,30 @@ router.get("/admin/orders/:orderId", async (req, res): Promise<void> => {
     return;
   }
   res.json(GetAdminOrderResponse.parse(orderResponse(result.order, result.items)));
+});
+
+router.post("/admin/orders/:orderId/confirm", async (req, res): Promise<void> => {
+  const parsed = ConfirmAdminOrderParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  try {
+    const result = await confirmManualOrder(parsed.data.orderId);
+    if (!result) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+    res.json(ConfirmAdminOrderResponse.parse(orderResponse(result.order, result.items)));
+  } catch (error) {
+    if (error instanceof Error && error.message === "ORDER_NOT_PENDING") {
+      res.status(409).json({ error: "Only pending orders can be confirmed." });
+      return;
+    }
+    req.log.error({ err: error, orderId: parsed.data.orderId }, "Admin order confirmation failed");
+    res.status(503).json({ error: "The order could not be confirmed. Please try again." });
+  }
 });
 
 export default router;

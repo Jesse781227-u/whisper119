@@ -260,6 +260,7 @@ export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
 export const OrderStatus = {
   pending: 'pending',
   paid: 'paid',
+  fulfilled: 'fulfilled',
   failed: 'failed',
 } as const;
 
@@ -396,6 +397,7 @@ export type StatusQueryParameter = typeof StatusQueryParameter[keyof typeof Stat
 export const StatusQueryParameter = {
   pending: 'pending',
   paid: 'paid',
+  fulfilled: 'fulfilled',
   failed: 'failed',
 } as const;
 
