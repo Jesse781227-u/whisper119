@@ -123,22 +123,6 @@ export const GetStorefrontSummaryResponse = zod.object({
 
 
 /**
- * @summary Subscribe to the Whisper 119 newsletter
- */
-export const subscribeNewsletterBodyEmailMin = 3;
-
-
-
-export const SubscribeNewsletterBody = zod.object({
-  "email": zod.string().min(subscribeNewsletterBodyEmailMin)
-})
-
-export const SubscribeNewsletterResponse = zod.object({
-  "subscribed": zod.boolean()
-})
-
-
-/**
  * @summary Create a pending order and initialize payment
  */
 export const createOrderBodyEmailMin = 3;

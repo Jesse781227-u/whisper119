@@ -6,7 +6,6 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { CartProvider } from '@/components/cart-provider';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-import { NewsletterModal } from '@/components/layout/NewsletterModal';
 import NotFound from '@/pages/not-found';
 import Home from '@/pages/Home';
 import About from '@/pages/About';
@@ -158,7 +157,6 @@ function AppShell() {
       {!isAdmin && <Navbar />}
       <Router />
       {!isAdmin && <Footer />}
-      {!isAdmin && location === "/" && <NewsletterModal />}
     </>
   );
 }
