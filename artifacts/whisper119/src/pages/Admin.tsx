@@ -9,7 +9,7 @@ import {
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage"
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage"
 import { firebaseDb, firebaseStorage } from "@/lib/firebase"
 import type { Book, BookInput, BookInputFormat, BookUpdate, Order } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
@@ -94,8 +94,10 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [phase, setPhase] = useState<BookFormPhase>("idle")
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadLabel, setUploadLabel] = useState("")
 
-  async function uploadFile(file: File) {
+  function uploadFile(file: File, uploadId: string, onProgress: (uploadId: string, transferred: number, total: number, fileName: string) => void) {
     if (!firebaseStorage) {
       throw new Error("Firebase Storage is not configured. Check the Firebase environment settings and try again.")
     }
@@ -104,15 +106,37 @@ function BookForm({ book, onDone }: BookFormProps) {
     const folder = file.type.startsWith("image/") ? "covers" : "ebooks"
     const storageRef = ref(firebaseStorage, `${folder}/${crypto.randomUUID()}-${safeName}`)
 
-    try {
-      await uploadBytes(storageRef, file, {
+    return new Promise<string>((resolve, reject) => {
+      const task = uploadBytesResumable(storageRef, file, {
         contentType: file.type || "application/octet-stream",
       })
-      return await getDownloadURL(storageRef)
-    } catch (uploadError) {
-      console.error("Firebase Storage upload failed", uploadError)
-      throw new Error(`Could not upload ${file.name}. Check your admin access and try again.`)
-    }
+      const timeout = window.setTimeout(() => {
+        task.cancel()
+        reject(new Error(`Uploading ${file.name} timed out. Check your connection and try again.`))
+      }, 5 * 60 * 1000)
+
+      task.on("state_changed", snapshot => {
+        onProgress(uploadId, snapshot.bytesTransferred, snapshot.totalBytes, file.name)
+      }, uploadError => {
+        window.clearTimeout(timeout)
+        console.error("Firebase Storage upload failed", uploadError)
+        reject(new Error(`Could not upload ${file.name}. Check your admin access and try again.`))
+      }, async () => {
+        try {
+          const downloadUrl = await Promise.race([
+            getDownloadURL(storageRef),
+            new Promise<never>((_, rejectUrl) => window.setTimeout(() => rejectUrl(new Error(`Firebase did not return a download URL for ${file.name}. Check Storage read permissions and try again.`)), 30_000)),
+          ])
+          window.clearTimeout(timeout)
+          onProgress(uploadId, 1, 1, file.name)
+          resolve(downloadUrl)
+        } catch (downloadError) {
+          window.clearTimeout(timeout)
+          console.error("Firebase Storage download URL lookup failed", downloadError)
+          reject(downloadError)
+        }
+      })
+    })
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -155,6 +179,14 @@ function BookForm({ book, onDone }: BookFormProps) {
         if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
       }
 
+      const progressByFile = new Map<string, number>()
+      const reportUploadProgress = (uploadId: string, transferred: number, total: number, fileName: string) => {
+        progressByFile.set(uploadId, total > 0 ? transferred / total : 0)
+        const overallProgress = [...progressByFile.values()].reduce((sum, value) => sum + value, 0) / progressByFile.size
+        setUploadProgress(Math.min(100, Math.round(overallProgress * 100)))
+        setUploadLabel(fileName)
+      }
+
       if (book) {
         const data: BookUpdate = {
           title: titleValue,
@@ -166,7 +198,7 @@ function BookForm({ book, onDone }: BookFormProps) {
         }
         if (ebookFile) {
           setPhase("uploading")
-          data.fileObjectPath = await uploadFile(ebookFile)
+          data.fileObjectPath = await uploadFile(ebookFile, "ebook", reportUploadProgress)
           data.fileName = ebookFile.name
           data.format = format
         }
@@ -176,7 +208,12 @@ function BookForm({ book, onDone }: BookFormProps) {
         const ebook = ebookFile
         if (!ebook) throw new Error("Choose the ebook file before saving this book.")
         setPhase("uploading")
-        const [fileObjectPath, coverObjectPath] = await Promise.all([uploadFile(ebook), coverFile ? uploadFile(coverFile) : Promise.resolve(null)])
+        progressByFile.set("ebook", 0)
+        if (coverFile) progressByFile.set("cover", 0)
+        const [fileObjectPath, coverObjectPath] = await Promise.all([
+          uploadFile(ebook, "ebook", reportUploadProgress),
+          coverFile ? uploadFile(coverFile, "cover", reportUploadProgress) : Promise.resolve(null),
+        ])
         setPhase("saving")
         const payload: BookInput = {
           title: titleValue,
@@ -215,6 +252,8 @@ function BookForm({ book, onDone }: BookFormProps) {
       })
     } finally {
       setPhase("idle")
+      setUploadProgress(0)
+      setUploadLabel("")
     }
   }
 
@@ -242,7 +281,8 @@ function BookForm({ book, onDone }: BookFormProps) {
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
        <label><span className="mb-2 block text-xs font-bold">Paystack link (Nigeria) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-paystack-link" type="url" value={paystackLink} onChange={e => setPaystackLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For Nigerian buyers. This link never confirms payment by itself.</span></label>
        <label><span className="mb-2 block text-xs font-bold">Payoneer link (International) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payoneer-link" type="url" value={payoneerLink} onChange={e => setPayoneerLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For international buyers. This link never confirms payment by itself.</span></label>
-       <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{submitLabel}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
+        {phase === "uploading" && <div className="space-y-2 sm:col-span-2" role="status" aria-live="polite"><div className="flex items-center justify-between text-xs font-semibold"><span>Uploading {uploadLabel || "files"}…</span><span>{uploadProgress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-primary/10" aria-label={`Upload progress: ${uploadProgress}%`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={uploadProgress}><div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${uploadProgress}%` }} /></div></div>}
+        <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{submitLabel}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
        {error && <p role="alert" className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
     </form>
   </section>
