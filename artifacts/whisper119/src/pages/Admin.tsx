@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter"
 import { useQueryClient } from "@tanstack/react-query"
 import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Upload, Users, Eye, WalletCards } from "lucide-react"
 import {
-  getGetAdminDashboardQueryKey, getListAdminBooksQueryKey,
+  getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
   useCreateBook, useUpdateBook, useConfirmAdminOrder,
 } from "@workspace/api-client-react"
@@ -264,6 +264,8 @@ function BookForm({ book, onDone }: BookFormProps) {
       }
       await queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
       await queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
+      await queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() })
+      await queryClient.invalidateQueries({ queryKey: getGetStorefrontSummaryQueryKey() })
       toast({
         title: book ? "Book updated" : "Book added",
         description: `"${titleValue}" is now in the catalogue.`,
