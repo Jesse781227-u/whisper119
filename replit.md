@@ -1,6 +1,6 @@
 # Whisper 119
 
-Whisper 119 is a boutique, single-seller digital bookstore for international readers buying  PDF and EPUB ebooks.
+Whisper 119 is a single-seller digital bookstore for international readers buying  PDF and EPUB ebooks.
 
 ## Run & Operate
 

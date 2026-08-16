@@ -9,7 +9,7 @@ import {
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
-import { firebaseAuth, firebaseDb } from "@/lib/firebase"
+import { firebaseDb } from "@/lib/firebase"
 import type { Book, BookInput, BookInputFormat, BookUpdate } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { GENRE_CATEGORIES } from "@/data/catalog"
@@ -80,36 +80,41 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [ebookFile, setEbookFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
-  async function uploadFile(file: File) {
-    const token = await firebaseAuth?.currentUser?.getIdToken()
-    const response = await fetch("/api/storage/uploads/request-url", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type || "application/octet-stream" }),
+  const [uploadProgress, setUploadProgress] = useState<{ fileName: string; percent: number } | null>(null)
+  async function uploadFile(file: File, completedFiles: number, totalFiles: number) {
+    const { uploadURL, objectPath } = await requestUploadUrl.mutateAsync({ data: { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" } })
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open("PUT", uploadURL)
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
+      xhr.upload.addEventListener("progress", (event) => {
+        if (!event.lengthComputable) return
+        const filePercent = Math.round((event.loaded / event.total) * 100)
+        setUploadProgress({ fileName: file.name, percent: Math.round(((completedFiles + filePercent / 100) / totalFiles) * 100) })
+      })
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setUploadProgress({ fileName: file.name, percent: Math.round(((completedFiles + 1) / totalFiles) * 100) })
+          resolve()
+        } else reject(new Error(`Could not upload ${file.name} (HTTP ${xhr.status}).`))
+      })
+      xhr.addEventListener("error", () => reject(new Error(`Could not upload ${file.name}. Check the storage connection and try again.`)))
+      xhr.addEventListener("abort", () => reject(new Error(`The upload of ${file.name} was cancelled.`)))
+      xhr.send(file)
     })
-    const payload = await response.json().catch(() => null) as { uploadURL?: unknown; objectPath?: unknown; error?: unknown } | null
-    if (!response.ok) {
-      throw new Error(typeof payload?.error === "string" ? payload.error : "Could not prepare the upload. Please sign in again and try again.")
-    }
-    if (typeof payload?.uploadURL !== "string" || typeof payload.objectPath !== "string") {
-      throw new Error("The server returned an invalid upload response. Please try again.")
-    }
-    const upload = await fetch(payload.uploadURL, { method: "PUT", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file })
-    if (!upload.ok) throw new Error(`Could not upload ${file.name}.`)
-    return payload.objectPath
+    return objectPath
   }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(null)
     try {
+      const filesToUpload = [ebookFile, ...(!book && coverFile ? [coverFile] : [])].filter((file): file is File => Boolean(file))
+      setUploadProgress(filesToUpload.length ? { fileName: filesToUpload[0].name, percent: 0 } : null)
       if (book) {
         const data: BookUpdate = { title, description, price: Number(price), priceNgn: Number(priceNgn), paymentLink: paymentLink || null }
         if (ebookFile) {
           const extension = ebookFile.name.split(".").pop()?.toUpperCase()
           if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
-          data.fileObjectPath = await uploadFile(ebookFile)
+          data.fileObjectPath = await uploadFile(ebookFile, 0, 1)
           data.fileName = ebookFile.name
           data.format = format
         }
@@ -118,12 +123,14 @@ function BookForm({ book, onDone }: BookFormProps) {
         if (!ebookFile) throw new Error("Choose the ebook file before saving this title.")
         const extension = ebookFile.name.split(".").pop()?.toUpperCase()
         if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
-        const [fileObjectPath, coverObjectPath] = await Promise.all([uploadFile(ebookFile), coverFile ? uploadFile(coverFile) : Promise.resolve(null)])
+        const fileObjectPath = await uploadFile(ebookFile, 0, filesToUpload.length)
+        const coverObjectPath = coverFile ? await uploadFile(coverFile, 1, filesToUpload.length) : null
         const payload: BookInput = { title, author, slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), price: Number(price), priceNgn: Number(priceNgn), currency: "USD", category, description, format, paymentLink: paymentLink || null, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString() }
         await createBook.mutateAsync({ data: payload })
       }
       await queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
       await queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
+      setUploadProgress(null)
       onDone()
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "Could not save this title.") }
   }
@@ -142,6 +149,7 @@ function BookForm({ book, onDone }: BookFormProps) {
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">External checkout / info link <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payment-link" type="url" value={paymentLink} onChange={e => setPaymentLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">This link is shared as information and does not confirm payment.</span></label>
       <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{pending ? "Saving…" : book ? "Save changes" : "Add title"}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
+      {uploadProgress && <div className="sm:col-span-2 rounded-xl border border-primary/20 bg-primary/5 p-3"><div className="flex items-center justify-between gap-3 text-xs font-bold"><span className="truncate">Uploading {uploadProgress.fileName}</span><span>{uploadProgress.percent}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-primary/10"><div className="h-full rounded-full bg-primary transition-[width] duration-150" style={{ width: `${uploadProgress.percent}%` }} /></div></div>}
       {error && <p className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
     </form>
   </section>
