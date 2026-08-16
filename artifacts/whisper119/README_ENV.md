@@ -35,4 +35,6 @@ Set these values in the interactive prompt or in your shell environment before r
 - `VITE_FIREBASE_MESSAGING_SENDER_ID`
 - `VITE_FIREBASE_APP_ID`
 
+The API server uses the same Firebase Storage bucket through Google Cloud Storage. Configure `GCS_BUCKET_NAME` (or `FIREBASE_STORAGE_BUCKET`) and Google Cloud credentials using `GOOGLE_APPLICATION_CREDENTIALS`, or `GCS_CLIENT_EMAIL` and `GCS_PRIVATE_KEY`. The service account must be allowed to create signed URLs and read/write objects in that bucket.
+
 If you prefer CI builds to include Firebase configuration, set the corresponding repository secrets in GitHub and the provided CI workflow will pick them up at build time.

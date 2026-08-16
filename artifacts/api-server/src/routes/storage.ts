@@ -72,9 +72,9 @@ router.post(
 /**
  * GET /storage/public-objects/*
  *
- * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
+ * Serve public assets from the configured Google Cloud Storage bucket.
  * These are unconditionally public — no authentication or ACL checks.
- * IMPORTANT: Always provide this endpoint when object storage is set up.
+ * The bucket is configured through standard Google Cloud Storage credentials.
  */
 router.get(
   '/storage/public-objects/*filePath',
@@ -111,7 +111,7 @@ router.get(
 /**
  * GET /storage/objects/*
  *
- * Serve object entities from PRIVATE_OBJECT_DIR.
+ * Serve object entities from the configured Google Cloud Storage bucket.
  * These are served from a separate path from /public-objects and can optionally
  * be protected with authentication or ACL checks based on the use case.
  */
@@ -132,7 +132,7 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
     const objectFile =
       await objectStorageService.getObjectEntityFile(objectPath);
 
-    // --- Protected route example (uncomment when using replit-auth) ---
+    // --- Protected route example for authenticated ebook previews ---
     // if (!req.isAuthenticated()) {
     //   res.status(401).json({ error: "Unauthorized" });
     //   return;

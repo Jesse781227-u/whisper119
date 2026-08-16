@@ -12,9 +12,10 @@ Whisper 119 is a single-seller digital bookstore for international readers buyin
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL`, `SESSION_SECRET`
 - Required for checkout: `PAYSTACK_SECRET_KEY`
-- Required for admin login: `ADMIN_EMAIL`, `ADMIN_PASSWORD`
+- Required for admin login: Firebase web configuration plus an admin document in Firestore
 - Required for attachment delivery: `SMTP_HOST`, `SMTP_PORT` (optional, defaults to 587), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
-- Object Storage values are provisioned by Replit: `DEFAULT_OBJECT_STORAGE_BUCKET_ID`, `PRIVATE_OBJECT_DIR`, and `PUBLIC_OBJECT_SEARCH_PATHS`
+- Google Cloud Storage: `GCS_BUCKET_NAME` (or `FIREBASE_STORAGE_BUCKET`), `GCS_PROJECT_ID` (or `FIREBASE_PROJECT_ID`), and Google Application Default Credentials via `GOOGLE_APPLICATION_CREDENTIALS` or `GCS_CLIENT_EMAIL` plus `GCS_PRIVATE_KEY`
+- Configure bucket CORS with `gcloud storage buckets update gs://YOUR_BUCKET --cors-file=gcs-cors.json` before testing browser uploads.
 
 ## Stack
 
