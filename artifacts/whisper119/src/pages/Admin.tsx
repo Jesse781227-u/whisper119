@@ -117,7 +117,7 @@ function BookForm({ book, onDone }: BookFormProps) {
         const extension = ebookFile.name.split(".").pop()?.toUpperCase()
         if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
         const [fileObjectPath, coverObjectPath] = await Promise.all([uploadFile(ebookFile), coverFile ? uploadFile(coverFile) : Promise.resolve(null)])
-        const payload: BookInput = { title, author, slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), price: Number(price), priceNgn: Number(priceNgn), currency: "USD", category, description, format, paystackLink: paystackLink || null, payoneerLink: payoneerLink || null, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString() }
+        const payload: BookInput = { title, author, slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), price: Number(price), priceNgn: Number(priceNgn), currency: "USD", category, description, format, paystackLink: paystackLink || null, payoneerLink: payoneerLink || null, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString() }
         await createBook.mutateAsync({ data: payload })
       }
       await queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
