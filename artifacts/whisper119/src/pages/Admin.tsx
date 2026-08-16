@@ -97,7 +97,7 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [phase, setPhase] = useState<BookFormPhase>("idle")
-  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
 
   async function uploadFile(file: File, onProgress: UploadProgressHandler) {
     if (!firebaseStorage) {
@@ -139,11 +139,12 @@ function BookForm({ book, onDone }: BookFormProps) {
 
         unsubscribe = uploadTask.on(
           "state_changed",
-          snapshot => onProgress(snapshot.bytesTransferred, snapshot.totalBytes),
+          snapshot => onProgress(snapshot.bytesTransferred, snapshot.totalBytes || file.size),
           fail,
           async () => {
             if (settled) return
             try {
+              onProgress(file.size, file.size)
               const downloadUrl = await getDownloadURL(storageRef)
               settled = true
               clearUpload()
@@ -159,13 +160,17 @@ function BookForm({ book, onDone }: BookFormProps) {
     })
   }
 
-  async function uploadFiles(files: File[], onProgress: (progress: number) => void) {
+  async function uploadFiles(files: File[], onProgress: (progress: number | null) => void) {
     const totalBytes = files.reduce((total, file) => total + file.size, 0)
     const transferredBytes = files.map(() => 0)
-    onProgress(0)
+    onProgress(null)
 
     return Promise.all(files.map((file, index) => uploadFile(file, (bytesTransferred, fileTotalBytes) => {
       transferredBytes[index] = bytesTransferred
+      if (bytesTransferred <= 0 && fileTotalBytes <= 0) {
+        onProgress(100)
+        return
+      }
       const progress = totalBytes > 0
         ? Math.round((transferredBytes.reduce((total, bytes) => total + bytes, 0) / totalBytes) * 100)
         : fileTotalBytes > 0
@@ -178,7 +183,7 @@ function BookForm({ book, onDone }: BookFormProps) {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
-    setUploadProgress(0)
+    setUploadProgress(null)
     setPhase("validating")
 
     try {
@@ -296,7 +301,7 @@ function BookForm({ book, onDone }: BookFormProps) {
           : "Add book"
 
   return <section id="book-form" className="rounded-2xl border border-primary/25 bg-card p-5 shadow-lg shadow-primary/5 sm:p-7"><div className="flex items-start gap-3 border-b border-border pb-5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{book ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}</span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{book ? "Edit book" : "New book"}</p><h2 className="mt-1 text-xl font-extrabold">{book ? "Refine this listing" : "Add a book to the shelf"}</h2></div></div>
-    {phase === "uploading" && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status" aria-live="polite"><div className="flex items-center justify-between gap-3 text-sm"><p className="font-extrabold">Uploading files</p><p className="font-mono text-xs font-bold text-primary">{uploadProgress}%</p></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-primary/10" role="progressbar" aria-label="Book file upload progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={uploadProgress}><div className="h-full rounded-full bg-primary transition-[width] duration-200 ease-out" style={{ width: `${uploadProgress}%` }} /></div><p className="mt-2 text-xs text-muted-foreground">{uploadProgress === 100 ? "Upload complete. Preparing your book…" : "Keep this window open while the files upload."}</p></div>}
+     {phase === "uploading" && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status" aria-live="polite"><div className="flex items-center justify-between gap-3 text-sm"><p className="font-extrabold">Uploading files</p><p className="font-mono text-xs font-bold text-primary">{uploadProgress === null ? "Working…" : `${uploadProgress}%`}</p></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-primary/10" role="progressbar" aria-label="Book file upload progress" aria-valuemin={0} aria-valuemax={100} {...(uploadProgress === null ? { "aria-valuetext": "Upload in progress" } : { "aria-valuenow": uploadProgress })}><div className={uploadProgress === null ? "h-full w-1/3 rounded-full bg-primary animate-pulse" : "h-full rounded-full bg-primary transition-[width] duration-200 ease-out"} style={uploadProgress === null ? undefined : { width: `${uploadProgress}%` }} /></div><p className="mt-2 text-xs text-muted-foreground">{uploadProgress === null ? "Upload started. Waiting for transfer progress…" : uploadProgress === 100 ? "Upload complete. Preparing your book…" : "Keep this window open while the files upload."}</p></div>}
      <form onSubmit={submit} noValidate className="mt-6 grid gap-4 sm:grid-cols-2">
       <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>
       {!book && <label><span className="mb-2 block text-xs font-bold">Author</span><input data-testid="input-book-author" required value={author} onChange={e => setAuthor(e.target.value)} className={fieldClass} /></label>}
