@@ -16,7 +16,10 @@ service firebase.storage {
     }
 
     match /ebooks/{fileName} {
-      allow read: if false;
+      // The admin client needs to read the uploaded object metadata to obtain
+      // the tokenized URL stored with the book. The URL is not returned by
+      // public catalogue responses; ebook delivery still happens by email.
+      allow read: if isAdmin();
       allow write: if isAdmin();
     }
 

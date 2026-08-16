@@ -39,6 +39,13 @@ function validateExternalLink(link: string | null | undefined): string | null | 
   }
 }
 
+function isUniqueConstraintError(error: unknown): boolean {
+  return typeof error === "object"
+    && error !== null
+    && "code" in error
+    && (error as { code?: unknown }).code === "23505";
+}
+
 router.post("/admin/login", async (_req, res): Promise<void> => {
   res.status(410).json({ error: "Admin password login is disabled. Authenticate using Firebase and admin email access." });
 });
@@ -94,14 +101,28 @@ router.post("/admin/books", async (req, res): Promise<void> => {
     res.status(400).json({ error: error instanceof Error ? error.message : "Invalid payment link." });
     return;
   }
-  const [book] = await db.insert(booksTable).values({
-    id: randomUUID(),
-    ...parsed.data,
-    priceNgn: parsed.data.priceNgn,
-    fileObjectPath: parsed.data.fileObjectPath,
-    publishedAt: new Date(parsed.data.publishedAt),
-  }).returning();
-  res.status(201).json(CreateBookResponse.parse(publicBook(book)));
+  try {
+    const [book] = await db.insert(booksTable).values({
+      id: randomUUID(),
+      ...parsed.data,
+      priceNgn: parsed.data.priceNgn,
+      fileObjectPath: parsed.data.fileObjectPath,
+      publishedAt: new Date(parsed.data.publishedAt),
+    }).returning();
+    if (!book) {
+      req.log.error("Admin book creation returned no inserted row");
+      res.status(500).json({ error: "The book could not be added to the catalogue." });
+      return;
+    }
+    res.status(201).json(CreateBookResponse.parse(publicBook(book)));
+  } catch (error) {
+    req.log.error({ err: error, slug: parsed.data.slug }, "Admin book creation failed");
+    if (isUniqueConstraintError(error)) {
+      res.status(409).json({ error: "A book with this title already exists. Choose a different title." });
+      return;
+    }
+    res.status(500).json({ error: "The book upload succeeded, but the catalogue record could not be saved. Please try again." });
+  }
 });
 
 router.patch("/admin/books/:bookId", async (req, res): Promise<void> => {

@@ -14,6 +14,7 @@ import { firebaseDb, firebaseStorage } from "@/lib/firebase"
 import type { Book, BookInput, BookInputFormat, BookUpdate, Order } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { GENRE_CATEGORIES } from "@/data/catalog"
+import { useToast } from "@/hooks/use-toast"
 
 const fieldClass = "h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
 
@@ -64,10 +65,22 @@ function AdminNav({ onLogout }: { onLogout: () => void }) {
 }
 
 type BookFormProps = { book?: Book; onDone: () => void }
+type BookFormPhase = "idle" | "validating" | "uploading" | "saving"
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === "object" && error !== null && "error" in error) {
+    const message = (error as { error?: unknown }).error
+    if (typeof message === "string" && message.trim()) return message
+  }
+  return fallback
+}
+
 function BookForm({ book, onDone }: BookFormProps) {
   const createBook = useCreateBook()
   const updateBook = useUpdateBook()
   const queryClient = useQueryClient()
+  const { toast } = useToast()
   const [title, setTitle] = useState(book?.title ?? "")
   const [author, setAuthor] = useState(book?.author ?? "")
   const [price, setPrice] = useState(String(book?.price ?? ""))
@@ -80,6 +93,8 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [ebookFile, setEbookFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [phase, setPhase] = useState<BookFormPhase>("idle")
+
   async function uploadFile(file: File) {
     if (!firebaseStorage) {
       throw new Error("Firebase Storage is not configured. Check the Firebase environment settings and try again.")
@@ -99,35 +114,123 @@ function BookForm({ book, onDone }: BookFormProps) {
       throw new Error(`Could not upload ${file.name}. Check your admin access and try again.`)
     }
   }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(null)
+    event.preventDefault()
+    setError(null)
+    setPhase("validating")
+
     try {
+      const titleValue = title.trim()
+      const authorValue = author.trim()
+      const descriptionValue = description.trim()
+      const priceValue = Number(price)
+      const priceNgnValue = Number(priceNgn)
+
+      if (!titleValue) throw new Error("Enter a book title.")
+      if (!book && !authorValue) throw new Error("Enter the author name.")
+      if (!price.trim()) throw new Error("Enter the USD price.")
+      if (!priceNgn.trim()) throw new Error("Enter the NGN price.")
+      if (!Number.isFinite(priceValue) || priceValue < 0) throw new Error("Enter a valid non-negative USD price.")
+      if (!Number.isFinite(priceNgnValue) || priceNgnValue < 0) throw new Error("Enter a valid non-negative NGN price.")
+      if (!descriptionValue) throw new Error("Enter a book description.")
+      if (!book && !ebookFile) throw new Error("Choose the ebook file before saving this book.")
+
+      for (const [label, link] of [["Paystack", paystackLink], ["Payoneer", payoneerLink]] as const) {
+        if (!link.trim()) continue
+        try {
+          const url = new URL(link.trim())
+          if (!["http:", "https:"].includes(url.protocol)) throw new Error()
+        } catch {
+          throw new Error(`${label} link must be a valid HTTP or HTTPS URL.`)
+        }
+      }
+
+      if (coverFile && !coverFile.type.startsWith("image/")) {
+        throw new Error("The cover image must be a PNG, JPEG, or WebP image.")
+      }
+
+      if (ebookFile) {
+        const extension = ebookFile.name.split(".").pop()?.toUpperCase()
+        if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
+      }
+
       if (book) {
-        const data: BookUpdate = { title, description, price: Number(price), priceNgn: Number(priceNgn), paystackLink: paystackLink || null, payoneerLink: payoneerLink || null }
+        const data: BookUpdate = {
+          title: titleValue,
+          description: descriptionValue,
+          price: priceValue,
+          priceNgn: priceNgnValue,
+          paystackLink: paystackLink.trim() || null,
+          payoneerLink: payoneerLink.trim() || null,
+        }
         if (ebookFile) {
-          const extension = ebookFile.name.split(".").pop()?.toUpperCase()
-          if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
+          setPhase("uploading")
           data.fileObjectPath = await uploadFile(ebookFile)
           data.fileName = ebookFile.name
           data.format = format
         }
+        setPhase("saving")
         await updateBook.mutateAsync({ bookId: book.id, data })
       } else {
-        if (!ebookFile) throw new Error("Choose the ebook file before saving this book.")
-        const extension = ebookFile.name.split(".").pop()?.toUpperCase()
-        if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
-        const [fileObjectPath, coverObjectPath] = await Promise.all([uploadFile(ebookFile), coverFile ? uploadFile(coverFile) : Promise.resolve(null)])
-        const payload: BookInput = { title, author, slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), price: Number(price), priceNgn: Number(priceNgn), currency: "USD", category, description, format, paystackLink: paystackLink || null, payoneerLink: payoneerLink || null, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString() }
+        const ebook = ebookFile
+        if (!ebook) throw new Error("Choose the ebook file before saving this book.")
+        setPhase("uploading")
+        const [fileObjectPath, coverObjectPath] = await Promise.all([uploadFile(ebook), coverFile ? uploadFile(coverFile) : Promise.resolve(null)])
+        setPhase("saving")
+        const payload: BookInput = {
+          title: titleValue,
+          author: authorValue,
+          slug: titleValue.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+          price: priceValue,
+          priceNgn: priceNgnValue,
+          currency: "USD",
+          category,
+          description: descriptionValue,
+          format,
+          paystackLink: paystackLink.trim() || null,
+          payoneerLink: payoneerLink.trim() || null,
+          coverObjectPath,
+          fileObjectPath,
+          fileName: ebook.name,
+          featured: false,
+          publishedAt: new Date().toISOString(),
+        }
         await createBook.mutateAsync({ data: payload })
       }
       await queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
       await queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
+      toast({
+        title: book ? "Book updated" : "Book added",
+        description: `"${titleValue}" is now in the catalogue.`,
+      })
       onDone()
-    } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "Could not save this book.") }
+    } catch (submitError) {
+      const message = errorMessage(submitError, "Could not save this book. Please try again.")
+      setError(message)
+      toast({
+        variant: "destructive",
+        title: "Book not saved",
+        description: message,
+      })
+    } finally {
+      setPhase("idle")
+    }
   }
-  const pending = createBook.isPending || updateBook.isPending
+
+  const pending = createBook.isPending || updateBook.isPending || phase !== "idle"
+  const submitLabel = phase === "validating"
+    ? "Checking details…"
+    : phase === "uploading"
+      ? "Uploading files…"
+      : phase === "saving"
+        ? "Saving…"
+        : book
+          ? "Save changes"
+          : "Add book"
+
   return <section id="book-form" className="rounded-2xl border border-primary/25 bg-card p-5 shadow-lg shadow-primary/5 sm:p-7"><div className="flex items-start gap-3 border-b border-border pb-5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{book ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}</span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{book ? "Edit book" : "New book"}</p><h2 className="mt-1 text-xl font-extrabold">{book ? "Refine this listing" : "Add a book to the shelf"}</h2></div></div>
-    <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
+     <form onSubmit={submit} noValidate className="mt-6 grid gap-4 sm:grid-cols-2">
       <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>
       {!book && <label><span className="mb-2 block text-xs font-bold">Author</span><input data-testid="input-book-author" required value={author} onChange={e => setAuthor(e.target.value)} className={fieldClass} /></label>}
       <label><span className="mb-2 block text-xs font-bold">Price (USD)</span><input data-testid="input-book-price" required min="0" step="0.01" type="number" value={price} onChange={e => setPrice(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Reference USD price for international display. The native NGN amount below is the base price.</span></label>
@@ -139,8 +242,8 @@ function BookForm({ book, onDone }: BookFormProps) {
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
        <label><span className="mb-2 block text-xs font-bold">Paystack link (Nigeria) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-paystack-link" type="url" value={paystackLink} onChange={e => setPaystackLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For Nigerian buyers. This link never confirms payment by itself.</span></label>
        <label><span className="mb-2 block text-xs font-bold">Payoneer link (International) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payoneer-link" type="url" value={payoneerLink} onChange={e => setPayoneerLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For international buyers. This link never confirms payment by itself.</span></label>
-       <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{pending ? "Saving…" : book ? "Save changes" : "Add book"}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
-      {error && <p className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
+       <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{submitLabel}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
+       {error && <p role="alert" className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
     </form>
   </section>
 }
