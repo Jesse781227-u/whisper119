@@ -9,7 +9,7 @@ import {
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage"
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage"
 import { firebaseDb, firebaseStorage } from "@/lib/firebase"
 import type { Book, BookInput, BookInputFormat, BookUpdate, Order } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
@@ -66,6 +66,9 @@ function AdminNav({ onLogout }: { onLogout: () => void }) {
 
 type BookFormProps = { book?: Book; onDone: () => void }
 type BookFormPhase = "idle" | "validating" | "uploading" | "saving"
+type UploadProgressHandler = (bytesTransferred: number, totalBytes: number) => void
+
+const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000
 
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message
@@ -94,8 +97,9 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [phase, setPhase] = useState<BookFormPhase>("idle")
+  const [uploadProgress, setUploadProgress] = useState(0)
 
-  async function uploadFile(file: File) {
+  async function uploadFile(file: File, onProgress: UploadProgressHandler) {
     if (!firebaseStorage) {
       throw new Error("Firebase Storage is not configured. Check the Firebase environment settings and try again.")
     }
@@ -104,20 +108,77 @@ function BookForm({ book, onDone }: BookFormProps) {
     const folder = file.type.startsWith("image/") ? "covers" : "ebooks"
     const storageRef = ref(firebaseStorage, `${folder}/${crypto.randomUUID()}-${safeName}`)
 
-    try {
-      await uploadBytes(storageRef, file, {
-        contentType: file.type || "application/octet-stream",
-      })
-      return await getDownloadURL(storageRef)
-    } catch (uploadError) {
-      console.error("Firebase Storage upload failed", uploadError)
-      throw new Error(`Could not upload ${file.name}. Check your admin access and try again.`)
-    }
+    return new Promise<string>((resolve, reject) => {
+      let settled = false
+      let timeoutId: ReturnType<typeof setTimeout> | undefined
+      let unsubscribe: (() => void) | undefined
+
+      const clearUpload = () => {
+        if (timeoutId) clearTimeout(timeoutId)
+        unsubscribe?.()
+      }
+
+      const fail = (uploadError: unknown) => {
+        if (settled) return
+        settled = true
+        clearUpload()
+        console.error("Firebase Storage upload failed", uploadError)
+        const reason = uploadError instanceof Error && uploadError.message ? ` ${uploadError.message}` : ""
+        reject(new Error(`Could not upload ${file.name}.${reason} Check your admin access and try again.`))
+      }
+
+      try {
+        const uploadTask = uploadBytesResumable(storageRef, file, {
+          contentType: file.type || "application/octet-stream",
+        })
+
+        timeoutId = setTimeout(() => {
+          uploadTask.cancel()
+          fail(new Error("The upload timed out after 10 minutes. Check your connection and try again."))
+        }, UPLOAD_TIMEOUT_MS)
+
+        unsubscribe = uploadTask.on(
+          "state_changed",
+          snapshot => onProgress(snapshot.bytesTransferred, snapshot.totalBytes),
+          fail,
+          async () => {
+            if (settled) return
+            try {
+              const downloadUrl = await getDownloadURL(storageRef)
+              settled = true
+              clearUpload()
+              resolve(downloadUrl)
+            } catch (downloadError) {
+              fail(downloadError)
+            }
+          },
+        )
+      } catch (uploadError) {
+        fail(uploadError)
+      }
+    })
+  }
+
+  async function uploadFiles(files: File[], onProgress: (progress: number) => void) {
+    const totalBytes = files.reduce((total, file) => total + file.size, 0)
+    const transferredBytes = files.map(() => 0)
+    onProgress(0)
+
+    return Promise.all(files.map((file, index) => uploadFile(file, (bytesTransferred, fileTotalBytes) => {
+      transferredBytes[index] = bytesTransferred
+      const progress = totalBytes > 0
+        ? Math.round((transferredBytes.reduce((total, bytes) => total + bytes, 0) / totalBytes) * 100)
+        : fileTotalBytes > 0
+          ? Math.round((bytesTransferred / fileTotalBytes) * 100)
+          : 100
+      onProgress(Math.min(100, progress))
+    })))
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
+    setUploadProgress(0)
     setPhase("validating")
 
     try {
@@ -166,7 +227,8 @@ function BookForm({ book, onDone }: BookFormProps) {
         }
         if (ebookFile) {
           setPhase("uploading")
-          data.fileObjectPath = await uploadFile(ebookFile)
+          const [fileObjectPath] = await uploadFiles([ebookFile], setUploadProgress)
+          data.fileObjectPath = fileObjectPath
           data.fileName = ebookFile.name
           data.format = format
         }
@@ -176,7 +238,9 @@ function BookForm({ book, onDone }: BookFormProps) {
         const ebook = ebookFile
         if (!ebook) throw new Error("Choose the ebook file before saving this book.")
         setPhase("uploading")
-        const [fileObjectPath, coverObjectPath] = await Promise.all([uploadFile(ebook), coverFile ? uploadFile(coverFile) : Promise.resolve(null)])
+        const uploadedFiles = await uploadFiles(coverFile ? [ebook, coverFile] : [ebook], setUploadProgress)
+        const fileObjectPath = uploadedFiles[0]
+        const coverObjectPath = coverFile ? uploadedFiles[1] : null
         setPhase("saving")
         const payload: BookInput = {
           title: titleValue,
