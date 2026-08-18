@@ -16,6 +16,29 @@ import { eq } from "drizzle-orm";
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
+async function requestUploadUrl(req: Request, res: Response): Promise<void> {
+  const parsed = RequestUploadUrlBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Missing or invalid required fields' });
+    return;
+  }
+
+  try {
+    const { name, size, contentType } = parsed.data;
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL(contentType);
+    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+    res.json(RequestUploadUrlResponse.parse({
+      uploadURL,
+      objectPath,
+      metadata: { name, size, contentType },
+    }));
+  } catch (error) {
+    req.log.error({ err: error }, 'Error generating upload URL');
+    const detail = error instanceof Error ? error.message : 'Failed to generate upload URL';
+    res.status(500).json({ error: detail });
+  }
+}
+
 /**
  * POST /storage/uploads/request-url
  *
@@ -24,37 +47,7 @@ const objectStorageService = new ObjectStorageService();
  * Then uploads the file directly to the returned presigned URL.
  * Requires auth middleware so public callers cannot mint write-capable URLs.
  */
-router.post(
-  '/storage/uploads/request-url',
-  requireAdmin,
-  async (req: Request, res: Response) => {
-    const parsed = RequestUploadUrlBody.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: 'Missing or invalid required fields' });
-      return;
-    }
-
-    try {
-      const { name, size, contentType } = parsed.data;
-
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL(contentType);
-      const objectPath =
-        objectStorageService.normalizeObjectEntityPath(uploadURL);
-
-      res.json(
-        RequestUploadUrlResponse.parse({
-          uploadURL,
-          objectPath,
-          metadata: { name, size, contentType },
-        }),
-      );
-    } catch (error) {
-      req.log.error({ err: error }, 'Error generating upload URL');
-      const detail = error instanceof Error ? error.message : 'Failed to generate upload URL';
-      res.status(500).json({ error: detail });
-    }
-  },
-);
+router.post(['/storage/uploads/request-url', '/upload-url'], requireAdmin, requestUploadUrl);
 
 /**
  * GET /storage/public-objects/*
