@@ -1,2 +1,3 @@
 - [Storefront render safety](storefront-render-safety.md) — Normalize API collections before rendering and keep a top-level recovery boundary around customer-facing React UI.
 - [Firebase auth foundation](firebase-auth-foundation.md) — Client auth and Firestore rules are prepared, but privileged Firestore sync stays disabled until secure server credentials exist.
+- [Firebase upload progress](firebase-upload-progress.md) — Keep upload UI indeterminate until real byte snapshots arrive; verify the bucket before debugging React wiring.

@@ -38,7 +38,8 @@ export const ListBooksResponseItem = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
-  "paymentLink": zod.string().nullable(),
+  "paystackLink": zod.string().nullable(),
+  "payoneerLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -66,7 +67,8 @@ export const GetBookResponse = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
-  "paymentLink": zod.string().nullable(),
+  "paystackLink": zod.string().nullable(),
+  "payoneerLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -90,7 +92,8 @@ export const GetStorefrontSummaryResponse = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
-  "paymentLink": zod.string().nullable(),
+  "paystackLink": zod.string().nullable(),
+  "payoneerLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -108,7 +111,8 @@ export const GetStorefrontSummaryResponse = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
-  "paymentLink": zod.string().nullable(),
+  "paystackLink": zod.string().nullable(),
+  "payoneerLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -119,22 +123,6 @@ export const GetStorefrontSummaryResponse = zod.object({
   "name": zod.string(),
   "count": zod.number()
 }))
-})
-
-
-/**
- * @summary Subscribe to the Whisper 119 newsletter
- */
-export const subscribeNewsletterBodyEmailMin = 3;
-
-
-
-export const SubscribeNewsletterBody = zod.object({
-  "email": zod.string().min(subscribeNewsletterBodyEmailMin)
-})
-
-export const SubscribeNewsletterResponse = zod.object({
-  "subscribed": zod.boolean()
 })
 
 
@@ -164,6 +152,40 @@ export const CreateOrderResponse = zod.object({
 
 
 /**
+ * @summary Submit a customer payment confirmation for review
+ */
+export const confirmPaymentBodyEmailMin = 3;
+
+
+export const confirmPaymentBodyPaymentReferenceMax = 200;
+
+
+
+export const ConfirmPaymentBody = zod.object({
+  "email": zod.string().min(confirmPaymentBodyEmailMin),
+  "bookId": zod.string().min(1),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().min(1).max(confirmPaymentBodyPaymentReferenceMax)
+})
+
+export const confirmPaymentResponseEmailMin = 3;
+
+
+
+export const ConfirmPaymentResponse = zod.object({
+  "orderId": zod.string(),
+  "orderReference": zod.string(),
+  "bookId": zod.string(),
+  "bookTitle": zod.string(),
+  "email": zod.string().min(confirmPaymentResponseEmailMin),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string(),
+  "status": zod.enum(['pending']),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Get order status and purchased books
  */
 export const GetOrderParams = zod.object({
@@ -177,8 +199,10 @@ export const GetOrderResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
   "createdAt": zod.string(),
@@ -294,8 +318,10 @@ export const GetAdminDashboardResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
   "createdAt": zod.string(),
@@ -345,7 +371,8 @@ export const ListAdminBooksResponseItem = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
-  "paymentLink": zod.string().nullable(),
+  "paystackLink": zod.string().nullable(),
+  "payoneerLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -382,7 +409,8 @@ export const CreateBookBody = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
-  "paymentLink": zod.string().nullable(),
+  "paystackLink": zod.string().nullable(),
+  "payoneerLink": zod.string().nullable(),
   "coverObjectPath": zod.string().nullable(),
   "fileObjectPath": zod.string().min(1),
   "fileName": zod.string().min(1),
@@ -401,7 +429,8 @@ export const CreateBookResponse = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
-  "paymentLink": zod.string().nullable(),
+  "paystackLink": zod.string().nullable(),
+  "payoneerLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -441,7 +470,8 @@ export const UpdateBookBody = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']).optional(),
   "description": zod.string().optional(),
   "format": zod.enum(['PDF', 'EPUB']).optional(),
-  "paymentLink": zod.string().nullish(),
+  "paystackLink": zod.string().nullish(),
+  "payoneerLink": zod.string().nullish(),
   "coverObjectPath": zod.string().nullish(),
   "fileObjectPath": zod.string().min(1).optional(),
   "fileName": zod.string().min(1).optional(),
@@ -460,7 +490,8 @@ export const UpdateBookResponse = zod.object({
   "category": zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series']),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
-  "paymentLink": zod.string().nullable(),
+  "paystackLink": zod.string().nullable(),
+  "payoneerLink": zod.string().nullable(),
   "coverUrl": zod.string().nullable(),
   "fileName": zod.string(),
   "featured": zod.boolean(),
@@ -483,7 +514,7 @@ export const DeleteBookResponse = zod.void()
  * @summary List customer orders
  */
 export const ListAdminOrdersQueryParams = zod.object({
-  "status": zod.enum(['pending', 'paid', 'failed']).optional()
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']).optional()
 })
 
 export const ListAdminOrdersResponseItem = zod.object({
@@ -493,8 +524,10 @@ export const ListAdminOrdersResponseItem = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
   "createdAt": zod.string(),
@@ -526,8 +559,45 @@ export const GetAdminOrderResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
+  "deliveryEmailSent": zod.boolean(),
+  "downloaded": zod.boolean(),
+  "createdAt": zod.string(),
+  "paidAt": zod.string().nullable(),
+  "items": zod.array(zod.object({
+  "bookId": zod.string(),
+  "title": zod.string(),
+  "author": zod.string(),
+  "price": zod.number(),
+  "format": zod.string(),
+  "downloadUrl": zod.string().nullable(),
+  "downloaded": zod.boolean()
+}))
+})
+
+
+/**
+ * Marks a pending manual payment as confirmed after the librarian verifies it in Paystack or Payoneer.
+ * @summary Confirm a manually reported payment and fulfill the order
+ */
+export const ConfirmAdminOrderParams = zod.object({
+  "orderId": zod.coerce.string()
+})
+
+export const ConfirmAdminOrderResponse = zod.object({
+  "id": zod.string(),
+  "reference": zod.string(),
+  "email": zod.string(),
+  "country": zod.string(),
+  "currency": zod.string(),
+  "subtotal": zod.number(),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
+  "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
   "createdAt": zod.string(),

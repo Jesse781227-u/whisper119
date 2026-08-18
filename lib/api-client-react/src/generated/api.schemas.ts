@@ -45,7 +45,9 @@ export interface Book {
   description: string;
   format: BookFormat;
   /** @nullable */
-  paymentLink: string | null;
+  paystackLink: string | null;
+  /** @nullable */
+  payoneerLink: string | null;
   /** @nullable */
   coverUrl: string | null;
   fileName: string;
@@ -94,7 +96,9 @@ export interface BookInput {
   description: string;
   format: BookInputFormat;
   /** @nullable */
-  paymentLink: string | null;
+  paystackLink: string | null;
+  /** @nullable */
+  payoneerLink: string | null;
   /** @nullable */
   coverObjectPath: string | null;
   /** @minLength 1 */
@@ -145,7 +149,9 @@ export interface BookUpdate {
   description?: string;
   format?: BookUpdateFormat;
   /** @nullable */
-  paymentLink?: string | null;
+  paystackLink?: string | null;
+  /** @nullable */
+  payoneerLink?: string | null;
   /** @nullable */
   coverObjectPath?: string | null;
   /** @minLength 1 */
@@ -192,13 +198,53 @@ export interface OrderInput {
   bookIds: string[];
 }
 
-export interface NewsletterInput {
+export type PaymentConfirmationInputPaymentMethod = typeof PaymentConfirmationInputPaymentMethod[keyof typeof PaymentConfirmationInputPaymentMethod];
+
+
+export const PaymentConfirmationInputPaymentMethod = {
+  paystack: 'paystack',
+  payoneer: 'payoneer',
+} as const;
+
+export interface PaymentConfirmationInput {
   /** @minLength 3 */
   email: string;
+  /** @minLength 1 */
+  bookId: string;
+  paymentMethod: PaymentConfirmationInputPaymentMethod;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  paymentReference: string;
 }
 
-export interface NewsletterResponse {
-  subscribed: boolean;
+export type PaymentConfirmationPaymentMethod = typeof PaymentConfirmationPaymentMethod[keyof typeof PaymentConfirmationPaymentMethod];
+
+
+export const PaymentConfirmationPaymentMethod = {
+  paystack: 'paystack',
+  payoneer: 'payoneer',
+} as const;
+
+export type PaymentConfirmationStatus = typeof PaymentConfirmationStatus[keyof typeof PaymentConfirmationStatus];
+
+
+export const PaymentConfirmationStatus = {
+  pending: 'pending',
+} as const;
+
+export interface PaymentConfirmation {
+  orderId: string;
+  orderReference: string;
+  bookId: string;
+  bookTitle: string;
+  /** @minLength 3 */
+  email: string;
+  paymentMethod: PaymentConfirmationPaymentMethod;
+  paymentReference: string;
+  status: PaymentConfirmationStatus;
+  createdAt: string;
 }
 
 export interface CheckoutSession {
@@ -214,7 +260,16 @@ export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
 export const OrderStatus = {
   pending: 'pending',
   paid: 'paid',
+  fulfilled: 'fulfilled',
   failed: 'failed',
+} as const;
+
+export type OrderPaymentMethod = typeof OrderPaymentMethod[keyof typeof OrderPaymentMethod];
+
+
+export const OrderPaymentMethod = {
+  paystack: 'paystack',
+  payoneer: 'payoneer',
 } as const;
 
 export interface OrderItem {
@@ -237,6 +292,9 @@ export interface Order {
   subtotal: number;
   status: OrderStatus;
   paymentStatus: string;
+  paymentMethod: OrderPaymentMethod;
+  /** @nullable */
+  paymentReference: string | null;
   deliveryEmailSent: boolean;
   downloaded: boolean;
   createdAt: string;
@@ -339,6 +397,7 @@ export type StatusQueryParameter = typeof StatusQueryParameter[keyof typeof Stat
 export const StatusQueryParameter = {
   pending: 'pending',
   paid: 'paid',
+  fulfilled: 'fulfilled',
   failed: 'failed',
 } as const;
 

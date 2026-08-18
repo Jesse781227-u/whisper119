@@ -1,6 +1,6 @@
 # Whisper 119
 
-Whisper 119 is a single-seller digital bookstore for international readers buying  PDF and EPUB ebooks.
+Whisper 119 is a boutique, single-seller digital bookstore for international readers buying  PDF and EPUB ebooks.
 
 ## Run & Operate
 
@@ -12,10 +12,9 @@ Whisper 119 is a single-seller digital bookstore for international readers buyin
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL`, `SESSION_SECRET`
 - Required for checkout: `PAYSTACK_SECRET_KEY`
-- Required for admin login: Firebase web configuration plus an admin document in Firestore
-- Required for attachment delivery: `SMTP_HOST`, `SMTP_PORT` (optional, defaults to 587), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
-- Google Cloud Storage: `GCS_BUCKET_NAME` (or `FIREBASE_STORAGE_BUCKET`), `GCS_PROJECT_ID` (or `FIREBASE_PROJECT_ID`), and Google Application Default Credentials via `GOOGLE_APPLICATION_CREDENTIALS` or `GCS_CLIENT_EMAIL` plus `GCS_PRIVATE_KEY`
-- Configure bucket CORS with `gcloud storage buckets update gs://YOUR_BUCKET --cors-file=gcs-cors.json` before testing browser uploads.
+- Required for admin login: `ADMIN_EMAIL`, `ADMIN_PASSWORD`
+- Required for attachment delivery: `SMTP_HOST`, `SMTP_PORT` (optional, defaults to 587), `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM_ADDRESS`
+- R2 storage: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT`, and `R2_PUBLIC_URL`
 
 ## Stack
 
@@ -41,12 +40,11 @@ Whisper 119 is a single-seller digital bookstore for international readers buyin
 
 - Paystack payment initialization and confirmation are server-owned. A client redirect never marks an order paid.
 - The Paystack webhook verifies the `x-paystack-signature`, calls Paystack's verify endpoint, then marks the order paid.
-- Ebook files remain private in Object Storage and are attached to the delivery email; the confirmation page deliberately has no download button.
-- Cover objects can be served publicly, but ebook object paths are rejected by the HTTP storage route.
+- Ebook files are uploaded from the admin browser to Firebase Storage and attached to the delivery email; the confirmation page deliberately has no download button.
+- Cover objects can be served publicly, while ebook objects are never exposed as download links.
 - Cart and light/dark theme preferences are local browser state; catalogue, orders, and admin data are database-backed.
 - Firebase reader authentication is prepared for email/password and Google sign-in through `VITE_FIREBASE_*` public configuration variables. Firestore rules deny client-side writes to books, orders, and subscribers; privileged Firestore synchronization requires a server credential setup before it is enabled.
 - Firebase reader forms use the Firebase Web SDK directly. No Replit connector is involved in the authentication path, and the former account-page connection wording was application fallback copy rather than a Firebase SDK error.
-- Newsletter signup is server-owned and fails closed until `MAILCHIMP_API_KEY`, `MAILCHIMP_LIST_ID`, and `MAILCHIMP_SERVER_PREFIX` are securely connected. Existing Mailchimp members are treated as successful subscriptions. The free-chapter delivery remains a provider automation TODO.
 
 ## Product
 

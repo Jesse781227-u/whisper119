@@ -3,17 +3,18 @@ import { Link, useLocation } from "wouter"
 import { useQueryClient } from "@tanstack/react-query"
 import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Upload, Users, Eye, WalletCards } from "lucide-react"
 import {
-  getGetAdminDashboardQueryKey, getListAdminBooksQueryKey,
+  getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
-  useCreateBook, useUpdateBook, useRequestUploadUrl,
+  useCreateBook, useUpdateBook, useConfirmAdminOrder,
   requestUploadUrl as requestUploadUrlApi,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
 import { firebaseDb } from "@/lib/firebase"
-import type { Book, BookInput, BookInputFormat, BookUpdate } from "@workspace/api-client-react"
+import type { Book, BookInput, BookInputFormat, BookUpdate, Order } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { GENRE_CATEGORIES } from "@/data/catalog"
+import { useToast } from "@/hooks/use-toast"
 
 const fieldClass = "h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
 
@@ -64,154 +65,243 @@ function AdminNav({ onLogout }: { onLogout: () => void }) {
 }
 
 type BookFormProps = { book?: Book; onDone: () => void }
+type BookFormPhase = "idle" | "validating" | "uploading" | "saving"
+type UploadProgressHandler = (bytesTransferred: number, totalBytes: number) => void
+
+const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === "object" && error !== null && "error" in error) {
+    const message = (error as { error?: unknown }).error
+    if (typeof message === "string" && message.trim()) return message
+  }
+  return fallback
+}
+
 function BookForm({ book, onDone }: BookFormProps) {
   const createBook = useCreateBook()
   const updateBook = useUpdateBook()
-  const requestUploadUrlMutation = useRequestUploadUrl()
   const queryClient = useQueryClient()
+  const { toast } = useToast()
   const [title, setTitle] = useState(book?.title ?? "")
   const [author, setAuthor] = useState(book?.author ?? "")
-  const [slug, setSlug] = useState(book?.slug ?? "")
   const [price, setPrice] = useState(String(book?.price ?? ""))
   const [priceNgn, setPriceNgn] = useState(String(book?.priceNgn ?? ""))
   const [category, setCategory] = useState<(typeof GENRE_CATEGORIES)[number]>((book?.category as (typeof GENRE_CATEGORIES)[number]) ?? "Romance")
   const [description, setDescription] = useState(book?.description ?? "")
-  const [paymentLink, setPaymentLink] = useState(book?.paymentLink ?? "")
+  const [paystackLink, setPaystackLink] = useState(book?.paystackLink ?? "")
+  const [payoneerLink, setPayoneerLink] = useState(book?.payoneerLink ?? "")
   const [format, setFormat] = useState<BookInputFormat>(book?.format ?? "EPUB")
   const [ebookFile, setEbookFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [uploadProgress, setUploadProgress] = useState<{ fileName: string; percent: number } | null>(null)
+  const [phase, setPhase] = useState<BookFormPhase>("idle")
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
 
-  async function requestUploadUrlForFile(file: File) {
-    const requestTimeoutMs = 30_000
-    const controller = new AbortController()
-    const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs)
-
-    try {
-      const request = await requestUploadUrlApi(
-        { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" },
-        { signal: controller.signal },
-      )
-      return request
-    } catch (requestError) {
-      if (controller.signal.aborted) {
-        throw new Error(`Requesting an upload URL for ${file.name} timed out after ${requestTimeoutMs / 1000}s.`)
-      }
-      if (requestError instanceof Error) {
-        const detail = requestError.message.includes("HTTP") ? requestError.message : `server error: ${requestError.message}`
-        throw new Error(`Requesting an upload URL for ${file.name} failed (${detail}).`)
-      }
-      throw new Error(`Requesting an upload URL for ${file.name} failed.`)
-    } finally {
-      window.clearTimeout(timeoutId)
-    }
-  }
-
-  async function uploadFile(file: File, completedFiles: number, totalFiles: number) {
-    const uploadTimeoutMs = 5 * 60 * 1000
-    const { uploadURL, objectPath } = await requestUploadUrlForFile(file)
-
-    await new Promise<void>((resolve, reject) => {
+  async function uploadFile(file: File, onProgress: UploadProgressHandler) {
+    const { uploadURL, objectPath } = await requestUploadUrlApi({ name: file.name, size: file.size, contentType: file.type || "application/octet-stream" })
+    return new Promise<string>((resolve, reject) => {
       let settled = false
-      const xhr = new XMLHttpRequest()
-      const fail = (message: string) => {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+      const clearUpload = () => {
+        if (timeoutId) clearTimeout(timeoutId)
+      }
+
+      const fail = (uploadError: unknown) => {
         if (settled) return
         settled = true
-        xhr.abort()
-        reject(new Error(message))
+        clearUpload()
+        const reason = uploadError instanceof Error && uploadError.message ? ` ${uploadError.message}` : ""
+        reject(new Error(`Could not upload ${file.name}.${reason}`))
       }
 
-      const timeoutId = window.setTimeout(() => {
-        fail(`Uploading ${file.name} timed out after ${uploadTimeoutMs / 1000}s.`)
-      }, uploadTimeoutMs)
-
-      xhr.open("PUT", uploadURL)
-      xhr.timeout = uploadTimeoutMs
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
-      xhr.upload.addEventListener("progress", (event) => {
-        if (!event.lengthComputable) return
-        const filePercent = Math.round((event.loaded / event.total) * 100)
-        setUploadProgress({ fileName: file.name, percent: Math.round(((completedFiles + filePercent / 100) / totalFiles) * 100) })
-      })
-      xhr.addEventListener("load", () => {
-        window.clearTimeout(timeoutId)
-        if (xhr.status >= 200 && xhr.status < 300) {
-          settled = true
-          setUploadProgress({ fileName: file.name, percent: Math.round(((completedFiles + 1) / totalFiles) * 100) })
-          resolve()
-          return
-        }
-        fail(`Uploading ${file.name} failed: the storage server responded with HTTP ${xhr.status}.`)
-      })
-      xhr.addEventListener("error", () => {
-        window.clearTimeout(timeoutId)
-        fail(`Uploading ${file.name} failed: the browser could not reach the storage endpoint.`)
-      })
-      xhr.addEventListener("abort", () => {
-        window.clearTimeout(timeoutId)
-        if (!settled) {
-          fail(`Uploading ${file.name} was cancelled or timed out.`)
-        }
-      })
-      xhr.addEventListener("timeout", () => {
-        window.clearTimeout(timeoutId)
-        fail(`Uploading ${file.name} timed out after ${uploadTimeoutMs / 1000}s.`)
-      })
-      xhr.send(file)
+      try {
+        timeoutId = setTimeout(() => {
+          xhr.abort()
+          fail(new Error("The upload timed out after 10 minutes. Check your connection and try again."))
+        }, UPLOAD_TIMEOUT_MS)
+        const xhr = new XMLHttpRequest()
+        xhr.open("PUT", uploadURL)
+        xhr.timeout = UPLOAD_TIMEOUT_MS
+        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
+        xhr.upload.addEventListener("progress", event => {
+          if (event.lengthComputable) onProgress(event.loaded, event.total)
+        })
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            settled = true
+            clearUpload()
+            onProgress(file.size, file.size)
+            resolve(objectPath)
+          } else fail(new Error(`Storage returned HTTP ${xhr.status}.`))
+        })
+        xhr.addEventListener("error", () => fail(new Error("The browser could not reach the storage endpoint.")))
+        xhr.addEventListener("timeout", () => fail(new Error("The upload timed out.")))
+        xhr.send(file)
+      } catch (uploadError) {
+        fail(uploadError)
+      }
     })
-    return objectPath
   }
+
+  async function uploadFiles(files: File[], onProgress: (progress: number | null) => void) {
+    const totalBytes = files.reduce((total, file) => total + file.size, 0)
+    const transferredBytes = files.map(() => 0)
+    onProgress(null)
+
+    return Promise.all(files.map((file, index) => uploadFile(file, (bytesTransferred, fileTotalBytes) => {
+      transferredBytes[index] = bytesTransferred
+      if (bytesTransferred <= 0 && fileTotalBytes <= 0) {
+        onProgress(100)
+        return
+      }
+      const progress = totalBytes > 0
+        ? Math.round((transferredBytes.reduce((total, bytes) => total + bytes, 0) / totalBytes) * 100)
+        : fileTotalBytes > 0
+          ? Math.round((bytesTransferred / fileTotalBytes) * 100)
+          : 100
+      onProgress(Math.min(100, progress))
+    })))
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(null)
+    event.preventDefault()
+    setError(null)
+    setUploadProgress(null)
+    setPhase("validating")
+
     try {
-      const filesToUpload = [ebookFile, ...(!book && coverFile ? [coverFile] : [])].filter((file): file is File => Boolean(file))
-      setUploadProgress(filesToUpload.length ? { fileName: filesToUpload[0].name, percent: 0 } : null)
+      const titleValue = title.trim()
+      const authorValue = author.trim()
+      const descriptionValue = description.trim()
+      const priceValue = Number(price)
+      const priceNgnValue = Number(priceNgn)
+
+      if (!titleValue) throw new Error("Enter a book title.")
+      if (!book && !authorValue) throw new Error("Enter the author name.")
+      if (!price.trim()) throw new Error("Enter the USD price.")
+      if (!priceNgn.trim()) throw new Error("Enter the NGN price.")
+      if (!Number.isFinite(priceValue) || priceValue < 0) throw new Error("Enter a valid non-negative USD price.")
+      if (!Number.isFinite(priceNgnValue) || priceNgnValue < 0) throw new Error("Enter a valid non-negative NGN price.")
+      if (!descriptionValue) throw new Error("Enter a book description.")
+      if (!book && !ebookFile) throw new Error("Choose the ebook file before saving this book.")
+
+      for (const [label, link] of [["Paystack", paystackLink], ["Payoneer", payoneerLink]] as const) {
+        if (!link.trim()) continue
+        try {
+          const url = new URL(link.trim())
+          if (!["http:", "https:"].includes(url.protocol)) throw new Error()
+        } catch {
+          throw new Error(`${label} link must be a valid HTTP or HTTPS URL.`)
+        }
+      }
+
+      if (coverFile && !coverFile.type.startsWith("image/")) {
+        throw new Error("The cover image must be a PNG, JPEG, or WebP image.")
+      }
+
+      if (ebookFile) {
+        const extension = ebookFile.name.split(".").pop()?.toUpperCase()
+        if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
+      }
+
       if (book) {
-        const data: BookUpdate = { title, description, price: Number(price), priceNgn: Number(priceNgn), paymentLink: paymentLink || null }
+        const data: BookUpdate = {
+          title: titleValue,
+          description: descriptionValue,
+          price: priceValue,
+          priceNgn: priceNgnValue,
+          paystackLink: paystackLink.trim() || null,
+          payoneerLink: payoneerLink.trim() || null,
+        }
         if (ebookFile) {
-          const extension = ebookFile.name.split(".").pop()?.toUpperCase()
-          if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
-          data.fileObjectPath = await uploadFile(ebookFile, 0, 1)
+          setPhase("uploading")
+          const [fileObjectPath] = await uploadFiles([ebookFile], setUploadProgress)
+          data.fileObjectPath = fileObjectPath
           data.fileName = ebookFile.name
           data.format = format
         }
+        setPhase("saving")
         await updateBook.mutateAsync({ bookId: book.id, data })
       } else {
-        if (!ebookFile) throw new Error("Choose the ebook file before saving this title.")
-        const extension = ebookFile.name.split(".").pop()?.toUpperCase()
-        if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
-        const fileObjectPath = await uploadFile(ebookFile, 0, filesToUpload.length)
-        const coverObjectPath = coverFile ? await uploadFile(coverFile, 1, filesToUpload.length) : null
-        const payload: BookInput = { title, author, slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), price: Number(price), priceNgn: Number(priceNgn), currency: "USD", category, description, format, paymentLink: paymentLink || null, coverObjectPath, fileObjectPath, fileName: ebookFile.name, featured: false, publishedAt: new Date().toISOString() }
+        const ebook = ebookFile
+        if (!ebook) throw new Error("Choose the ebook file before saving this book.")
+        setPhase("uploading")
+        const uploadedFiles = await uploadFiles(coverFile ? [ebook, coverFile] : [ebook], setUploadProgress)
+        const fileObjectPath = uploadedFiles[0]
+        const coverObjectPath = coverFile ? uploadedFiles[1] : null
+        setPhase("saving")
+        const payload: BookInput = {
+          title: titleValue,
+          author: authorValue,
+          slug: titleValue.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+          price: priceValue,
+          priceNgn: priceNgnValue,
+          currency: "USD",
+          category,
+          description: descriptionValue,
+          format,
+          paystackLink: paystackLink.trim() || null,
+          payoneerLink: payoneerLink.trim() || null,
+          coverObjectPath,
+          fileObjectPath,
+          fileName: ebook.name,
+          featured: false,
+          publishedAt: new Date().toISOString(),
+        }
         await createBook.mutateAsync({ data: payload })
       }
       await queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
       await queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
-      setUploadProgress(null)
+      await queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() })
+      await queryClient.invalidateQueries({ queryKey: getGetStorefrontSummaryQueryKey() })
+      toast({
+        title: book ? "Book updated" : "Book added",
+        description: `"${titleValue}" is now in the catalogue.`,
+      })
       onDone()
     } catch (submitError) {
-      setUploadProgress(null)
-      setError(submitError instanceof Error ? submitError.message : "Could not save this title.")
+      const message = errorMessage(submitError, "Could not save this book. Please try again.")
+      setError(message)
+      toast({
+        variant: "destructive",
+        title: "Book not saved",
+        description: message,
+      })
+    } finally {
+      setPhase("idle")
     }
   }
-  const pending = createBook.isPending || updateBook.isPending || requestUploadUrlMutation.isPending
-  return <section className="rounded-2xl border border-primary/25 bg-card p-5 shadow-lg shadow-primary/5 sm:p-7"><div className="flex items-start gap-3 border-b border-border pb-5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{book ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}</span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{book ? "Edit title" : "New title"}</p><h2 className="mt-1 text-xl font-extrabold">{book ? "Refine this listing" : "Add a book to the shelf"}</h2></div></div>
-    <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
+
+  const pending = createBook.isPending || updateBook.isPending || phase !== "idle"
+  const submitLabel = phase === "validating"
+    ? "Checking details…"
+    : phase === "uploading"
+      ? "Uploading files…"
+      : phase === "saving"
+        ? "Saving…"
+        : book
+          ? "Save changes"
+          : "Add book"
+
+  return <section id="book-form" className="rounded-2xl border border-primary/25 bg-card p-5 shadow-lg shadow-primary/5 sm:p-7"><div className="flex items-start gap-3 border-b border-border pb-5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{book ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}</span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{book ? "Edit book" : "New book"}</p><h2 className="mt-1 text-xl font-extrabold">{book ? "Refine this listing" : "Add a book to the shelf"}</h2></div></div>
+     {phase === "uploading" && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status" aria-live="polite"><div className="flex items-center justify-between gap-3 text-sm"><p className="font-extrabold">Uploading files</p><p className="font-mono text-xs font-bold text-primary">{uploadProgress === null ? "Working…" : `${uploadProgress}%`}</p></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-primary/10" role="progressbar" aria-label="Book file upload progress" aria-valuemin={0} aria-valuemax={100} {...(uploadProgress === null ? { "aria-valuetext": "Upload in progress" } : { "aria-valuenow": uploadProgress })}><div className={uploadProgress === null ? "h-full w-1/3 rounded-full bg-primary animate-pulse" : "h-full rounded-full bg-primary transition-[width] duration-200 ease-out"} style={uploadProgress === null ? undefined : { width: `${uploadProgress}%` }} /></div><p className="mt-2 text-xs text-muted-foreground">{uploadProgress === null ? "Upload started. Waiting for transfer progress…" : uploadProgress === 100 ? "Upload complete. Preparing your book…" : "Keep this window open while the files upload."}</p></div>}
+     <form onSubmit={submit} noValidate className="mt-6 grid gap-4 sm:grid-cols-2">
       <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>
       {!book && <label><span className="mb-2 block text-xs font-bold">Author</span><input data-testid="input-book-author" required value={author} onChange={e => setAuthor(e.target.value)} className={fieldClass} /></label>}
-      {!book && <label><span className="mb-2 block text-xs font-bold">Slug <span className="font-normal text-muted-foreground">(optional)</span></span><input value={slug} onChange={e => setSlug(e.target.value)} className={fieldClass} /></label>}
-      <label><span className="mb-2 block text-xs font-bold">Price (USD)</span><input data-testid="input-book-price" required min="0" step="0.01" type="number" value={price} onChange={e => setPrice(e.target.value)} className={fieldClass} /></label>
-      {!book && <label><span className="mb-2 block text-xs font-bold">Price (NGN)</span><input required min="0" step="0.01" type="number" value={priceNgn} onChange={e => setPriceNgn(e.target.value)} className={fieldClass} /></label>}
-      {!book && <label><span className="mb-2 block text-xs font-bold">Genre</span><select value={category} onChange={e => setCategory(e.target.value as (typeof GENRE_CATEGORIES)[number])} className={fieldClass}>{GENRE_CATEGORIES.map(g => <option key={g}>{g}</option>)}</select></label>}
+      <label><span className="mb-2 block text-xs font-bold">Price (USD)</span><input data-testid="input-book-price" required min="0" step="0.01" type="number" value={price} onChange={e => setPrice(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Reference USD price for international display. The native NGN amount below is the base price.</span></label>
+      <label><span className="mb-2 block text-xs font-bold">Native price (NGN)</span><input required min="0" step="0.01" type="number" value={priceNgn} onChange={e => setPriceNgn(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Enter the book's base price in Nigerian Naira. This is the source-of-truth price for the title.</span></label>
+      {!book && <label><span className="mb-2 block text-xs font-bold">Category</span><select data-testid="input-book-category" value={category} onChange={e => setCategory(e.target.value as (typeof GENRE_CATEGORIES)[number])} className={fieldClass}>{GENRE_CATEGORIES.map(g => <option key={g}>{g}</option>)}</select><span className="mt-1 block text-xs text-muted-foreground">Choose the category where this book should appear in the catalogue.</span></label>}
       <label><span className="mb-2 block text-xs font-bold">Format</span><select value={format} onChange={e => setFormat(e.target.value as BookInputFormat)} className={fieldClass}><option>EPUB</option><option>PDF</option></select></label>
       <label><span className="mb-2 block text-xs font-bold">Ebook file {book && <span className="font-normal text-muted-foreground">(optional replacement)</span>}</span><input data-testid="input-book-file" required={!book} accept={format === "PDF" ? ".pdf,application/pdf" : ".epub,application/epub+zip"} type="file" onChange={e => setEbookFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
       {!book && <label><span className="mb-2 block text-xs font-bold">Cover image <span className="font-normal text-muted-foreground">(optional)</span></span><input accept="image/png,image/jpeg,image/webp" type="file" onChange={e => setCoverFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>}
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
-      <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">External checkout / info link <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payment-link" type="url" value={paymentLink} onChange={e => setPaymentLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">This link is shared as information and does not confirm payment.</span></label>
-      <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{pending ? "Saving…" : book ? "Save changes" : "Add title"}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
-      {uploadProgress && <div className="sm:col-span-2 rounded-xl border border-primary/20 bg-primary/5 p-3"><div className="flex items-center justify-between gap-3 text-xs font-bold"><span className="truncate">Uploading {uploadProgress.fileName}</span><span>{uploadProgress.percent}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-primary/10"><div className="h-full rounded-full bg-primary transition-[width] duration-150" style={{ width: `${uploadProgress.percent}%` }} /></div></div>}
-      {error && <p className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
+       <label><span className="mb-2 block text-xs font-bold">Paystack link (Nigeria) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-paystack-link" type="url" value={paystackLink} onChange={e => setPaystackLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For Nigerian buyers. This link never confirms payment by itself.</span></label>
+       <label><span className="mb-2 block text-xs font-bold">Payoneer link (International) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payoneer-link" type="url" value={payoneerLink} onChange={e => setPayoneerLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For international buyers. This link never confirms payment by itself.</span></label>
+       <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{submitLabel}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
+       {error && <p role="alert" className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
     </form>
   </section>
 }
@@ -219,11 +309,15 @@ function BookForm({ book, onDone }: BookFormProps) {
 export default function Admin() {
   const { user, loading: authLoading, isAdmin, signOutUser } = useAuth()
   const [, setLocation] = useLocation()
+  const queryClient = useQueryClient()
   const enabled = Boolean(isAdmin)
   const dashboard = useGetAdminDashboard({ query: { queryKey: getGetAdminDashboardQueryKey(), enabled } })
   const books = useListAdminBooks({ query: { queryKey: getListAdminBooksQueryKey(), enabled } })
   const orders = useListAdminOrders(undefined, { query: { queryKey: ["/api/admin/orders"], enabled } })
+  const confirmOrder = useConfirmAdminOrder()
   const [form, setForm] = useState<"new" | Book | null>(null)
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)
+  const [orderActionError, setOrderActionError] = useState<string | null>(null)
   const [adminEmail, setAdminEmail] = useState("")
   const [adminEmails, setAdminEmails] = useState<string[]>([])
   const [adminLoading, setAdminLoading] = useState(true)
@@ -248,18 +342,27 @@ export default function Admin() {
     setAdminLoading(true)
     setAdminError(null)
 
-    const adminCollection = collection(firebaseDb, "admins")
-    const unsubscribe = onSnapshot(adminCollection, (snapshot) => {
-      setAdminEmails(snapshot.docs.map((doc) => doc.id))
-      setAdminLoading(false)
-      setAdminError(null)
-    }, (error) => {
-      console.error("Could not load admin list", error)
+    let unsubscribe: (() => void) | undefined
+    try {
+      const adminCollection = collection(firebaseDb, "admins")
+      unsubscribe = onSnapshot(adminCollection, (snapshot) => {
+        setAdminEmails(snapshot.docs.map((doc) => doc.id))
+        setAdminLoading(false)
+        setAdminError(null)
+      }, (error) => {
+        console.error("Could not load admin list", error)
+        setAdminLoading(false)
+        setAdminError("Could not load admin list.")
+      })
+    } catch (err) {
+      console.error("Failed to subscribe to admin collection", err)
       setAdminLoading(false)
       setAdminError("Could not load admin list.")
-    })
+    }
 
-    return () => unsubscribe()
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
   }, [authLoading, firebaseDb, isAdmin])
 
   useEffect(() => {
@@ -276,6 +379,25 @@ export default function Admin() {
     return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">You must be an admin to access this page.</main>
   }
   const stats = [{ label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" }, { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" }, { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" }, { label: "Revenue", value: formatPrice(dashboard.data?.totalRevenue ?? 0, "USD"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }]
+  const bookList: Book[] = Array.isArray(books.data) ? books.data : []
+  const orderList: Order[] = Array.isArray(orders.data) ? orders.data : []
+  const handleConfirmOrder = (order: Order) => {
+    if (!window.confirm(`Confirm that payment for ${order.reference} has landed in your ${order.paymentMethod === "paystack" ? "Paystack" : "Payoneer"} account?`)) return
+    setConfirmingOrderId(order.id)
+    setOrderActionError(null)
+    confirmOrder.mutate({ orderId: order.id }, {
+      onSuccess: () => {
+        setConfirmingOrderId(null)
+        void queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
+        void orders.refetch()
+      },
+      onError: (error) => {
+        setConfirmingOrderId(null)
+        setOrderActionError(error instanceof Error ? error.message : "The order could not be confirmed. Please try again.")
+      },
+    })
+  }
+
   return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Panel</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Mnage your website effectively</h1><p className="mt-1 text-sm text-muted-foreground"></p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary"></p><h2 className="mt-1 text-2xl font-extrabold">Overview</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(s => <div key={s.label} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm"><div><p className="text-xs font-bold text-muted-foreground">{s.label}</p><p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-1 text-2xl font-extrabold">{s.value}</p></div><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span></div>)}</div></section>
@@ -362,9 +484,9 @@ export default function Admin() {
         </div>
       </div>
     </section>
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add title"}</button></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button type="button" data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} aria-expanded={form === "new"} aria-controls="book-form" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add book"}</button></div>
     {form === "new" && <BookForm onDone={() => setForm(null)} />}{form && form !== "new" && <BookForm book={form} onDone={() => setForm(null)} />}
-    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"><div className="divide-y divide-border">{books.data?.map(book => <div key={book.id} className="flex items-center gap-3 p-4 sm:p-5"><div className="flex h-11 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">{book.coverUrl ? <img src={book.coverUrl} alt="" className="h-full w-full object-cover" /> : <FileText className="h-4 w-4" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold">{book.title}</p><p className="mt-1 truncate text-xs text-muted-foreground">{book.author} · {book.format}</p></div><div className="flex items-center gap-3"><div className="text-right"><p className="text-sm font-extrabold">{formatPrice(book.price, book.currency)}</p><span className="text-[0.62rem] font-bold text-primary">{book.category}</span></div><button data-testid={`button-edit-book-${book.id}`} onClick={() => setForm(book)} className="rounded-lg border border-border p-2 text-muted-foreground hover:text-primary" aria-label={`Edit ${book.title}`}><Pencil className="h-4 w-4" /></button></div></div>)}{!books.data?.length && <div className="p-10 text-center"><BookOpen className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No books listed yet.</p></div>}</div></section>
-    <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p><h2 className="mt-1 text-2xl font-extrabold">Orders</h2></div><div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{orders.data?.map(order => <Link key={order.id} href={`/order/${order.id}`} className="flex flex-wrap items-center gap-3 p-4 hover:bg-secondary/50 sm:p-5"><div className="min-w-0 flex-1"><p className="font-mono text-xs font-bold">{order.reference}</p><p className="mt-1 truncate text-xs text-muted-foreground">{order.email} · {formatDate(order.createdAt)}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.62rem] font-bold text-emerald-600">{order.status}</span><span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span></div></Link>)}{!orders.data?.length && <div className="p-10 text-center"><Clock3 className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No orders yet.</p></div>}</div></section>
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"><div className="divide-y divide-border">{bookList.map(book => <div key={book.id} className="flex items-center gap-3 p-4 sm:p-5"><div className="flex h-11 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">{book.coverUrl ? <img src={book.coverUrl} alt="" className="h-full w-full object-cover" /> : <FileText className="h-4 w-4" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold">{book.title}</p><p className="mt-1 truncate text-xs text-muted-foreground">{book.author} · {book.format}</p></div><div className="flex items-center gap-3"><div className="text-right"><p className="text-sm font-extrabold">{formatPrice(book.price, book.currency)}</p><span className="text-[0.62rem] font-bold text-primary">{book.category}</span></div><button data-testid={`button-edit-book-${book.id}`} onClick={() => setForm(book)} className="rounded-lg border border-border p-2 text-muted-foreground hover:text-primary" aria-label={`Edit ${book.title}`}><Pencil className="h-4 w-4" /></button></div></div>)}{!books.isLoading && !bookList.length && <div className="p-10 text-center"><BookOpen className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No books listed yet.</p></div>}</div></section>
+     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p><h2 className="mt-1 text-2xl font-extrabold">Orders</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Check your Paystack or Payoneer dashboard before confirming a customer payment. Confirming here sends the ebook and receipt.</p></div>{orderActionError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">{orderActionError}</p>}<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{orderList.map(order => { const needsConfirmation = order.status === "pending" && Boolean(order.paymentReference); const statusLabel = order.status === "fulfilled" ? "Fulfilled" : needsConfirmation ? "Pending confirmation" : order.status; return <div key={order.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-secondary/50 sm:p-5"><Link href={`/order/${order.id}`} className="min-w-0 flex-1"><p className="font-mono text-xs font-bold">{order.reference}</p><p className="mt-1 truncate text-xs text-muted-foreground">{order.email} · {formatDate(order.createdAt)}</p></Link><div className="flex flex-wrap items-center justify-end gap-2"><span className={`rounded-full px-2.5 py-1 text-[0.62rem] font-bold ${needsConfirmation ? "bg-amber-500/15 text-amber-700" : order.status === "fulfilled" ? "bg-emerald-500/10 text-emerald-600" : "bg-secondary text-muted-foreground"}`}>{statusLabel}</span><span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span>{needsConfirmation && <button type="button" data-testid={`button-confirm-payment-${order.id}`} onClick={() => handleConfirmOrder(order)} disabled={confirmingOrderId === order.id} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-[0.68rem] font-extrabold text-primary-foreground disabled:cursor-wait disabled:opacity-60">{confirmingOrderId === order.id ? "Confirming…" : "Confirm Payment"}</button>}</div></div> })}{!orders.isLoading && !orderList.length && <div className="p-10 text-center"><Clock3 className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No orders yet.</p></div>}</div></section>
   </div></main>
 }

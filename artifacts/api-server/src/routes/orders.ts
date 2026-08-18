@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
 import {
-  CreateOrderBody, CreateOrderResponse, GetOrderParams, GetOrderResponse, ListOrderDownloadsParams, ListOrderDownloadsResponse,
+  ConfirmPaymentBody, ConfirmPaymentResponse, CreateOrderBody, CreateOrderResponse, GetOrderParams, GetOrderResponse, ListOrderDownloadsParams, ListOrderDownloadsResponse,
   PaystackWebhookBody, PaystackWebhookResponse, RetryOrderPaymentParams, RetryOrderPaymentResponse,
 } from "@workspace/api-zod";
 import { booksTable, db, orderItemsTable, ordersTable } from "@workspace/db";
@@ -45,7 +45,7 @@ router.post("/orders", async (req, res): Promise<void> => {
   }
   await db.insert(ordersTable).values({
     id: orderId, reference, email: parsed.data.email, country: parsed.data.country,
-    currency, subtotal, status: "pending", paymentStatus: "pending",
+    currency, subtotal, status: "pending", paymentStatus: "pending", paymentMethod: "paystack",
   });
   await db.insert(orderItemsTable).values(selected.map((book) => ({
     id: randomUUID(), orderId, bookId: book.id, title: book.title, author: book.author,
@@ -57,6 +57,75 @@ router.post("/orders", async (req, res): Promise<void> => {
     req.log.error({ err: error, orderId }, "Paystack initialization failed");
     res.status(503).json({ error: "Payment initialization failed. Please try again." });
   }
+});
+
+router.post("/orders/confirm-payment", async (req, res): Promise<void> => {
+  const parsed = ConfirmPaymentBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, parsed.data.bookId));
+  if (!book) {
+    res.status(404).json({ error: "Book not found" });
+    return;
+  }
+
+  const paymentLink = parsed.data.paymentMethod === "paystack" ? book.paystackLink : book.payoneerLink;
+  if (!paymentLink) {
+    res.status(400).json({ error: `${parsed.data.paymentMethod} is not available for this book.` });
+    return;
+  }
+
+  const isLocalPayment = parsed.data.paymentMethod === "paystack";
+  const currency = isLocalPayment ? "NGN" : "USD";
+  const subtotal = isLocalPayment ? book.priceNgn : book.price;
+  if (subtotal <= 0) {
+    res.status(400).json({ error: `This book does not have a valid ${currency} price yet.` });
+    return;
+  }
+
+  const orderId = randomUUID();
+  const orderReference = `W119-CONF-${Date.now().toString(36).toUpperCase()}-${orderId.slice(0, 6).toUpperCase()}`;
+  const createdAt = new Date();
+
+  await db.transaction(async (tx) => {
+    await tx.insert(ordersTable).values({
+      id: orderId,
+      reference: orderReference,
+      email: parsed.data.email,
+      country: isLocalPayment ? "NG" : "INTL",
+      currency,
+      subtotal,
+      status: "pending",
+      paymentStatus: "pending",
+      paymentMethod: parsed.data.paymentMethod,
+      paymentReference: parsed.data.paymentReference,
+      createdAt,
+    });
+    await tx.insert(orderItemsTable).values({
+      id: randomUUID(),
+      orderId,
+      bookId: book.id,
+      title: book.title,
+      author: book.author,
+      price: subtotal,
+      format: book.format,
+    });
+  });
+
+  res.status(201).json(ConfirmPaymentResponse.parse({
+    orderId,
+    orderReference,
+    bookId: book.id,
+    bookTitle: book.title,
+    email: parsed.data.email,
+    paymentMethod: parsed.data.paymentMethod,
+    paymentReference: parsed.data.paymentReference,
+    status: "pending",
+    createdAt: createdAt.toISOString(),
+  }));
 });
 
 router.get("/orders/:orderId", async (req, res): Promise<void> => {

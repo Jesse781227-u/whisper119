@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && firestore.exists(
+          /databases/(default)/documents/admins/$(request.auth.token.email.lower())
+        );
+    }
+
+    match /covers/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /ebooks/{fileName} {
+      // The admin client needs to read the uploaded object metadata to obtain
+      // the tokenized URL stored with the book. The URL is not returned by
+      // public catalogue responses; ebook delivery still happens by email.
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

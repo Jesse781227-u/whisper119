@@ -2,7 +2,7 @@ import { Check, Plus } from "lucide-react"
 import { Link } from "wouter"
 import type { Book } from "@workspace/api-client-react"
 import { useCart } from "@/components/cart-provider"
-import { formatPrice } from "@/lib/utils"
+import { ConvertedPrice } from "@/components/converted-price"
 
 function CoverArtwork({ book }: { book: Book }) {
   return (
@@ -23,7 +23,7 @@ function CoverArtwork({ book }: { book: Book }) {
         {book.format}
       </span>
       <span className="absolute bottom-2 right-2 rounded-md bg-white/95 px-2 py-1 text-[0.6rem] font-extrabold text-slate-900 shadow-sm dark:bg-slate-950/90 dark:text-white">
-        {formatPrice(book.price, book.currency)}
+        <ConvertedPrice amountNgn={book.priceNgn} />
       </span>
     </div>
   )

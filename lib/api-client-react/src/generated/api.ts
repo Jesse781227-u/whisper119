@@ -33,12 +33,12 @@ import type {
   HealthStatus,
   ListAdminOrdersParams,
   ListBooksParams,
-  NewsletterInput,
-  NewsletterResponse,
   NotFoundResponse,
   Order,
   OrderInput,
   PageViewInput,
+  PaymentConfirmation,
+  PaymentConfirmationInput,
   PaystackWebhook,
   StorefrontSummary,
   UnauthorizedResponse,
@@ -390,77 +390,6 @@ export function useGetStorefrontSummary<TData = Awaited<ReturnType<typeof getSto
 
 
 
-export const getSubscribeNewsletterUrl = () => {
-
-
-
-
-  return `/api/newsletter/subscribe`
-}
-
-/**
- * @summary Subscribe to the Whisper 119 newsletter
- */
-export const subscribeNewsletter = async (newsletterInput: NewsletterInput, options?: Parameters<typeof customFetch>[1]): Promise<NewsletterResponse> => {
-
-  return customFetch<NewsletterResponse>(getSubscribeNewsletterUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(newsletterInput)
-  }
-);}
-
-
-
-
-
-export const getSubscribeNewsletterMutationOptions = <TError = ErrorType<BadRequestResponse | ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof subscribeNewsletter>>, TError,{data: BodyType<NewsletterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof subscribeNewsletter>>, TError,{data: BodyType<NewsletterInput>}, TContext> => {
-
-const mutationKey = ['subscribeNewsletter'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof subscribeNewsletter>>, {data: BodyType<NewsletterInput>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  subscribeNewsletter(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SubscribeNewsletterMutationResult = NonNullable<Awaited<ReturnType<typeof subscribeNewsletter>>>
-    export type SubscribeNewsletterMutationBody = BodyType<NewsletterInput>
-    export type SubscribeNewsletterMutationError = ErrorType<BadRequestResponse | ErrorResponse>
-
-    /**
- * @summary Subscribe to the Whisper 119 newsletter
- */
-export const useSubscribeNewsletter = <TError = ErrorType<BadRequestResponse | ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof subscribeNewsletter>>, TError,{data: BodyType<NewsletterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof subscribeNewsletter>>,
-        TError,
-        {data: BodyType<NewsletterInput>},
-        TContext
-      > => {
-      return useMutation(getSubscribeNewsletterMutationOptions(options));
-    }
-
 export const getCreateOrderUrl = () => {
 
 
@@ -530,6 +459,77 @@ export const useCreateOrder = <TError = ErrorType<BadRequestResponse | ErrorResp
         TContext
       > => {
       return useMutation(getCreateOrderMutationOptions(options));
+    }
+
+export const getConfirmPaymentUrl = () => {
+
+
+
+
+  return `/api/orders/confirm-payment`
+}
+
+/**
+ * @summary Submit a customer payment confirmation for review
+ */
+export const confirmPayment = async (paymentConfirmationInput: PaymentConfirmationInput, options?: Parameters<typeof customFetch>[1]): Promise<PaymentConfirmation> => {
+
+  return customFetch<PaymentConfirmation>(getConfirmPaymentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(paymentConfirmationInput)
+  }
+);}
+
+
+
+
+
+export const getConfirmPaymentMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPayment>>, TError,{data: BodyType<PaymentConfirmationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmPayment>>, TError,{data: BodyType<PaymentConfirmationInput>}, TContext> => {
+
+const mutationKey = ['confirmPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmPayment>>, {data: BodyType<PaymentConfirmationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmPayment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof confirmPayment>>>
+    export type ConfirmPaymentMutationBody = BodyType<PaymentConfirmationInput>
+    export type ConfirmPaymentMutationError = ErrorType<BadRequestResponse | NotFoundResponse>
+
+    /**
+ * @summary Submit a customer payment confirmation for review
+ */
+export const useConfirmPayment = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPayment>>, TError,{data: BodyType<PaymentConfirmationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmPayment>>,
+        TError,
+        {data: BodyType<PaymentConfirmationInput>},
+        TContext
+      > => {
+      return useMutation(getConfirmPaymentMutationOptions(options));
     }
 
 export const getGetOrderUrl = (orderId: string,) => {
@@ -1647,6 +1647,78 @@ export function useGetAdminOrder<TData = Awaited<ReturnType<typeof getAdminOrder
 
 
 
+
+export const getConfirmAdminOrderUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/admin/orders/${orderId}/confirm`
+}
+
+/**
+ * Marks a pending manual payment as confirmed after the librarian verifies it in Paystack or Payoneer.
+ * @summary Confirm a manually reported payment and fulfill the order
+ */
+export const confirmAdminOrder = async (orderId: string, options?: Parameters<typeof customFetch>[1]): Promise<Order> => {
+
+  return customFetch<Order>(getConfirmAdminOrderUrl(orderId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmAdminOrderMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAdminOrder>>, TError,{orderId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAdminOrder>>, TError,{orderId: string}, TContext> => {
+
+const mutationKey = ['confirmAdminOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAdminOrder>>, {orderId: string}> = (props) => {
+          const {orderId} = props ?? {};
+
+          return  confirmAdminOrder(orderId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAdminOrderMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAdminOrder>>>
+
+    export type ConfirmAdminOrderMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ErrorResponse>
+
+    /**
+ * @summary Confirm a manually reported payment and fulfill the order
+ */
+export const useConfirmAdminOrder = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAdminOrder>>, TError,{orderId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAdminOrder>>,
+        TError,
+        {orderId: string},
+        TContext
+      > => {
+      return useMutation(getConfirmAdminOrderMutationOptions(options));
+    }
 
 export const getRequestUploadUrlUrl = () => {
 

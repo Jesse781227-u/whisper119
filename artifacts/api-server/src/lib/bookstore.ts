@@ -2,6 +2,9 @@ import { and, desc, eq, ilike, inArray, lte, or } from "drizzle-orm";
 import { db, booksTable, orderItemsTable, ordersTable, type Book, type Order, type OrderItem } from "@workspace/db";
 
 export function coverUrl(book: Book): string | null {
+  if (book.coverObjectPath?.startsWith("http://") || book.coverObjectPath?.startsWith("https://")) {
+    return book.coverObjectPath;
+  }
   if (book.coverObjectPath?.startsWith("/covers/")) {
     return book.coverObjectPath;
   }
@@ -25,7 +28,8 @@ export function publicBook(book: Book) {
     category: book.category,
     description: book.description,
     format: book.format,
-    paymentLink: book.paymentLink,
+    paystackLink: book.paystackLink,
+    payoneerLink: book.payoneerLink,
     coverUrl: coverUrl(book),
     fileName: book.fileName,
     featured: book.featured,
@@ -64,6 +68,8 @@ export function orderResponse(order: Order, items: OrderItem[]) {
     subtotal: order.subtotal,
     status: order.status,
     paymentStatus: order.paymentStatus,
+    paymentMethod: order.paymentMethod,
+    paymentReference: order.paymentReference,
     deliveryEmailSent: order.deliveryEmailSent,
     downloaded: order.downloaded,
     createdAt: order.createdAt.toISOString(),

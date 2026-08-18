@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, or, sql } from "drizzle-orm";
 import {
+  ConfirmAdminOrderParams,
+  ConfirmAdminOrderResponse,
   GetAdminDashboardResponse,
   GetAdminOrderParams,
   GetAdminOrderResponse,
@@ -21,22 +23,30 @@ import {
 import { analyticsEventsTable, booksTable, db, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook } from "../lib/bookstore";
+import { confirmManualOrder } from "../lib/delivery";
 import { initializePaystack } from "../lib/payments";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
-function validatePaymentLink(paymentLink: string | null | undefined): string | null | undefined {
-  if (paymentLink === undefined || paymentLink === null || paymentLink.trim() === "") {
-    return paymentLink === undefined ? undefined : null;
+function validateExternalLink(link: string | null | undefined): string | null | undefined {
+  if (link === undefined || link === null || link.trim() === "") {
+    return link === undefined ? undefined : null;
   }
   try {
-    const url = new URL(paymentLink);
+    const url = new URL(link);
     if (!["http:", "https:"].includes(url.protocol)) throw new Error("Unsupported protocol");
-    return paymentLink;
+    return link;
   } catch {
-    throw new Error("Payment link must be a valid HTTP or HTTPS URL.");
+    throw new Error("Payment links must be valid HTTP or HTTPS URLs.");
   }
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return typeof error === "object"
+    && error !== null
+    && "code" in error
+    && (error as { code?: unknown }).code === "23505";
 }
 
 router.post("/admin/login", async (_req, res): Promise<void> => {
@@ -60,7 +70,7 @@ router.get("/admin/dashboard", async (_req, res): Promise<void> => {
   const [sales] = await db.select({
     paidOrders: sql<number>`count(*)`,
     totalRevenue: sql<number>`coalesce(sum(${ordersTable.subtotal}), 0)`,
-  }).from(ordersTable).where(eq(ordersTable.status, "paid"));
+  }).from(ordersTable).where(or(eq(ordersTable.status, "paid"), eq(ordersTable.status, "fulfilled")));
   const recent = await Promise.all(orders.slice(0, 8).map(async (order) => {
     const result = await getOrderById(order.id);
     return result ? orderResponse(result.order, result.items) : null;
@@ -89,19 +99,34 @@ router.post("/admin/books", async (req, res): Promise<void> => {
     return;
   }
   try {
-    validatePaymentLink(parsed.data.paymentLink);
+    validateExternalLink(parsed.data.paystackLink);
+    validateExternalLink(parsed.data.payoneerLink);
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : "Invalid payment link." });
     return;
   }
-  const [book] = await db.insert(booksTable).values({
-    id: randomUUID(),
-    ...parsed.data,
-    priceNgn: parsed.data.priceNgn,
-    fileObjectPath: parsed.data.fileObjectPath,
-    publishedAt: new Date(parsed.data.publishedAt),
-  }).returning();
-  res.status(201).json(CreateBookResponse.parse(publicBook(book)));
+  try {
+    const [book] = await db.insert(booksTable).values({
+      id: randomUUID(),
+      ...parsed.data,
+      priceNgn: parsed.data.priceNgn,
+      fileObjectPath: parsed.data.fileObjectPath,
+      publishedAt: new Date(parsed.data.publishedAt),
+    }).returning();
+    if (!book) {
+      req.log.error("Admin book creation returned no inserted row");
+      res.status(500).json({ error: "The book could not be added to the catalogue." });
+      return;
+    }
+    res.status(201).json(CreateBookResponse.parse(publicBook(book)));
+  } catch (error) {
+    req.log.error({ err: error, slug: parsed.data.slug }, "Admin book creation failed");
+    if (isUniqueConstraintError(error)) {
+      res.status(409).json({ error: "A book with this title already exists. Choose a different title." });
+      return;
+    }
+    res.status(500).json({ error: "The book upload succeeded, but the catalogue record could not be saved. Please try again." });
+  }
 });
 
 router.patch("/admin/books/:bookId", async (req, res): Promise<void> => {
@@ -116,7 +141,8 @@ router.patch("/admin/books/:bookId", async (req, res): Promise<void> => {
     return;
   }
   try {
-    validatePaymentLink(parsed.data.paymentLink);
+    validateExternalLink(parsed.data.paystackLink);
+    validateExternalLink(parsed.data.payoneerLink);
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : "Invalid payment link." });
     return;
@@ -174,6 +200,30 @@ router.get("/admin/orders/:orderId", async (req, res): Promise<void> => {
     return;
   }
   res.json(GetAdminOrderResponse.parse(orderResponse(result.order, result.items)));
+});
+
+router.post("/admin/orders/:orderId/confirm", async (req, res): Promise<void> => {
+  const parsed = ConfirmAdminOrderParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  try {
+    const result = await confirmManualOrder(parsed.data.orderId);
+    if (!result) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+    res.json(ConfirmAdminOrderResponse.parse(orderResponse(result.order, result.items)));
+  } catch (error) {
+    if (error instanceof Error && error.message === "ORDER_NOT_PENDING") {
+      res.status(409).json({ error: "Only pending orders can be confirmed." });
+      return;
+    }
+    req.log.error({ err: error, orderId: parsed.data.orderId }, "Admin order confirmation failed");
+    res.status(503).json({ error: "The order could not be confirmed. Please try again." });
+  }
 });
 
 router.post("/storage/uploads/request-url", async (req, res): Promise<void> => {

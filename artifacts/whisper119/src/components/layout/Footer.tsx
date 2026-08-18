@@ -16,7 +16,6 @@ export function Footer() {
           <div className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm">
             <Link href="/shop" className="font-semibold text-muted-foreground hover:text-primary">Browse books</Link>
             <Link href="/about" className="font-semibold text-muted-foreground hover:text-primary">About me</Link>
-            <a href="#newsletter" onClick={(event) => { event.preventDefault(); window.dispatchEvent(new Event("open-newsletter")) }} className="font-semibold text-muted-foreground hover:text-primary">Newsletter</a>
             <a href="mailto:hello@whisper119.shop" className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-primary"><Mail className="h-3.5 w-3.5" /> Contact</a>
           </div>
         </div>

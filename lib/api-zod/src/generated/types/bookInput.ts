@@ -28,7 +28,9 @@ export interface BookInput {
   description: string;
   format: BookInputFormat;
   /** @nullable */
-  paymentLink: string | null;
+  paystackLink: string | null;
+  /** @nullable */
+  payoneerLink: string | null;
   /** @nullable */
   coverObjectPath: string | null;
   /** @minLength 1 */
