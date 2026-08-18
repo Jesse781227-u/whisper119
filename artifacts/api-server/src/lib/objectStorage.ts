@@ -23,7 +23,7 @@ export const objectStorageClient = new Storage({
   credentials: firstEnv("GCS_CLIENT_EMAIL", "FIREBASE_CLIENT_EMAIL") && firstEnv("GCS_PRIVATE_KEY", "FIREBASE_PRIVATE_KEY")
     ? {
         client_email: firstEnv("GCS_CLIENT_EMAIL", "FIREBASE_CLIENT_EMAIL"),
-        private_key: firstEnv("GCS_PRIVATE_KEY", "FIREBASE_PRIVATE_KEY")?.replace(/\\n/g, "\n"),
+        private_key: firstEnv("GCS_PRIVATE_KEY", "FIREBASE_PRIVATE_KEY")?.replace(/^["']|["']$/g, "").replace(/\\n/g, "\n"),
       }
     : undefined,
 });
@@ -81,11 +81,16 @@ export class ObjectStorageService {
 
   async getObjectEntityUploadURL(): Promise<string> {
     const objectName = `${this.getUploadPrefix()}/${randomUUID()}`;
-    const [url] = await objectStorageClient.bucket(this.getBucketName()).file(objectName).getSignedUrl({
+    const clientEmail = firstEnv("GCS_CLIENT_EMAIL", "FIREBASE_CLIENT_EMAIL");
+    const options: any = {
       version: "v4",
       action: "write",
       expires: Date.now() + 15 * 60 * 1000,
-    });
+    };
+    if (clientEmail) {
+      options.clientEmail = clientEmail;
+    }
+    const [url] = await objectStorageClient.bucket(this.getBucketName()).file(objectName).getSignedUrl(options);
     return url;
   }
 
@@ -97,11 +102,22 @@ export class ObjectStorageService {
   }
 
   normalizeObjectEntityPath(rawPath: string): string {
-    if (!rawPath.startsWith("https://storage.googleapis.com/")) return rawPath;
-    const url = new URL(rawPath);
-    const pathParts = url.pathname.replace(/^\/+/, "").split("/");
-    if (pathParts.shift() !== this.getBucketName() || pathParts.length === 0) return url.pathname;
-    return `/objects/${pathParts.join("/")}`;
+    if (!rawPath) return rawPath;
+    if (rawPath.startsWith("/objects/")) return rawPath;
+    try {
+      if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) {
+        const url = new URL(rawPath);
+        const parts = url.pathname.replace(/^\/+/, "").split("/");
+        const bucketName = this.getBucketName();
+        if (parts[0] === bucketName) {
+          parts.shift();
+        }
+        return `/objects/${parts.join("/")}`;
+      }
+    } catch {
+      // Ignore URL parsing failure and return original rawPath
+    }
+    return rawPath;
   }
 
   async trySetObjectEntityAclPolicy(rawPath: string, aclPolicy: ObjectAclPolicy): Promise<string> {

@@ -5,7 +5,6 @@ import {
 } from '@workspace/api-zod';
 import { Router, type IRouter, type Request, type Response } from 'express';
 
-import { ObjectPermission } from '../lib/objectAcl';
 import {
   ObjectNotFoundError,
   ObjectStorageService,
@@ -16,19 +15,6 @@ import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
-
-function hasAuthenticatedSession(
-  req: Request,
-): req is Request & { isAuthenticated: () => boolean } {
-  if (
-    !('isAuthenticated' in req) ||
-    typeof req.isAuthenticated !== 'function'
-  ) {
-    return false;
-  }
-
-  return req.isAuthenticated();
-}
 
 /**
  * POST /storage/uploads/request-url
@@ -64,7 +50,8 @@ router.post(
       );
     } catch (error) {
       req.log.error({ err: error }, 'Error generating upload URL');
-      res.status(500).json({ error: 'Failed to generate upload URL' });
+      const detail = error instanceof Error ? error.message : 'Failed to generate upload URL';
+      res.status(500).json({ error: detail });
     }
   },
 );
@@ -131,21 +118,6 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
     }
     const objectFile =
       await objectStorageService.getObjectEntityFile(objectPath);
-
-    // --- Protected route example for authenticated ebook previews ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
 
     const response = await objectStorageService.downloadObject(objectFile);
 
