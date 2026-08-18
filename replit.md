@@ -14,7 +14,7 @@ Whisper 119 is a boutique, single-seller digital bookstore for international rea
 - Required for checkout: `PAYSTACK_SECRET_KEY`
 - Required for admin login: `ADMIN_EMAIL`, `ADMIN_PASSWORD`
 - Required for attachment delivery: `SMTP_HOST`, `SMTP_PORT` (optional, defaults to 587), `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM_ADDRESS`
-- Object Storage values are provisioned by Replit: `DEFAULT_OBJECT_STORAGE_BUCKET_ID`, `PRIVATE_OBJECT_DIR`, and `PUBLIC_OBJECT_SEARCH_PATHS`
+- R2 storage: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT`, and `R2_PUBLIC_URL`
 
 ## Stack
 

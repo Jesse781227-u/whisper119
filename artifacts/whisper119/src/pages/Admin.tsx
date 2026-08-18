@@ -6,11 +6,11 @@ import {
   getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
   useCreateBook, useUpdateBook, useConfirmAdminOrder,
+  requestUploadUrl as requestUploadUrlApi,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
-import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage"
-import { firebaseDb, firebaseStorage } from "@/lib/firebase"
+import { firebaseDb } from "@/lib/firebase"
 import type { Book, BookInput, BookInputFormat, BookUpdate, Order } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { GENRE_CATEGORIES } from "@/data/catalog"
@@ -100,60 +100,46 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
 
   async function uploadFile(file: File, onProgress: UploadProgressHandler) {
-    if (!firebaseStorage) {
-      throw new Error("Firebase Storage is not configured. Check the Firebase environment settings and try again.")
-    }
-
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-")
-    const folder = file.type.startsWith("image/") ? "covers" : "ebooks"
-    const storageRef = ref(firebaseStorage, `${folder}/${crypto.randomUUID()}-${safeName}`)
-
+    const { uploadURL, objectPath } = await requestUploadUrlApi({ name: file.name, size: file.size, contentType: file.type || "application/octet-stream" })
     return new Promise<string>((resolve, reject) => {
       let settled = false
       let timeoutId: ReturnType<typeof setTimeout> | undefined
-      let unsubscribe: (() => void) | undefined
 
       const clearUpload = () => {
         if (timeoutId) clearTimeout(timeoutId)
-        unsubscribe?.()
       }
 
       const fail = (uploadError: unknown) => {
         if (settled) return
         settled = true
         clearUpload()
-        console.error("Firebase Storage upload failed", uploadError)
         const reason = uploadError instanceof Error && uploadError.message ? ` ${uploadError.message}` : ""
-        reject(new Error(`Could not upload ${file.name}.${reason} Check your admin access and try again.`))
+        reject(new Error(`Could not upload ${file.name}.${reason}`))
       }
 
       try {
-        const uploadTask = uploadBytesResumable(storageRef, file, {
-          contentType: file.type || "application/octet-stream",
-        })
-
         timeoutId = setTimeout(() => {
-          uploadTask.cancel()
+          xhr.abort()
           fail(new Error("The upload timed out after 10 minutes. Check your connection and try again."))
         }, UPLOAD_TIMEOUT_MS)
-
-        unsubscribe = uploadTask.on(
-          "state_changed",
-          snapshot => onProgress(snapshot.bytesTransferred, snapshot.totalBytes || file.size),
-          fail,
-          async () => {
-            if (settled) return
-            try {
-              onProgress(file.size, file.size)
-              const downloadUrl = await getDownloadURL(storageRef)
-              settled = true
-              clearUpload()
-              resolve(downloadUrl)
-            } catch (downloadError) {
-              fail(downloadError)
-            }
-          },
-        )
+        const xhr = new XMLHttpRequest()
+        xhr.open("PUT", uploadURL)
+        xhr.timeout = UPLOAD_TIMEOUT_MS
+        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
+        xhr.upload.addEventListener("progress", event => {
+          if (event.lengthComputable) onProgress(event.loaded, event.total)
+        })
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            settled = true
+            clearUpload()
+            onProgress(file.size, file.size)
+            resolve(objectPath)
+          } else fail(new Error(`Storage returned HTTP ${xhr.status}.`))
+        })
+        xhr.addEventListener("error", () => fail(new Error("The browser could not reach the storage endpoint.")))
+        xhr.addEventListener("timeout", () => fail(new Error("The upload timed out.")))
+        xhr.send(file)
       } catch (uploadError) {
         fail(uploadError)
       }

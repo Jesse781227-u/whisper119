@@ -8,7 +8,12 @@ export function coverUrl(book: Book): string | null {
   if (book.coverObjectPath?.startsWith("/covers/")) {
     return book.coverObjectPath;
   }
-  return book.coverObjectPath ? `/api/storage${book.coverObjectPath}` : null;
+  if (!book.coverObjectPath) return null;
+  const publicUrl = process.env.R2_PUBLIC_URL?.trim();
+  if (publicUrl && book.coverObjectPath.startsWith("/objects/")) {
+    return `${publicUrl.replace(/\/+$/, "")}/${book.coverObjectPath.slice("/objects/".length)}`;
+  }
+  return `/api/storage${book.coverObjectPath}`;
 }
 
 export function publicBook(book: Book) {

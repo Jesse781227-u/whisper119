@@ -88,8 +88,7 @@ async function sendOrderEmail(
 async function downloadEbookContent(fileObjectPath: string, storage: ObjectStorageService): Promise<Buffer> {
   if (fileObjectPath.startsWith("/objects/")) {
     const file = await storage.getObjectEntityFile(fileObjectPath);
-    const [content] = await file.download();
-    return content;
+    return storage.downloadBuffer(file);
   }
 
   let url: URL;
