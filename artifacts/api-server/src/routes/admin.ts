@@ -17,15 +17,12 @@ import {
   UpdateBookBody,
   UpdateBookResponse,
   DeleteBookParams,
-  RequestUploadUrlBody,
-  RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { analyticsEventsTable, booksTable, db, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook } from "../lib/bookstore";
 import { confirmManualOrder } from "../lib/delivery";
 import { initializePaystack } from "../lib/payments";
-import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -223,25 +220,6 @@ router.post("/admin/orders/:orderId/confirm", async (req, res): Promise<void> =>
     }
     req.log.error({ err: error, orderId: parsed.data.orderId }, "Admin order confirmation failed");
     res.status(503).json({ error: "The order could not be confirmed. Please try again." });
-  }
-});
-
-router.post("/storage/uploads/request-url", async (req, res): Promise<void> => {
-  const parsed = RequestUploadUrlBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  try {
-    const storage = new ObjectStorageService();
-    const uploadURL = await storage.getObjectEntityUploadURL(parsed.data.contentType);
-    res.json(RequestUploadUrlResponse.parse({
-      uploadURL,
-      objectPath: storage.normalizeObjectEntityPath(uploadURL),
-    }));
-  } catch (error) {
-    req.log.error({ err: error }, "Upload URL generation failed");
-    res.status(500).json({ error: "Could not prepare upload." });
   }
 });
 

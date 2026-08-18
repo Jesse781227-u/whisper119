@@ -100,7 +100,14 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
 
   async function uploadFile(file: File, onProgress: UploadProgressHandler) {
-    const { uploadURL, objectPath } = await requestUploadUrlApi({ name: file.name, size: file.size, contentType: file.type || "application/octet-stream" })
+    const uploadResponse = await requestUploadUrlApi(
+      { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" },
+      { responseType: "json" },
+    )
+    if (!uploadResponse || typeof uploadResponse !== "object" || !("uploadURL" in uploadResponse) || !("objectPath" in uploadResponse)) {
+      throw new Error("The server returned an empty upload response. Check the API deployment and server logs.")
+    }
+    const { uploadURL, objectPath } = uploadResponse
     return new Promise<string>((resolve, reject) => {
       let settled = false
       let timeoutId: ReturnType<typeof setTimeout> | undefined
