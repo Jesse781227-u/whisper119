@@ -6,6 +6,7 @@ import {
   getGetAdminDashboardQueryKey, getListAdminBooksQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
   useCreateBook, useUpdateBook, useRequestUploadUrl,
+  requestUploadUrl as requestUploadUrlApi,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
@@ -66,7 +67,7 @@ type BookFormProps = { book?: Book; onDone: () => void }
 function BookForm({ book, onDone }: BookFormProps) {
   const createBook = useCreateBook()
   const updateBook = useUpdateBook()
-  const requestUploadUrl = useRequestUploadUrl()
+  const requestUploadUrlMutation = useRequestUploadUrl()
   const queryClient = useQueryClient()
   const [title, setTitle] = useState(book?.title ?? "")
   const [author, setAuthor] = useState(book?.author ?? "")
@@ -81,11 +82,52 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState<{ fileName: string; percent: number } | null>(null)
+
+  async function requestUploadUrlForFile(file: File) {
+    const requestTimeoutMs = 30_000
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs)
+
+    try {
+      const request = await requestUploadUrlApi(
+        { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" },
+        { signal: controller.signal },
+      )
+      return request
+    } catch (requestError) {
+      if (controller.signal.aborted) {
+        throw new Error(`Requesting an upload URL for ${file.name} timed out after ${requestTimeoutMs / 1000}s.`)
+      }
+      if (requestError instanceof Error) {
+        const detail = requestError.message.includes("HTTP") ? requestError.message : `server error: ${requestError.message}`
+        throw new Error(`Requesting an upload URL for ${file.name} failed (${detail}).`)
+      }
+      throw new Error(`Requesting an upload URL for ${file.name} failed.`)
+    } finally {
+      window.clearTimeout(timeoutId)
+    }
+  }
+
   async function uploadFile(file: File, completedFiles: number, totalFiles: number) {
-    const { uploadURL, objectPath } = await requestUploadUrl.mutateAsync({ data: { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" } })
+    const uploadTimeoutMs = 5 * 60 * 1000
+    const { uploadURL, objectPath } = await requestUploadUrlForFile(file)
+
     await new Promise<void>((resolve, reject) => {
+      let settled = false
       const xhr = new XMLHttpRequest()
+      const fail = (message: string) => {
+        if (settled) return
+        settled = true
+        xhr.abort()
+        reject(new Error(message))
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        fail(`Uploading ${file.name} timed out after ${uploadTimeoutMs / 1000}s.`)
+      }, uploadTimeoutMs)
+
       xhr.open("PUT", uploadURL)
+      xhr.timeout = uploadTimeoutMs
       xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
       xhr.upload.addEventListener("progress", (event) => {
         if (!event.lengthComputable) return
@@ -93,13 +135,29 @@ function BookForm({ book, onDone }: BookFormProps) {
         setUploadProgress({ fileName: file.name, percent: Math.round(((completedFiles + filePercent / 100) / totalFiles) * 100) })
       })
       xhr.addEventListener("load", () => {
+        window.clearTimeout(timeoutId)
         if (xhr.status >= 200 && xhr.status < 300) {
+          settled = true
           setUploadProgress({ fileName: file.name, percent: Math.round(((completedFiles + 1) / totalFiles) * 100) })
           resolve()
-        } else reject(new Error(`Could not upload ${file.name} (HTTP ${xhr.status}).`))
+          return
+        }
+        fail(`Uploading ${file.name} failed: the storage server responded with HTTP ${xhr.status}.`)
       })
-      xhr.addEventListener("error", () => reject(new Error(`Could not upload ${file.name}. Check the storage connection and try again.`)))
-      xhr.addEventListener("abort", () => reject(new Error(`The upload of ${file.name} was cancelled.`)))
+      xhr.addEventListener("error", () => {
+        window.clearTimeout(timeoutId)
+        fail(`Uploading ${file.name} failed: the browser could not reach the storage endpoint.`)
+      })
+      xhr.addEventListener("abort", () => {
+        window.clearTimeout(timeoutId)
+        if (!settled) {
+          fail(`Uploading ${file.name} was cancelled or timed out.`)
+        }
+      })
+      xhr.addEventListener("timeout", () => {
+        window.clearTimeout(timeoutId)
+        fail(`Uploading ${file.name} timed out after ${uploadTimeoutMs / 1000}s.`)
+      })
       xhr.send(file)
     })
     return objectPath
@@ -132,9 +190,12 @@ function BookForm({ book, onDone }: BookFormProps) {
       await queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
       setUploadProgress(null)
       onDone()
-    } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "Could not save this title.") }
+    } catch (submitError) {
+      setUploadProgress(null)
+      setError(submitError instanceof Error ? submitError.message : "Could not save this title.")
+    }
   }
-  const pending = createBook.isPending || updateBook.isPending || requestUploadUrl.isPending
+  const pending = createBook.isPending || updateBook.isPending || requestUploadUrlMutation.isPending
   return <section className="rounded-2xl border border-primary/25 bg-card p-5 shadow-lg shadow-primary/5 sm:p-7"><div className="flex items-start gap-3 border-b border-border pb-5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{book ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}</span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{book ? "Edit title" : "New title"}</p><h2 className="mt-1 text-xl font-extrabold">{book ? "Refine this listing" : "Add a book to the shelf"}</h2></div></div>
     <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
       <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>
