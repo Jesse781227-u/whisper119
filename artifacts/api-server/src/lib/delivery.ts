@@ -23,7 +23,7 @@ export async function deliverOrderEmail(orderId: string): Promise<void> {
     const book = books.find((candidate) => candidate.id === item.bookId);
     if (!book) throw new Error(`Missing book for order item ${item.bookId}`);
     const file = await storage.getObjectEntityFile(book.fileObjectPath);
-    const [content] = await file.download();
+    const content = await storage.downloadBuffer(file);
     totalBytes += content.byteLength;
     if (totalBytes > MAX_ATTACHMENT_BYTES) throw new Error("EMAIL_ATTACHMENT_LIMIT_EXCEEDED");
     attachments.push({

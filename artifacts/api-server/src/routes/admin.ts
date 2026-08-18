@@ -184,7 +184,7 @@ router.post("/storage/uploads/request-url", async (req, res): Promise<void> => {
   }
   try {
     const storage = new ObjectStorageService();
-    const uploadURL = await storage.getObjectEntityUploadURL();
+    const uploadURL = await storage.getObjectEntityUploadURL(parsed.data.contentType);
     res.json(RequestUploadUrlResponse.parse({
       uploadURL,
       objectPath: storage.normalizeObjectEntityPath(uploadURL),
