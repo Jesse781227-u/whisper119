@@ -42,9 +42,9 @@ export default function BookDetail() {
   const book = apiBook ?? catalogue.find((item) => item.id === bookId || item.slug === bookId)
   const related = useMemo(() => (
     catalogue
-      .filter((item) => item.id !== book?.id && item.category === book?.category)
+        .filter((item) => item.id !== book?.id && item.categories.some((category) => book?.categories.includes(category)))
       .slice(0, 6)
-  ), [catalogue, book?.category, book?.id])
+      ), [catalogue, book?.categories, book?.id])
   const suggestions = useMemo(() => (
     catalogue
       .filter((item) => item.id !== book?.id && !related.some((relatedBook) => relatedBook.id === item.id))
@@ -68,7 +68,7 @@ export default function BookDetail() {
 
   const inCart = items.some((item) => item.id === book.id)
   const heroStyle = book.coverUrl ? { backgroundImage: `linear-gradient(180deg, hsl(229 45% 10% / .2), hsl(229 45% 8% / .94)), url("${book.coverUrl}")` } : undefined
-  const descriptors = [book.category, book.format, "", "Email delivery"]
+  const descriptors = [...book.categories, book.format, "Email delivery"]
 
   function addAndNavigate(path: string) {
     if (!inCart && book) addItem(book)
@@ -93,14 +93,14 @@ export default function BookDetail() {
         <div className="mx-auto max-w-5xl px-4 pb-8 pt-5 sm:px-6 sm:pb-12 sm:pt-7">
           <div className="flex items-center justify-between">
             <Link href="/shop" className="inline-flex items-center gap-2 text-xs font-bold text-white/80 hover:text-white"><ArrowLeft className="h-5 w-5" /> Back</Link>
-            <span className="max-w-[60%] truncate text-[0.68rem] font-medium text-white/60">Home / {book.category} / {book.title}</span>
+            <span className="max-w-[60%] truncate text-[0.68rem] font-medium text-white/60">Home / {book.categories.join(" / ")} / {book.title}</span>
           </div>
           <div className="mx-auto mt-8 max-w-xs sm:mt-10">
             <BookCover book={book} className="aspect-[0.69] border border-white/15 shadow-2xl shadow-black/40" />
           </div>
           <div className="mx-auto mt-7 max-w-2xl text-center">
             <div className="flex justify-center gap-2">
-              <span className="rounded-md bg-primary px-2.5 py-1 text-[0.65rem] font-extrabold">{book.category}</span>
+              {book.categories.map((category) => <span key={category} className="rounded-md bg-primary px-2.5 py-1 text-[0.65rem] font-extrabold">{category}</span>)}
               <span className="rounded-md bg-white/15 px-2.5 py-1 text-[0.65rem] font-bold text-white/85">{book.format}</span>
             </div>
             <div className="mt-4 text-center">
@@ -146,7 +146,7 @@ export default function BookDetail() {
 
         {related.length > 0 && (
           <section className="mt-8">
-            <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">Same world</p><h2 className="mt-1 text-xl font-extrabold">Related books</h2></div><Link href={`/shop?category=${encodeURIComponent(book.category)}`} className="text-xs font-bold text-primary">More →</Link></div>
+            <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">Same world</p><h2 className="mt-1 text-xl font-extrabold">Related books</h2></div><Link href={`/shop?category=${encodeURIComponent(book.categories[0] ?? "")}`} className="text-xs font-bold text-primary">More →</Link></div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{related.map((item) => <BookCard key={item.id} book={item} />)}</div>
           </section>
         )}

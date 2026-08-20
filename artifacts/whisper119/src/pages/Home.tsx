@@ -123,7 +123,7 @@ export default function Home() {
             <section key={category.name} className="mt-9">
               <SectionHeading title={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} />
               <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">
-                {catalogue.filter((book) => book.category === category.name).slice(0, 4).map((book) => (
+                {catalogue.filter((book) => book.categories.some((bookCategory) => bookCategory === category.name)).slice(0, 4).map((book) => (
                   <BookCard key={book.id} book={book} />
                 ))}
               </div>

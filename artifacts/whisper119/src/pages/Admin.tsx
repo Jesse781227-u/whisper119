@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "wouter"
 import { useQueryClient } from "@tanstack/react-query"
-import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Upload, Users, Eye, WalletCards } from "lucide-react"
+import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Eye, WalletCards } from "lucide-react"
 import {
   getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
-  useCreateBook, useUpdateBook, useConfirmAdminOrder,
+  useCreateBook, useDeleteBook, useUpdateBook, useConfirmAdminOrder,
   requestUploadUrl as requestUploadUrlApi,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
@@ -29,7 +29,7 @@ export function AdminLogin() {
   }, [loading, user, isAdmin, setLocation])
 
   if (loading) {
-    return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090f2d] px-4 py-10 text-white"><p>Loading admin access…</p></main>
+    return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090f2d] px-4 py-10 text-white"><p>Loading admin accessâ€¦</p></main>
   }
 
   return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090f2d] px-4 py-10 text-white">
@@ -59,7 +59,6 @@ export function AdminLogin() {
     </div>
   </main>
 }
-
 function AdminNav({ onLogout }: { onLogout: () => void }) {
   return <div className="flex flex-wrap items-center justify-between gap-4"><Link href="/admin" className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen className="h-5 w-5" /></span><div><p className="text-sm font-extrabold">Whisper 119</p><p className="text-xs text-muted-foreground">Administrative controls</p></div></Link><div className="flex items-center gap-2"><Link href="/" className="hidden rounded-full px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-secondary sm:block">Back</Link><button data-testid="button-admin-logout" onClick={onLogout} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:border-destructive hover:text-destructive"><LogOut className="h-3.5 w-3.5" /> Sign out</button></div></div>
 }
@@ -88,11 +87,15 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [author, setAuthor] = useState(book?.author ?? "")
   const [price, setPrice] = useState(String(book?.price ?? ""))
   const [priceNgn, setPriceNgn] = useState(String(book?.priceNgn ?? ""))
-  const [category, setCategory] = useState<(typeof GENRE_CATEGORIES)[number]>((book?.category as (typeof GENRE_CATEGORIES)[number]) ?? "Romance")
+  const [categories, setCategories] = useState<(typeof GENRE_CATEGORIES)[number][]>(book?.categories?.length ? [...book.categories] : ["Romance"])
+  const [slug, setSlug] = useState(book?.slug ?? "")
+  const [currency, setCurrency] = useState(book?.currency ?? "USD")
   const [description, setDescription] = useState(book?.description ?? "")
   const [paystackLink, setPaystackLink] = useState(book?.paystackLink ?? "")
   const [payoneerLink, setPayoneerLink] = useState(book?.payoneerLink ?? "")
   const [format, setFormat] = useState<BookInputFormat>(book?.format ?? "EPUB")
+  const [featured, setFeatured] = useState(book?.featured ?? false)
+  const [publishedAt, setPublishedAt] = useState(book?.publishedAt ? book.publishedAt.slice(0, 16) : new Date().toISOString().slice(0, 16))
   const [ebookFile, setEbookFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -193,6 +196,7 @@ function BookForm({ book, onDone }: BookFormProps) {
       if (!Number.isFinite(priceValue) || priceValue < 0) throw new Error("Enter a valid non-negative USD price.")
       if (!Number.isFinite(priceNgnValue) || priceNgnValue < 0) throw new Error("Enter a valid non-negative NGN price.")
       if (!descriptionValue) throw new Error("Enter a book description.")
+      if (!categories.length) throw new Error("Choose at least one category.")
       if (!book && !ebookFile) throw new Error("Choose the ebook file before saving this book.")
 
       for (const [label, link] of [["Paystack", paystackLink], ["Payoneer", payoneerLink]] as const) {
@@ -217,18 +221,32 @@ function BookForm({ book, onDone }: BookFormProps) {
       if (book) {
         const data: BookUpdate = {
           title: titleValue,
+          slug: slug.trim(),
+          author: authorValue,
           description: descriptionValue,
           price: priceValue,
           priceNgn: priceNgnValue,
+          currency: currency.trim().toUpperCase(),
+          categories,
+          format,
+          featured,
+          publishedAt: new Date(publishedAt).toISOString(),
           paystackLink: paystackLink.trim() || null,
           payoneerLink: payoneerLink.trim() || null,
         }
-        if (ebookFile) {
+        if (ebookFile || coverFile) {
           setPhase("uploading")
-          const [fileObjectPath] = await uploadFiles([ebookFile], setUploadProgress)
-          data.fileObjectPath = fileObjectPath
-          data.fileName = ebookFile.name
-          data.format = format
+          const files = [ebookFile, coverFile].filter((file): file is File => Boolean(file))
+          const paths = await uploadFiles(files, setUploadProgress)
+          if (ebookFile) {
+            const ebookIndex = files.indexOf(ebookFile)
+            data.fileObjectPath = paths[ebookIndex]
+            data.fileName = ebookFile.name
+          }
+          if (coverFile) {
+            const coverIndex = files.indexOf(coverFile)
+            data.coverObjectPath = paths[coverIndex]
+          }
         }
         setPhase("saving")
         await updateBook.mutateAsync({ bookId: book.id, data })
@@ -247,7 +265,7 @@ function BookForm({ book, onDone }: BookFormProps) {
           price: priceValue,
           priceNgn: priceNgnValue,
           currency: "USD",
-          category,
+          categories,
           description: descriptionValue,
           format,
           paystackLink: paystackLink.trim() || null,
@@ -255,8 +273,8 @@ function BookForm({ book, onDone }: BookFormProps) {
           coverObjectPath,
           fileObjectPath,
           fileName: ebook.name,
-          featured: false,
-          publishedAt: new Date().toISOString(),
+          featured,
+          publishedAt: new Date(publishedAt).toISOString(),
         }
         await createBook.mutateAsync({ data: payload })
       }
@@ -284,29 +302,33 @@ function BookForm({ book, onDone }: BookFormProps) {
 
   const pending = createBook.isPending || updateBook.isPending || phase !== "idle"
   const submitLabel = phase === "validating"
-    ? "Checking details…"
+    ? "Checking detailsâ€¦"
     : phase === "uploading"
-      ? "Uploading files…"
+      ? "Uploading filesâ€¦"
       : phase === "saving"
-        ? "Saving…"
+        ? "Savingâ€¦"
         : book
           ? "Save changes"
           : "Add book"
 
   return <section id="book-form" className="rounded-2xl border border-primary/25 bg-card p-5 shadow-lg shadow-primary/5 sm:p-7"><div className="flex items-start gap-3 border-b border-border pb-5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{book ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}</span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{book ? "Edit book" : "New book"}</p><h2 className="mt-1 text-xl font-extrabold">{book ? "Refine this listing" : "Add a book to the shelf"}</h2></div></div>
-     {phase === "uploading" && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status" aria-live="polite"><div className="flex items-center justify-between gap-3 text-sm"><p className="font-extrabold">Uploading files</p><p className="font-mono text-xs font-bold text-primary">{uploadProgress === null ? "Working…" : `${uploadProgress}%`}</p></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-primary/10" role="progressbar" aria-label="Book file upload progress" aria-valuemin={0} aria-valuemax={100} {...(uploadProgress === null ? { "aria-valuetext": "Upload in progress" } : { "aria-valuenow": uploadProgress })}><div className={uploadProgress === null ? "h-full w-1/3 rounded-full bg-primary animate-pulse" : "h-full rounded-full bg-primary transition-[width] duration-200 ease-out"} style={uploadProgress === null ? undefined : { width: `${uploadProgress}%` }} /></div><p className="mt-2 text-xs text-muted-foreground">{uploadProgress === null ? "Upload started. Waiting for transfer progress…" : uploadProgress === 100 ? "Upload complete. Preparing your book…" : "Keep this window open while the files upload."}</p></div>}
+     {phase === "uploading" && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status" aria-live="polite"><div className="flex items-center justify-between gap-3 text-sm"><p className="font-extrabold">Uploading files</p><p className="font-mono text-xs font-bold text-primary">{uploadProgress === null ? "Workingâ€¦" : `${uploadProgress}%`}</p></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-primary/10" role="progressbar" aria-label="Book file upload progress" aria-valuemin={0} aria-valuemax={100} {...(uploadProgress === null ? { "aria-valuetext": "Upload in progress" } : { "aria-valuenow": uploadProgress })}><div className={uploadProgress === null ? "h-full w-1/3 rounded-full bg-primary animate-pulse" : "h-full rounded-full bg-primary transition-[width] duration-200 ease-out"} style={uploadProgress === null ? undefined : { width: `${uploadProgress}%` }} /></div><p className="mt-2 text-xs text-muted-foreground">{uploadProgress === null ? "Upload started. Waiting for transfer progressâ€¦" : uploadProgress === 100 ? "Upload complete. Preparing your bookâ€¦" : "Keep this window open while the files upload."}</p></div>}
      <form onSubmit={submit} noValidate className="mt-6 grid gap-4 sm:grid-cols-2">
       <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>
-      {!book && <label><span className="mb-2 block text-xs font-bold">Author</span><input data-testid="input-book-author" required value={author} onChange={e => setAuthor(e.target.value)} className={fieldClass} /></label>}
+      <label><span className="mb-2 block text-xs font-bold">Author</span><input data-testid="input-book-author" required value={author} onChange={e => setAuthor(e.target.value)} className={fieldClass} /></label>
+      <label><span className="mb-2 block text-xs font-bold">Slug</span><input required value={slug} onChange={e => setSlug(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Used in catalogue links; keep it lowercase with hyphens.</span></label>
       <label><span className="mb-2 block text-xs font-bold">Price (USD)</span><input data-testid="input-book-price" required min="0" step="0.01" type="number" value={price} onChange={e => setPrice(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Reference USD price for international display. The native NGN amount below is the base price.</span></label>
       <label><span className="mb-2 block text-xs font-bold">Native price (NGN)</span><input required min="0" step="0.01" type="number" value={priceNgn} onChange={e => setPriceNgn(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Enter the book's base price in Nigerian Naira. This is the source-of-truth price for the title.</span></label>
-      {!book && <label><span className="mb-2 block text-xs font-bold">Category</span><select data-testid="input-book-category" value={category} onChange={e => setCategory(e.target.value as (typeof GENRE_CATEGORIES)[number])} className={fieldClass}>{GENRE_CATEGORIES.map(g => <option key={g}>{g}</option>)}</select><span className="mt-1 block text-xs text-muted-foreground">Choose the category where this book should appear in the catalogue.</span></label>}
+      <fieldset className="sm:col-span-2"><legend className="mb-2 block text-xs font-bold">Categories</legend><div className="grid gap-2 sm:grid-cols-2">{GENRE_CATEGORIES.map((genre) => <label key={genre} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={categories.includes(genre)} onChange={(event) => setCategories((current) => event.target.checked ? [...new Set([...current, genre])] : current.filter((item) => item !== genre))} />{genre}</label>)}</div><span className="mt-1 block text-xs text-muted-foreground">Choose every category that applies to this book.</span></fieldset>
+      <label><span className="mb-2 block text-xs font-bold">Currency</span><input value={currency} onChange={e => setCurrency(e.target.value)} maxLength={3} className={fieldClass} /></label>
       <label><span className="mb-2 block text-xs font-bold">Format</span><select value={format} onChange={e => setFormat(e.target.value as BookInputFormat)} className={fieldClass}><option>EPUB</option><option>PDF</option></select></label>
       <label><span className="mb-2 block text-xs font-bold">Ebook file {book && <span className="font-normal text-muted-foreground">(optional replacement)</span>}</span><input data-testid="input-book-file" required={!book} accept={format === "PDF" ? ".pdf,application/pdf" : ".epub,application/epub+zip"} type="file" onChange={e => setEbookFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
-      {!book && <label><span className="mb-2 block text-xs font-bold">Cover image <span className="font-normal text-muted-foreground">(optional)</span></span><input accept="image/png,image/jpeg,image/webp" type="file" onChange={e => setCoverFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>}
+      <label><span className="mb-2 block text-xs font-bold">Cover image <span className="font-normal text-muted-foreground">({book ? "optional replacement" : "optional"})</span></span><input accept="image/png,image/jpeg,image/webp" type="file" onChange={e => setCoverFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
+      <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={featured} onChange={e => setFeatured(e.target.checked)} />Show this book in Featured</label>
+      <label><span className="mb-2 block text-xs font-bold">Publish date</span><input type="datetime-local" value={publishedAt} onChange={e => setPublishedAt(e.target.value)} className={fieldClass} /></label>
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
-       <label><span className="mb-2 block text-xs font-bold">Paystack link (Nigeria) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-paystack-link" type="url" value={paystackLink} onChange={e => setPaystackLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For Nigerian buyers. This link never confirms payment by itself.</span></label>
-       <label><span className="mb-2 block text-xs font-bold">Payoneer link (International) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payoneer-link" type="url" value={payoneerLink} onChange={e => setPayoneerLink(e.target.value)} placeholder="https://…" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For international buyers. This link never confirms payment by itself.</span></label>
+       <label><span className="mb-2 block text-xs font-bold">Paystack link (Nigeria) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-paystack-link" type="url" value={paystackLink} onChange={e => setPaystackLink(e.target.value)} placeholder="https://â€¦" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For Nigerian buyers. This link never confirms payment by itself.</span></label>
+       <label><span className="mb-2 block text-xs font-bold">Payoneer link (International) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payoneer-link" type="url" value={payoneerLink} onChange={e => setPayoneerLink(e.target.value)} placeholder="https://â€¦" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For international buyers. This link never confirms payment by itself.</span></label>
        <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{submitLabel}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
        {error && <p role="alert" className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
     </form>
@@ -315,11 +337,13 @@ function BookForm({ book, onDone }: BookFormProps) {
 
 export default function Admin() {
   const { user, loading: authLoading, isAdmin, signOutUser } = useAuth()
+  const { toast } = useToast()
   const [, setLocation] = useLocation()
   const queryClient = useQueryClient()
   const enabled = Boolean(isAdmin)
   const dashboard = useGetAdminDashboard({ query: { queryKey: getGetAdminDashboardQueryKey(), enabled } })
   const books = useListAdminBooks({ query: { queryKey: getListAdminBooksQueryKey(), enabled } })
+  const deleteBook = useDeleteBook()
   const orders = useListAdminOrders(undefined, { query: { queryKey: ["/api/admin/orders"], enabled } })
   const confirmOrder = useConfirmAdminOrder()
   const [form, setForm] = useState<"new" | Book | null>(null)
@@ -379,7 +403,7 @@ export default function Admin() {
   }, [isAdmin, authLoading, setLocation])
 
   if (authLoading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading Administrative controls…</main>
+    return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading Administrative controlsâ€¦</main>
   }
 
   if (!isAdmin) {
@@ -402,6 +426,20 @@ export default function Admin() {
         setConfirmingOrderId(null)
         setOrderActionError(error instanceof Error ? error.message : "The order could not be confirmed. Please try again.")
       },
+    })
+  }
+
+  const handleDeleteBook = (book: Book) => {
+    if (!window.confirm(`Delete â€œ${book.title}â€ from the catalogue? This cannot be undone.`)) return
+    deleteBook.mutate({ bookId: book.id }, {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
+        void queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
+        void queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() })
+        void queryClient.invalidateQueries({ queryKey: getGetStorefrontSummaryQueryKey() })
+        toast({ title: "Book deleted", description: `â€œ${book.title}â€ was removed from the catalogue.` })
+      },
+      onError: (error) => toast({ variant: "destructive", title: "Book not deleted", description: errorMessage(error, "The book could not be deleted.") }),
     })
   }
 
@@ -449,7 +487,7 @@ export default function Admin() {
           disabled={adminSaving}
           className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60"
         >
-          {adminSaving ? "Saving…" : "Add admin"}
+          {adminSaving ? "Savingâ€¦" : "Add admin"}
         </button>
       </div>
       {adminError && <p className="mt-4 text-sm text-destructive">{adminError}</p>}
@@ -460,7 +498,7 @@ export default function Admin() {
         </div>
         <div className="divide-y divide-border">
           {adminLoading ? (
-            <div className="p-5 text-sm text-muted-foreground">Loading admin list…</div>
+            <div className="p-5 text-sm text-muted-foreground">Loading admin listâ€¦</div>
           ) : adminEmails.length ? (
             adminEmails.map((email) => (
               <div key={email} className="grid gap-0 text-sm sm:grid-cols-[1fr_auto]">
@@ -492,8 +530,33 @@ export default function Admin() {
       </div>
     </section>
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button type="button" data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} aria-expanded={form === "new"} aria-controls="book-form" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add book"}</button></div>
-    {form === "new" && <BookForm onDone={() => setForm(null)} />}{form && form !== "new" && <BookForm book={form} onDone={() => setForm(null)} />}
-    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"><div className="divide-y divide-border">{bookList.map(book => <div key={book.id} className="flex items-center gap-3 p-4 sm:p-5"><div className="flex h-11 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">{book.coverUrl ? <img src={book.coverUrl} alt="" className="h-full w-full object-cover" /> : <FileText className="h-4 w-4" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold">{book.title}</p><p className="mt-1 truncate text-xs text-muted-foreground">{book.author} · {book.format}</p></div><div className="flex items-center gap-3"><div className="text-right"><p className="text-sm font-extrabold">{formatPrice(book.price, book.currency)}</p><span className="text-[0.62rem] font-bold text-primary">{book.category}</span></div><button data-testid={`button-edit-book-${book.id}`} onClick={() => setForm(book)} className="rounded-lg border border-border p-2 text-muted-foreground hover:text-primary" aria-label={`Edit ${book.title}`}><Pencil className="h-4 w-4" /></button></div></div>)}{!books.isLoading && !bookList.length && <div className="p-10 text-center"><BookOpen className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No books listed yet.</p></div>}</div></section>
-     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p><h2 className="mt-1 text-2xl font-extrabold">Orders</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Check your Paystack or Payoneer dashboard before confirming a customer payment. Confirming here sends the ebook and receipt.</p></div>{orderActionError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">{orderActionError}</p>}<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{orderList.map(order => { const needsConfirmation = order.status === "pending" && Boolean(order.paymentReference); const statusLabel = order.status === "fulfilled" ? "Fulfilled" : needsConfirmation ? "Pending confirmation" : order.status; return <div key={order.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-secondary/50 sm:p-5"><Link href={`/order/${order.id}`} className="min-w-0 flex-1"><p className="font-mono text-xs font-bold">{order.reference}</p><p className="mt-1 truncate text-xs text-muted-foreground">{order.email} · {formatDate(order.createdAt)}</p></Link><div className="flex flex-wrap items-center justify-end gap-2"><span className={`rounded-full px-2.5 py-1 text-[0.62rem] font-bold ${needsConfirmation ? "bg-amber-500/15 text-amber-700" : order.status === "fulfilled" ? "bg-emerald-500/10 text-emerald-600" : "bg-secondary text-muted-foreground"}`}>{statusLabel}</span><span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span>{needsConfirmation && <button type="button" data-testid={`button-confirm-payment-${order.id}`} onClick={() => handleConfirmOrder(order)} disabled={confirmingOrderId === order.id} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-[0.68rem] font-extrabold text-primary-foreground disabled:cursor-wait disabled:opacity-60">{confirmingOrderId === order.id ? "Confirming…" : "Confirm Payment"}</button>}</div></div> })}{!orders.isLoading && !orderList.length && <div className="p-10 text-center"><Clock3 className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No orders yet.</p></div>}</div></section>
+     {form === "new" && <BookForm onDone={() => setForm(null)} />}{form && form !== "new" && <BookForm book={form} onDone={() => setForm(null)} />}
+     <div>
+      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="divide-y divide-border">
+          {bookList.map((book) => (
+            <div key={book.id} className="flex items-center gap-3 p-4 sm:p-5">
+              <div className="flex h-11 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
+                {book.coverUrl ? <img src={book.coverUrl} alt="" className="h-full w-full object-cover" /> : <FileText className="h-4 w-4" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-extrabold">{book.title}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{book.author} · {book.format}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm font-extrabold">{formatPrice(book.price, book.currency)}</p>
+                  <span className="text-[0.62rem] font-bold text-primary">{book.categories.join(" · ")}</span>
+                </div>
+                <button data-testid={"button-edit-book-" + book.id} onClick={() => setForm(book)} className="rounded-lg border border-border p-2 text-muted-foreground hover:text-primary" aria-label={"Edit " + book.title}><Pencil className="h-4 w-4" /></button>
+                <button data-testid={"button-delete-book-" + book.id} onClick={() => handleDeleteBook(book)} disabled={deleteBook.isPending} className="rounded-lg border border-border p-2 text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50" aria-label={"Delete " + book.title}><Trash2 className="h-4 w-4" /></button>
+              </div>
+            </div>
+          ))}
+          {!books.isLoading && !bookList.length && <div className="p-10 text-center"><BookOpen className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No books listed yet.</p></div>}
+        </div>
+      </section>
+    </div>
+     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p><h2 className="mt-1 text-2xl font-extrabold">Orders</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Check your Paystack or Payoneer dashboard before confirming a customer payment. Confirming here sends the ebook and receipt.</p></div>{orderActionError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">{orderActionError}</p>}<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{orderList.map(order => { const needsConfirmation = order.status === "pending" && Boolean(order.paymentReference); const statusLabel = order.status === "fulfilled" ? "Fulfilled" : needsConfirmation ? "Pending confirmation" : order.status; return <div key={order.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-secondary/50 sm:p-5"><Link href={`/order/${order.id}`} className="min-w-0 flex-1"><p className="font-mono text-xs font-bold">{order.reference}</p><p className="mt-1 truncate text-xs text-muted-foreground">{order.email} Â· {formatDate(order.createdAt)}</p></Link><div className="flex flex-wrap items-center justify-end gap-2"><span className={`rounded-full px-2.5 py-1 text-[0.62rem] font-bold ${needsConfirmation ? "bg-amber-500/15 text-amber-700" : order.status === "fulfilled" ? "bg-emerald-500/10 text-emerald-600" : "bg-secondary text-muted-foreground"}`}>{statusLabel}</span><span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span>{needsConfirmation && <button type="button" data-testid={`button-confirm-payment-${order.id}`} onClick={() => handleConfirmOrder(order)} disabled={confirmingOrderId === order.id} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-[0.68rem] font-extrabold text-primary-foreground disabled:cursor-wait disabled:opacity-60">{confirmingOrderId === order.id ? "Confirmingâ€¦" : "Confirm Payment"}</button>}</div></div> })}{!orders.isLoading && !orderList.length && <div className="p-10 text-center"><Clock3 className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No orders yet.</p></div>}</div></section>
   </div></main>
 }

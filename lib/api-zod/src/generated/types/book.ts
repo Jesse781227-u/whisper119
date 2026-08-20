@@ -5,7 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { BookCategory } from './bookCategory';
+import type { BookCategoriesItem } from './bookCategoriesItem';
 import type { BookFormat } from './bookFormat';
 
 export interface Book {
@@ -16,7 +16,8 @@ export interface Book {
   price: number;
   priceNgn: number;
   currency: string;
-  category: BookCategory;
+  /** @minItems 1 */
+  categories: BookCategoriesItem[];
   description: string;
   format: BookFormat;
   /** @nullable */

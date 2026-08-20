@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type BookUpdateCategory = typeof BookUpdateCategory[keyof typeof BookUpdateCategory];
+export type BookUpdateCategoriesItem = typeof BookUpdateCategoriesItem[keyof typeof BookUpdateCategoriesItem];
 
 
-export const BookUpdateCategory = {
+export const BookUpdateCategoriesItem = {
   Romance: 'Romance',
   Werewolf: 'Werewolf',
   Paranormal: 'Paranormal',

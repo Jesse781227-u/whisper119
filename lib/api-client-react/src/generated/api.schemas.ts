@@ -13,10 +13,10 @@ export interface ErrorResponse {
   error: string;
 }
 
-export type BookCategory = typeof BookCategory[keyof typeof BookCategory];
+export type BookCategoriesItem = typeof BookCategoriesItem[keyof typeof BookCategoriesItem];
 
 
-export const BookCategory = {
+export const BookCategoriesItem = {
   Romance: 'Romance',
   Werewolf: 'Werewolf',
   Paranormal: 'Paranormal',
@@ -41,7 +41,8 @@ export interface Book {
   price: number;
   priceNgn: number;
   currency: string;
-  category: BookCategory;
+  /** @minItems 1 */
+  categories: BookCategoriesItem[];
   description: string;
   format: BookFormat;
   /** @nullable */
@@ -56,10 +57,10 @@ export interface Book {
   createdAt: string;
 }
 
-export type BookInputCategory = typeof BookInputCategory[keyof typeof BookInputCategory];
+export type BookInputCategoriesItem = typeof BookInputCategoriesItem[keyof typeof BookInputCategoriesItem];
 
 
-export const BookInputCategory = {
+export const BookInputCategoriesItem = {
   Romance: 'Romance',
   Werewolf: 'Werewolf',
   Paranormal: 'Paranormal',
@@ -92,7 +93,8 @@ export interface BookInput {
      * @maxLength 3
      */
   currency: string;
-  category: BookInputCategory;
+  /** @minItems 1 */
+  categories: BookInputCategoriesItem[];
   description: string;
   format: BookInputFormat;
   /** @nullable */
@@ -109,10 +111,10 @@ export interface BookInput {
   publishedAt: string;
 }
 
-export type BookUpdateCategory = typeof BookUpdateCategory[keyof typeof BookUpdateCategory];
+export type BookUpdateCategoriesItem = typeof BookUpdateCategoriesItem[keyof typeof BookUpdateCategoriesItem];
 
 
-export const BookUpdateCategory = {
+export const BookUpdateCategoriesItem = {
   Romance: 'Romance',
   Werewolf: 'Werewolf',
   Paranormal: 'Paranormal',
@@ -145,7 +147,8 @@ export interface BookUpdate {
      * @maxLength 3
      */
   currency?: string;
-  category?: BookUpdateCategory;
+  /** @minItems 1 */
+  categories?: BookUpdateCategoriesItem[];
   description?: string;
   format?: BookUpdateFormat;
   /** @nullable */

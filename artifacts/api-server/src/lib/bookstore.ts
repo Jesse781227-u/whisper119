@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, lte, or } from "drizzle-orm";
+import { and, arrayContains, desc, eq, ilike, inArray, lte, or } from "drizzle-orm";
 import { db, booksTable, orderItemsTable, ordersTable, type Book, type Order, type OrderItem } from "@workspace/db";
 
 export function coverUrl(book: Book): string | null {
@@ -25,7 +25,7 @@ export function publicBook(book: Book) {
     price: book.price,
     priceNgn: book.priceNgn,
     currency: book.currency,
-    category: book.category,
+    categories: book.categories,
     description: book.description,
     format: book.format,
     paystackLink: book.paystackLink,
@@ -45,7 +45,7 @@ export async function findBooks(filters: {
   maxPrice?: number;
 }): Promise<Book[]> {
   const conditions = [
-    filters.category ? eq(booksTable.category, filters.category) : undefined,
+    filters.category ? arrayContains(booksTable.categories, [filters.category]) : undefined,
     filters.format ? eq(booksTable.format, filters.format) : undefined,
     filters.maxPrice !== undefined ? lte(booksTable.price, filters.maxPrice) : undefined,
     filters.search ? or(ilike(booksTable.title, `%${filters.search}%`), ilike(booksTable.author, `%${filters.search}%`)) : undefined,
