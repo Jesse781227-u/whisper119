@@ -1,7 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { CopyLinkIcon, InstagramIcon, NewTwitterIcon, WhatsappIcon } from "@hugeicons/core-free-icons"
 import { ArrowLeft, Check, ChevronDown, ChevronUp, ExternalLink, Mail, ShoppingCart } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useLocation, useParams } from "wouter"
 import { useGetBook, useListBooks } from "@workspace/api-client-react"
 import { BookCard, BookCover } from "@/components/book-card"
@@ -55,6 +55,68 @@ export default function BookDetail() {
   const isLoading = !book && (isBookLoading || isCatalogueLoading)
   const error = !book && bookError
 
+  useEffect(() => {
+    if (!book) return
+
+    const pageUrl = window.location.href
+    const imageUrl = book.coverUrl ? new URL(book.coverUrl, window.location.origin).href : null
+    const previousTitle = document.title
+    const previous = new Map<Element, { created: boolean; value: string }>()
+
+    const setMeta = (attribute: "name" | "property", key: string, content: string) => {
+      let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`)
+      if (!element) {
+        element = document.createElement("meta")
+        element.setAttribute(attribute, key)
+        document.head.appendChild(element)
+        previous.set(element, { created: true, value: "" })
+      } else if (!previous.has(element)) {
+        previous.set(element, { created: false, value: element.content })
+      }
+      element.content = content
+    }
+
+    document.title = `${book.title} · Whisper 119`
+    setMeta("property", "og:title", book.title)
+    setMeta("property", "og:description", book.description || `Discover ${book.title} by ${book.author}.`)
+    setMeta("property", "og:url", pageUrl)
+    setMeta("property", "og:type", "book")
+    setMeta("name", "twitter:card", imageUrl ? "summary_large_image" : "summary")
+    setMeta("name", "twitter:title", book.title)
+    setMeta("name", "twitter:description", book.description || `Discover ${book.title} by ${book.author}.`)
+
+    if (imageUrl) {
+      setMeta("property", "og:image", imageUrl)
+      setMeta("property", "og:image:alt", `Cover of ${book.title}`)
+      setMeta("name", "twitter:image", imageUrl)
+      setMeta("name", "twitter:image:alt", `Cover of ${book.title}`)
+    }
+
+    let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+    if (!canonical) {
+      canonical = document.createElement("link")
+      canonical.rel = "canonical"
+      document.head.appendChild(canonical)
+      previous.set(canonical, { created: true, value: "" })
+    } else if (!previous.has(canonical)) {
+      previous.set(canonical, { created: false, value: canonical.href })
+    }
+    canonical.href = pageUrl
+
+    return () => {
+      document.title = previousTitle
+      previous.forEach((state, element) => {
+        if (state.created) {
+          element.remove()
+        } else if (element instanceof HTMLMetaElement) {
+          element.content = state.value
+        } else if (element instanceof HTMLLinkElement) {
+          element.href = state.value
+        }
+      })
+    }
+  }, [book])
+
   if (isLoading) {
     return (
       <main className="pb-24">
@@ -80,8 +142,10 @@ export default function BookDetail() {
   const shareUrl = window.location.href
   const shareTitle = book.title
   const shareText = `Read "${shareTitle}" by ${book.author}`
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} — ${shareUrl}`)}`
-  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`
+  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? window.location.origin).replace(/\/+$/, "")
+  const previewUrl = `${apiBaseUrl}/api/share/books/${encodeURIComponent(book.id)}?redirect=${encodeURIComponent(shareUrl)}`
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} — ${previewUrl}`)}`
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(previewUrl)}`
 
   async function copyShareUrl() {
     try {
@@ -96,7 +160,7 @@ export default function BookDetail() {
   async function shareOnInstagram() {
     if (navigator.share) {
       try {
-        await navigator.share({ title: shareTitle, text: shareText, url: shareUrl })
+        await navigator.share({ title: shareTitle, text: shareText, url: previewUrl })
         return
       } catch (shareError) {
         if (shareError instanceof DOMException && shareError.name === "AbortError") return

@@ -6,6 +6,49 @@ import { findBooks, publicBook } from "../lib/bookstore";
 
 const router: IRouter = Router();
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>\"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;",
+  })[character] ?? character);
+}
+
+router.get("/share/books/:bookId", async (req, res): Promise<void> => {
+  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, req.params.bookId));
+  if (!book) {
+    res.status(404).type("html").send("<!doctype html><title>Book not found</title><p>Book not found.</p>");
+    return;
+  }
+
+  const publicBookData = publicBook(book);
+  const requestOrigin = `${req.protocol}://${req.get("host")}`;
+  const cover = publicBookData.coverUrl ? new URL(publicBookData.coverUrl, requestOrigin).href : null;
+  const redirectParam = typeof req.query.redirect === "string" ? req.query.redirect : "";
+  const redirectUrl = /^https?:\/\//i.test(redirectParam) ? redirectParam : `${requestOrigin}/api/books/${book.id}`;
+  const title = escapeHtml(publicBookData.title);
+  const description = escapeHtml(publicBookData.description || `Discover ${publicBookData.title} by ${publicBookData.author}.`);
+  const escapedRedirect = escapeHtml(redirectUrl);
+  const imageTags = cover
+    ? `<meta property="og:image" content="${escapeHtml(cover)}"><meta property="og:image:alt" content="${escapeHtml(`Cover of ${publicBookData.title}`)}"><meta name="twitter:image" content="${escapeHtml(cover)}">`
+    : "";
+
+  res.set("Cache-Control", "public, max-age=300");
+  res.type("html").send(`<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} · Whisper 119</title>
+<meta property="og:title" content="${title}"><meta property="og:description" content="${description}">
+<meta property="og:type" content="book"><meta property="og:url" content="${escapedRedirect}">
+<meta name="twitter:card" content="${cover ? "summary_large_image" : "summary"}"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}">
+${imageTags}
+<meta http-equiv="refresh" content="0;url=${escapedRedirect}">
+</head><body><p>Opening <a href="${escapedRedirect}">${title}</a>…</p>
+<script>window.location.replace(${JSON.stringify(redirectUrl).replace(/</g, "\\u003c")});</script></body></html>`);
+});
+
 router.get("/books", async (req, res): Promise<void> => {
   const parsed = ListBooksQueryParams.safeParse(req.query);
   if (!parsed.success) {
