@@ -5,14 +5,16 @@ import { useCreateOrder } from "@workspace/api-client-react"
 import { useCart } from "@/components/cart-provider"
 import { ConvertedPrice } from "@/components/converted-price"
 import { formatPrice } from "@/lib/utils"
+import { useUsdToNgn } from "@/hooks/use-usd-to-ngn"
 
 export default function Checkout() {
   const { items, total, clearCart } = useCart()
-  const nativeTotal = items.reduce((sum, item) => sum + item.priceNgn, 0)
+  const dollarTotal = items.reduce((sum, item) => sum + item.price, 0)
   const [, setLocation] = useLocation()
   const [email, setEmail] = useState("")
   const [country, setCountry] = useState("US")
   const createOrder = useCreateOrder()
+  const { rate: usdToNgnRate, isLoading: isRateLoading } = useUsdToNgn()
 
   useEffect(() => {
     if (items.length === 0) setLocation("/cart")
@@ -21,7 +23,8 @@ export default function Checkout() {
   if (items.length === 0) return null
 
   const currency = country === "NG" ? "NGN" : "USD"
-  const checkoutTotal = items.reduce((sum, item) => sum + (currency === "NGN" ? item.priceNgn : item.price), 0)
+  const checkoutTotal = currency === "NGN" && usdToNgnRate ? dollarTotal * usdToNgnRate : dollarTotal
+  const canSubmit = currency !== "NGN" || Boolean(usdToNgnRate)
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -83,7 +86,7 @@ export default function Checkout() {
             </div>
           )}
 
-           <button type="submit" disabled={createOrder.isPending || checkoutTotal <= 0} className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60">
+           <button type="submit" disabled={createOrder.isPending || checkoutTotal <= 0 || !canSubmit} className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60">
              {createOrder.isPending ? "Connecting to payment…" : `Pay ${formatPrice(checkoutTotal, currency)}`}
           </button>
           <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-center text-[0.62rem] font-bold text-muted-foreground">
@@ -99,11 +102,11 @@ export default function Checkout() {
             {items.map((item) => (
               <div key={item.id} className="flex items-start justify-between gap-4 py-4">
                 <div className="min-w-0"><p className="line-clamp-2 text-sm font-bold leading-5">{item.title}</p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-primary">{item.format}</p></div>
-                <span className="shrink-0 text-sm font-extrabold"><ConvertedPrice amountNgn={item.priceNgn} /></span>
+                <span className="shrink-0 text-sm font-extrabold"><ConvertedPrice amountUsd={item.price} /></span>
               </div>
             ))}
           </div>
-           <div className="mt-5 flex items-center justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-2xl font-extrabold"><ConvertedPrice amountNgn={nativeTotal} /></span></div>
+           <div className="mt-5 flex items-center justify-between"><span className="text-sm text-muted-foreground">Total</span><span className="text-2xl font-extrabold"><ConvertedPrice amountUsd={dollarTotal} /></span></div>
           <div className="mt-5 space-y-3 rounded-xl bg-secondary/70 p-4 text-xs leading-5 text-muted-foreground">
             <p className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> No shipping or hidden fees</p>
             <p className="flex items-start gap-2"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> Files arrive as attachments after payment.</p>

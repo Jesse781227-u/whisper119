@@ -1,20 +1,20 @@
 import { type ReactNode } from "react"
 import { formatPrice } from "@/lib/utils"
-import { useLocalCurrency } from "@/hooks/use-local-currency"
+import { useUsdToNgn } from "@/hooks/use-usd-to-ngn"
 
 type ConvertedPriceProps = {
-  amountNgn: number
+  amountUsd: number
   hideBase?: boolean
   className?: string
   children?: ReactNode
 }
 
-export function ConvertedPrice({ amountNgn, hideBase = false, className = "" }: ConvertedPriceProps) {
-  const { locale, targetCurrency, rate } = useLocalCurrency()
-  const basePrice = formatPrice(amountNgn, "NGN", locale)
-  const localPrice = rate && targetCurrency ? formatPrice(amountNgn * rate, targetCurrency, locale) : null
+export function ConvertedPrice({ amountUsd, hideBase = false, className = "" }: ConvertedPriceProps) {
+  const { rate } = useUsdToNgn()
+  const basePrice = formatPrice(amountUsd, "USD", "en-US")
+  const localPrice = rate ? formatPrice(amountUsd * rate, "NGN", "en-NG") : null
 
-  if (hideBase || !localPrice || targetCurrency === "NGN") {
+  if (hideBase || !localPrice) {
     return <span className={className}>{basePrice}</span>
   }
 

@@ -23,7 +23,7 @@ function CoverArtwork({ book }: { book: Book }) {
         {book.format}
       </span>
       <span className="absolute bottom-2 right-2 rounded-md bg-white/95 px-2 py-1 text-[0.6rem] font-extrabold text-slate-900 shadow-sm dark:bg-slate-950/90 dark:text-white">
-        <ConvertedPrice amountNgn={book.priceNgn} />
+        <ConvertedPrice amountUsd={book.price} />
       </span>
     </div>
   )

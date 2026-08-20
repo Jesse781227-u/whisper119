@@ -8,6 +8,7 @@ import {
 import { booksTable, db, orderItemsTable, ordersTable } from "@workspace/db";
 import { getOrderById, orderResponse } from "../lib/bookstore";
 import { confirmPaystackReference, initializePaystack, validPaystackSignature } from "../lib/payments";
+import { getExchangeRates } from "../lib/exchange-rates";
 
 const router: IRouter = Router();
 
@@ -16,6 +17,13 @@ async function paymentSession(orderId: string) {
   if (!result) throw new Error("ORDER_NOT_FOUND");
   const payment = await initializePaystack(result.order.reference, result.order.email, result.order.subtotal, result.order.currency, result.order.id);
   return { orderId: result.order.id, reference: result.order.reference, authorizationUrl: payment?.authorization_url ?? "", accessCode: payment?.access_code ?? "" };
+}
+
+async function convertUsdToNgn(amountUsd: number): Promise<number> {
+  const rates = await getExchangeRates();
+  const usdPerNgn = rates.rates.USD;
+  if (!Number.isFinite(usdPerNgn) || usdPerNgn <= 0) throw new Error("USD_TO_NGN_RATE_UNAVAILABLE");
+  return Math.round((amountUsd / usdPerNgn) * 100) / 100;
 }
 
 router.post("/orders", async (req, res): Promise<void> => {
@@ -38,8 +46,18 @@ router.post("/orders", async (req, res): Promise<void> => {
   const orderId = randomUUID();
   const reference = `W119-${Date.now().toString(36).toUpperCase()}-${orderId.slice(0, 6).toUpperCase()}`;
   const currency = parsed.data.country.toUpperCase() === "NG" ? "NGN" : "USD";
-  const subtotal = selected.reduce((sum, book) => sum + (currency === "NGN" ? book.priceNgn : book.price), 0);
-  if (subtotal <= 0 || selected.some((book) => currency === "NGN" ? book.priceNgn <= 0 : book.price <= 0)) {
+  let selectedPrices: number[];
+  try {
+    selectedPrices = currency === "NGN"
+      ? await Promise.all(selected.map((book) => convertUsdToNgn(book.price)))
+      : selected.map((book) => book.price);
+  } catch (error) {
+    req.log.error({ err: error }, "Could not convert USD prices to NGN");
+    res.status(503).json({ error: "The current NGN exchange rate is unavailable. Please try again shortly." });
+    return;
+  }
+  const subtotal = selectedPrices.reduce((sum, price) => sum + price, 0);
+  if (subtotal <= 0 || selectedPrices.some((price) => price <= 0)) {
     res.status(400).json({ error: `One or more selected books does not have a valid ${currency} price yet.` });
     return;
   }
@@ -47,9 +65,9 @@ router.post("/orders", async (req, res): Promise<void> => {
     id: orderId, reference, email: parsed.data.email, country: parsed.data.country,
     currency, subtotal, status: "pending", paymentStatus: "pending", paymentMethod: "paystack",
   });
-  await db.insert(orderItemsTable).values(selected.map((book) => ({
+  await db.insert(orderItemsTable).values(selected.map((book, index) => ({
     id: randomUUID(), orderId, bookId: book.id, title: book.title, author: book.author,
-    price: currency === "NGN" ? book.priceNgn : book.price, format: book.format,
+    price: selectedPrices[index], format: book.format,
   })));
   try {
     res.status(201).json(CreateOrderResponse.parse(await paymentSession(orderId)));
@@ -80,7 +98,7 @@ router.post("/orders/confirm-payment", async (req, res): Promise<void> => {
 
   const isLocalPayment = parsed.data.paymentMethod === "paystack";
   const currency = isLocalPayment ? "NGN" : "USD";
-  const subtotal = isLocalPayment ? book.priceNgn : book.price;
+  const subtotal = isLocalPayment ? await convertUsdToNgn(book.price) : book.price;
   if (subtotal <= 0) {
     res.status(400).json({ error: `This book does not have a valid ${currency} price yet.` });
     return;

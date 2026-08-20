@@ -86,12 +86,9 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [title, setTitle] = useState(book?.title ?? "")
   const [author, setAuthor] = useState(book?.author ?? "")
   const [price, setPrice] = useState(String(book?.price ?? ""))
-  const [priceNgn, setPriceNgn] = useState(String(book?.priceNgn ?? ""))
   const [categories, setCategories] = useState<(typeof GENRE_CATEGORIES)[number][]>(book?.categories?.length ? [...book.categories] : ["Romance"])
   const [slug, setSlug] = useState(book?.slug ?? "")
-  const [currency, setCurrency] = useState(book?.currency ?? "USD")
   const [description, setDescription] = useState(book?.description ?? "")
-  const [paystackLink, setPaystackLink] = useState(book?.paystackLink ?? "")
   const [payoneerLink, setPayoneerLink] = useState(book?.payoneerLink ?? "")
   const [format, setFormat] = useState<BookInputFormat>(book?.format ?? "EPUB")
   const [featured, setFeatured] = useState(book?.featured ?? false)
@@ -187,25 +184,21 @@ function BookForm({ book, onDone }: BookFormProps) {
       const authorValue = author.trim()
       const descriptionValue = description.trim()
       const priceValue = Number(price)
-      const priceNgnValue = Number(priceNgn)
 
       if (!titleValue) throw new Error("Enter a book title.")
       if (!book && !authorValue) throw new Error("Enter the author name.")
       if (!price.trim()) throw new Error("Enter the USD price.")
-      if (!priceNgn.trim()) throw new Error("Enter the NGN price.")
       if (!Number.isFinite(priceValue) || priceValue < 0) throw new Error("Enter a valid non-negative USD price.")
-      if (!Number.isFinite(priceNgnValue) || priceNgnValue < 0) throw new Error("Enter a valid non-negative NGN price.")
       if (!descriptionValue) throw new Error("Enter a book description.")
       if (!categories.length) throw new Error("Choose at least one category.")
       if (!book && !ebookFile) throw new Error("Choose the ebook file before saving this book.")
 
-      for (const [label, link] of [["Paystack", paystackLink], ["Payoneer", payoneerLink]] as const) {
-        if (!link.trim()) continue
+      if (payoneerLink.trim()) {
         try {
-          const url = new URL(link.trim())
+          const url = new URL(payoneerLink.trim())
           if (!["http:", "https:"].includes(url.protocol)) throw new Error()
         } catch {
-          throw new Error(`${label} link must be a valid HTTP or HTTPS URL.`)
+          throw new Error("Payoneer link must be a valid HTTP or HTTPS URL.")
         }
       }
 
@@ -225,13 +218,10 @@ function BookForm({ book, onDone }: BookFormProps) {
           author: authorValue,
           description: descriptionValue,
           price: priceValue,
-          priceNgn: priceNgnValue,
-          currency: currency.trim().toUpperCase(),
           categories,
           format,
           featured,
           publishedAt: new Date(publishedAt).toISOString(),
-          paystackLink: paystackLink.trim() || null,
           payoneerLink: payoneerLink.trim() || null,
         }
         if (ebookFile || coverFile) {
@@ -263,12 +253,12 @@ function BookForm({ book, onDone }: BookFormProps) {
           author: authorValue,
           slug: titleValue.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
           price: priceValue,
-          priceNgn: priceNgnValue,
+          priceNgn: 0,
           currency: "USD",
           categories,
           description: descriptionValue,
           format,
-          paystackLink: paystackLink.trim() || null,
+          paystackLink: null,
           payoneerLink: payoneerLink.trim() || null,
           coverObjectPath,
           fileObjectPath,
@@ -317,17 +307,14 @@ function BookForm({ book, onDone }: BookFormProps) {
       <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>
       <label><span className="mb-2 block text-xs font-bold">Author</span><input data-testid="input-book-author" required value={author} onChange={e => setAuthor(e.target.value)} className={fieldClass} /></label>
       <label><span className="mb-2 block text-xs font-bold">Slug</span><input required value={slug} onChange={e => setSlug(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Used in catalogue links; keep it lowercase with hyphens.</span></label>
-      <label><span className="mb-2 block text-xs font-bold">Price (USD)</span><input data-testid="input-book-price" required min="0" step="0.01" type="number" value={price} onChange={e => setPrice(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Reference USD price for international display. The native NGN amount below is the base price.</span></label>
-      <label><span className="mb-2 block text-xs font-bold">Native price (NGN)</span><input required min="0" step="0.01" type="number" value={priceNgn} onChange={e => setPriceNgn(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Enter the book's base price in Nigerian Naira. This is the source-of-truth price for the title.</span></label>
+      <label><span className="mb-2 block text-xs font-bold">Price (USD)</span><input data-testid="input-book-price" required min="0" step="0.01" type="number" value={price} onChange={e => setPrice(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">USD is the source price. Nigerian pricing is calculated automatically at checkout.</span></label>
       <fieldset className="sm:col-span-2"><legend className="mb-2 block text-xs font-bold">Categories</legend><div className="grid gap-2 sm:grid-cols-2">{GENRE_CATEGORIES.map((genre) => <label key={genre} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={categories.includes(genre)} onChange={(event) => setCategories((current) => event.target.checked ? [...new Set([...current, genre])] : current.filter((item) => item !== genre))} />{genre}</label>)}</div><span className="mt-1 block text-xs text-muted-foreground">Choose every category that applies to this book.</span></fieldset>
-      <label><span className="mb-2 block text-xs font-bold">Currency</span><input value={currency} onChange={e => setCurrency(e.target.value)} maxLength={3} className={fieldClass} /></label>
       <label><span className="mb-2 block text-xs font-bold">Format</span><select value={format} onChange={e => setFormat(e.target.value as BookInputFormat)} className={fieldClass}><option>EPUB</option><option>PDF</option></select></label>
       <label><span className="mb-2 block text-xs font-bold">Ebook file {book && <span className="font-normal text-muted-foreground">(optional replacement)</span>}</span><input data-testid="input-book-file" required={!book} accept={format === "PDF" ? ".pdf,application/pdf" : ".epub,application/epub+zip"} type="file" onChange={e => setEbookFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
       <label><span className="mb-2 block text-xs font-bold">Cover image <span className="font-normal text-muted-foreground">({book ? "optional replacement" : "optional"})</span></span><input accept="image/png,image/jpeg,image/webp" type="file" onChange={e => setCoverFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
       <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={featured} onChange={e => setFeatured(e.target.checked)} />Show this book in Featured</label>
       <label><span className="mb-2 block text-xs font-bold">Publish date</span><input type="datetime-local" value={publishedAt} onChange={e => setPublishedAt(e.target.value)} className={fieldClass} /></label>
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
-       <label><span className="mb-2 block text-xs font-bold">Paystack link (Nigeria) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-paystack-link" type="url" value={paystackLink} onChange={e => setPaystackLink(e.target.value)} placeholder="https://â€¦" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For Nigerian buyers. This link never confirms payment by itself.</span></label>
        <label><span className="mb-2 block text-xs font-bold">Payoneer link (International) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payoneer-link" type="url" value={payoneerLink} onChange={e => setPayoneerLink(e.target.value)} placeholder="https://â€¦" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For international buyers. This link never confirms payment by itself.</span></label>
        <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{submitLabel}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
        {error && <p role="alert" className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
@@ -444,7 +431,7 @@ export default function Admin() {
   }
 
   return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Panel</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Mnage your website effectively</h1><p className="mt-1 text-sm text-muted-foreground"></p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Panel</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Manage your website effectively</h1><p className="mt-1 text-sm text-muted-foreground"></p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary"></p><h2 className="mt-1 text-2xl font-extrabold">Overview</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(s => <div key={s.label} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm"><div><p className="text-xs font-bold text-muted-foreground">{s.label}</p><p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-1 text-2xl font-extrabold">{s.value}</p></div><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span></div>)}</div></section>
     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-5 flex items-center justify-between gap-3">
@@ -545,7 +532,7 @@ export default function Admin() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <p className="text-sm font-extrabold">{formatPrice(book.price, book.currency)}</p>
+                  <p className="text-sm font-extrabold">{formatPrice(book.price, "USD")}</p>
                   <span className="text-[0.62rem] font-bold text-primary">{book.categories.join(" · ")}</span>
                 </div>
                 <button data-testid={"button-edit-book-" + book.id} onClick={() => setForm(book)} className="rounded-lg border border-border p-2 text-muted-foreground hover:text-primary" aria-label={"Edit " + book.title}><Pencil className="h-4 w-4" /></button>
