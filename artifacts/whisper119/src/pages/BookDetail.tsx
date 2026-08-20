@@ -1,4 +1,6 @@
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, ExternalLink, Mail, ShoppingCart } from "lucide-react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { CopyLinkIcon, InstagramIcon, NewTwitterIcon, WhatsappIcon } from "@hugeicons/core-free-icons"
+import { ArrowLeft, Check, ChevronDown, ChevronUp, ExternalLink, Mail, ShoppingCart } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link, useLocation, useParams } from "wouter"
 import { useGetBook, useListBooks } from "@workspace/api-client-react"
@@ -75,14 +77,34 @@ export default function BookDetail() {
     setLocation(path)
   }
 
-  async function copyLink() {
+  const shareUrl = window.location.href
+  const shareTitle = book.title
+  const shareText = `Read "${shareTitle}" by ${book.author}`
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} — ${shareUrl}`)}`
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`
+
+  async function copyShareUrl() {
     try {
-      await navigator.clipboard.writeText(window.location.href)
+      await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)
     } catch {
       setCopied(false)
     }
+  }
+
+  async function shareOnInstagram() {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: shareTitle, text: shareText, url: shareUrl })
+        return
+      } catch (shareError) {
+        if (shareError instanceof DOMException && shareError.name === "AbortError") return
+      }
+    }
+
+    await copyShareUrl()
+    window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer")
   }
 
   return (
@@ -137,9 +159,10 @@ export default function BookDetail() {
         <section className="mt-8 border-y border-border py-6">
           <p className="text-sm font-extrabold">Share this book</p>
           <div className="mt-3 flex items-center gap-2">
-            <ShareButton label="Share by email"><Mail className="h-4 w-4" /></ShareButton>
-            <ShareButton label="Share on X"><span className="text-sm font-extrabold">𝕏</span></ShareButton>
-            <ShareButton label="Copy link" onClick={copyLink}>{copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}</ShareButton>
+            <ShareLink label="Share on WhatsApp" href={whatsappUrl}><HugeiconsIcon icon={WhatsappIcon} size={18} /></ShareLink>
+            <ShareButton label="Share on Instagram" onClick={() => void shareOnInstagram()}><HugeiconsIcon icon={InstagramIcon} size={18} /></ShareButton>
+            <ShareLink label="Share on X" href={twitterUrl}><HugeiconsIcon icon={NewTwitterIcon} size={18} /></ShareLink>
+            <ShareButton label="Copy link" onClick={() => void copyShareUrl()}>{copied ? <Check className="h-4 w-4 text-primary" /> : <HugeiconsIcon icon={CopyLinkIcon} size={18} />}</ShareButton>
             {copied && <span className="ml-2 text-xs font-bold text-primary">Link copied</span>}
           </div>
         </section>
@@ -199,5 +222,13 @@ export default function BookDetail() {
         </div>
       </div>
     </main>
+  )
+}
+
+function ShareLink({ label, href, children }: { label: string; href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer" aria-label={label} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
+      {children}
+    </a>
   )
 }

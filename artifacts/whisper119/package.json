@@ -74,5 +74,9 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.3",
+    "@hugeicons/react": "^1.1.9"
   }
 }
