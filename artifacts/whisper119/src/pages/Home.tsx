@@ -33,7 +33,7 @@ function PromoBanner({ coverUrl }: { coverUrl?: string | null }) {
       <div className="relative max-w-[15rem] sm:max-w-sm">
         <p className="text-[0.62rem] font-bold uppercase tracking-[0.18em] text-rose-100/80">A note from me</p>
         <h1 className="mt-2 text-2xl font-extrabold leading-[1.06] tracking-tight sm:text-4xl">Welcome to my official website.</h1>
-        <p className="mt-2 text-xs leading-5 text-white/80 sm:text-sm">By Whisper 119. Author of <em>Mated to My Mate&apos;s Worst Enemy</em>, with 225,000+ readers across platforms.</p>
+        <p className="mt-2 text-xs leading-5 text-white/80 sm:text-sm">By Whisper 119. Author of <em>Mated to My Mate&apos;s Worst Enemy &amp; Rebirth Of The Broken Luna; A Second Chance At Luna&apos;s Heart</em>, with 225,000+ readers across platforms.</p>
         <Link href="/shop" className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[0.68rem] font-extrabold text-primary shadow-md transition-transform hover:-translate-y-0.5">
           See my books <ArrowRight className="h-3.5 w-3.5" />
         </Link>

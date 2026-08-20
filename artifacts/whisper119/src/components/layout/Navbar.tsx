@@ -139,7 +139,7 @@ export function Navbar() {
                 </Link>
                 <Link href="/account" onClick={closeMenu} className="flex items-center rounded-xl px-4 py-3.5 text-sm font-bold transition-colors hover:bg-secondary">Reader account</Link>
 
-                <a href="mailto:hello@whisper119.shop" onClick={closeMenu} className="rounded-xl px-4 py-3.5 text-sm font-bold transition-colors hover:bg-secondary">
+                <a href="mailto:w2162843@ggmail.com" onClick={closeMenu} className="rounded-xl px-4 py-3.5 text-sm font-bold transition-colors hover:bg-secondary">
                   Contact
                 </a>
               </div>
