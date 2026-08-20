@@ -341,6 +341,7 @@ export default function Admin() {
   const [adminLoading, setAdminLoading] = useState(true)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminSaving, setAdminSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<"catalogue" | "orders">("catalogue")
 
   useEffect(() => {
     if (!firebaseDb) {
@@ -433,6 +434,10 @@ export default function Admin() {
   return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Panel</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Manage your website effectively</h1><p className="mt-1 text-sm text-muted-foreground"></p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary"></p><h2 className="mt-1 text-2xl font-extrabold">Overview</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(s => <div key={s.label} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm"><div><p className="text-xs font-bold text-muted-foreground">{s.label}</p><p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-1 text-2xl font-extrabold">{s.value}</p></div><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span></div>)}</div></section>
+    <nav aria-label="Admin sections" className="flex gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm">
+      <button type="button" onClick={() => setActiveTab("catalogue")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "catalogue" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Catalogue</button>
+      <button type="button" onClick={() => setActiveTab("orders")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "orders" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Orders{orderList.length > 0 && <span className="ml-2 rounded-full bg-background/30 px-1.5 py-0.5">{orderList.length}</span>}</button>
+    </nav>
     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
@@ -516,6 +521,7 @@ export default function Admin() {
         </div>
       </div>
     </section>
+    {activeTab === "catalogue" && <div className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button type="button" data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} aria-expanded={form === "new"} aria-controls="book-form" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add book"}</button></div>
      {form === "new" && <BookForm onDone={() => setForm(null)} />}{form && form !== "new" && <BookForm book={form} onDone={() => setForm(null)} />}
      <div>
@@ -544,6 +550,9 @@ export default function Admin() {
         </div>
       </section>
     </div>
+    </div>}
+    {activeTab === "orders" && (
      <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p><h2 className="mt-1 text-2xl font-extrabold">Orders</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Check your Paystack or Payoneer dashboard before confirming a customer payment. Confirming here sends the ebook and receipt.</p></div>{orderActionError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">{orderActionError}</p>}<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{orderList.map(order => { const needsConfirmation = order.status === "pending" && Boolean(order.paymentReference); const statusLabel = order.status === "fulfilled" ? "Fulfilled" : needsConfirmation ? "Pending confirmation" : order.status; return <div key={order.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-secondary/50 sm:p-5"><Link href={`/order/${order.id}`} className="min-w-0 flex-1"><p className="font-mono text-xs font-bold">{order.reference}</p><p className="mt-1 truncate text-xs text-muted-foreground">{order.email} Â· {formatDate(order.createdAt)}</p></Link><div className="flex flex-wrap items-center justify-end gap-2"><span className={`rounded-full px-2.5 py-1 text-[0.62rem] font-bold ${needsConfirmation ? "bg-amber-500/15 text-amber-700" : order.status === "fulfilled" ? "bg-emerald-500/10 text-emerald-600" : "bg-secondary text-muted-foreground"}`}>{statusLabel}</span><span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span>{needsConfirmation && <button type="button" data-testid={`button-confirm-payment-${order.id}`} onClick={() => handleConfirmOrder(order)} disabled={confirmingOrderId === order.id} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-[0.68rem] font-extrabold text-primary-foreground disabled:cursor-wait disabled:opacity-60">{confirmingOrderId === order.id ? "Confirmingâ€¦" : "Confirm Payment"}</button>}</div></div> })}{!orders.isLoading && !orderList.length && <div className="p-10 text-center"><Clock3 className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No orders yet.</p></div>}</div></section>
+    )}
   </div></main>
 }

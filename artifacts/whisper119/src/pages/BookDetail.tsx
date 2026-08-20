@@ -218,6 +218,12 @@ export default function BookDetail() {
           <div className="mt-5 flex flex-wrap gap-2">
             {descriptors.map((descriptor) => <span key={descriptor} className="rounded-full bg-primary/10 px-3 py-1.5 text-[0.68rem] font-bold text-primary">{descriptor}</span>)}
           </div>
+          <div className="mt-6 grid gap-2 sm:grid-cols-2">
+            <button type="button" onClick={() => addAndNavigate("/cart")} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5">
+              {inCart ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />} {inCart ? "In cart" : "Add to cart"}
+            </button>
+            <Link href="/cart" className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-card px-4 text-xs font-extrabold uppercase tracking-wide text-foreground transition-colors hover:border-primary hover:text-primary">View cart</Link>
+          </div>
         </section>
 
         <section className="mt-8 border-y border-border py-6">
