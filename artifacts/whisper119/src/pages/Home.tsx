@@ -19,7 +19,7 @@ function SectionHeading({ eyebrow, title, href = "/shop" }: { eyebrow?: string; 
   )
 }
 
-function PromoBanner() {
+function PromoBanner({ coverUrl }: { coverUrl?: string | null }) {
   return (
     <div className="relative isolate min-h-[168px] overflow-hidden rounded-2xl bg-[linear-gradient(118deg,#160e24_0%,#4c1f3e_54%,#8f3c65_100%)] px-5 py-6 text-white shadow-lg shadow-primary/20 sm:min-h-[190px] sm:px-8">
       <div className="absolute -right-10 -top-14 -z-10 h-52 w-52 rounded-full bg-rose-200/20 blur-2xl" />
@@ -28,7 +28,7 @@ function PromoBanner() {
       <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-14 bg-[linear-gradient(160deg,transparent_0_20%,rgba(11,6,19,0.76)_21%_30%,transparent_31%_37%,rgba(11,6,19,0.82)_38%_48%,transparent_49%_55%,rgba(11,6,19,0.9)_56%)] opacity-80" />
       <div aria-hidden="true" className="absolute bottom-0 left-0 h-20 w-1/2 bg-[linear-gradient(120deg,transparent_0_35%,rgba(11,6,19,0.72)_36%_42%,transparent_43%_48%,rgba(11,6,19,0.88)_49%)] opacity-80" />
       <div className="absolute right-4 top-3 h-20 w-14 rotate-12 overflow-hidden rounded-lg opacity-45 shadow-xl sm:right-16 sm:h-28 sm:w-20">
-        <img src="/covers/cover-2.jpg" alt="" className="h-full w-full object-cover" />
+        <img src={coverUrl || "/covers/cover-2.jpg"} alt="" className="h-full w-full object-cover" />
       </div>
       <div className="relative max-w-[15rem] sm:max-w-sm">
         <p className="text-[0.62rem] font-bold uppercase tracking-[0.18em] text-rose-100/80">A note from me</p>
@@ -86,7 +86,7 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-5 sm:px-6 sm:pt-8">
-      <PromoBanner />
+      <PromoBanner coverUrl={featured[0]?.coverUrl} />
 
       {isLoadingShelf ? (
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
