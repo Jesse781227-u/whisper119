@@ -10,6 +10,7 @@ import NotFound from '@/pages/not-found';
 import Home from '@/pages/Home';
 import About from '@/pages/About';
 import Shop from '@/pages/Shop';
+import Categories from '@/pages/Categories';
 import BookDetail from '@/pages/BookDetail';
 import Cart from '@/pages/Cart';
 import Checkout from '@/pages/Checkout';
@@ -107,6 +108,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/about" component={About} />
       <Route path="/shop" component={Shop} />
+      <Route path="/categories" component={Categories} />
       <Route path="/book/:bookId" component={BookDetail} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />

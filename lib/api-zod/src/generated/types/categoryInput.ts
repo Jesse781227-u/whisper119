@@ -6,9 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Category {
+export interface CategoryInput {
+  /** @minLength 1 */
   name: string;
-  count: number;
-  id: string;
-  featured: boolean;
+  featured?: boolean;
 }

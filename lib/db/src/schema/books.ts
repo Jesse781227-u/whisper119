@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, numeric, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, numeric, pgTable, text, timestamp, primaryKey } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export const booksTable = pgTable("books", {
@@ -10,7 +10,7 @@ export const booksTable = pgTable("books", {
   price: numeric("price", { precision: 10, scale: 2, mode: "number" }).notNull(),
   priceNgn: numeric("price_ngn", { precision: 12, scale: 2, mode: "number" }).notNull().default(0),
   currency: text("currency").notNull().default("USD"),
-  categories: text("categories").array().notNull().default([]),
+  isCompleted: boolean("is_completed").notNull().default(false),
   description: text("description").notNull(),
   format: text("format").notNull(),
   paystackLink: text("paystack_link"),
@@ -22,6 +22,17 @@ export const booksTable = pgTable("books", {
   publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const categoriesTable = pgTable("categories", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  featured: boolean("featured").notNull().default(false),
+});
+
+export const bookCategoriesTable = pgTable("book_categories", {
+  bookId: text("book_id").notNull().references(() => booksTable.id, { onDelete: "cascade" }),
+  categoryId: text("category_id").notNull().references(() => categoriesTable.id, { onDelete: "restrict" }),
+}, (table) => [primaryKey({ columns: [table.bookId, table.categoryId] })]);
 
 export const insertBookSchema = createInsertSchema(booksTable).omit({
   createdAt: true,

@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import { GetBookParams, GetBookResponse, GetStorefrontSummaryResponse, ListBooksQueryParams, ListBooksResponse } from "@workspace/api-zod";
-import { count, desc, eq, sql } from "drizzle-orm";
-import { booksTable, db } from "@workspace/db";
-import { findBooks, publicBook } from "../lib/bookstore";
+import { count, desc, eq } from "drizzle-orm";
+import { bookCategoriesTable, booksTable, categoriesTable, db } from "@workspace/db";
+import { categoryNamesForBooks, findBooks, publicBook, publicBooks } from "../lib/bookstore";
 
 const router: IRouter = Router();
 
@@ -23,7 +23,7 @@ router.get("/share/books/:bookId", async (req, res): Promise<void> => {
     return;
   }
 
-  const publicBookData = publicBook(book);
+  const publicBookData = publicBook(book, (await categoryNamesForBooks([book.id])).get(book.id) ?? []);
   const requestOrigin = `${req.protocol}://${req.get("host")}`;
   const cover = publicBookData.coverUrl ? new URL(publicBookData.coverUrl, requestOrigin).href : null;
   const redirectParam = typeof req.query.redirect === "string" ? req.query.redirect : "";
@@ -56,7 +56,7 @@ router.get("/books", async (req, res): Promise<void> => {
     return;
   }
   const books = await findBooks(parsed.data);
-  res.json(ListBooksResponse.parse(books.map(publicBook)));
+  res.json(ListBooksResponse.parse(await publicBooks(books)));
 });
 
 router.get("/books/:bookId", async (req, res): Promise<void> => {
@@ -70,19 +70,21 @@ router.get("/books/:bookId", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Book not found" });
     return;
   }
-  res.json(GetBookResponse.parse(publicBook(book)));
+  res.json(GetBookResponse.parse((await publicBooks([book]))[0]));
 });
 
 router.get("/storefront/summary", async (_req, res): Promise<void> => {
   const [featured, newArrivals, categories] = await Promise.all([
     db.select().from(booksTable).where(eq(booksTable.featured, true)).orderBy(desc(booksTable.publishedAt)).limit(4),
     db.select().from(booksTable).orderBy(desc(booksTable.publishedAt)).limit(6),
-    db.select({ name: sql<string>`unnest(${booksTable.categories})`, count: count() }).from(booksTable).groupBy(sql`unnest(${booksTable.categories})`).orderBy(sql`unnest(${booksTable.categories})`),
+    db.select({ id: categoriesTable.id, name: categoriesTable.name, featured: categoriesTable.featured, count: count(bookCategoriesTable.bookId) })
+      .from(categoriesTable).leftJoin(bookCategoriesTable, eq(bookCategoriesTable.categoryId, categoriesTable.id))
+      .groupBy(categoriesTable.id).orderBy(desc(count(bookCategoriesTable.bookId)), categoriesTable.name),
   ]);
   res.json(GetStorefrontSummaryResponse.parse({
-    featured: featured.map(publicBook),
-    newArrivals: newArrivals.map(publicBook),
-    categories: categories.map((category) => ({ name: category.name, count: Number(category.count) })),
+    featured: await publicBooks(featured),
+    newArrivals: await publicBooks(newArrivals),
+    categories: categories.map((category) => ({ id: category.id, name: category.name, featured: category.featured, count: Number(category.count) })),
   }));
 });
 

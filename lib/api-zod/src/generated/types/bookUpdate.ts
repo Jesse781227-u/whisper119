@@ -5,7 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { BookUpdateCategoriesItem } from './bookUpdateCategoriesItem';
 import type { BookUpdateFormat } from './bookUpdateFormat';
 
 export interface BookUpdate {
@@ -24,8 +23,12 @@ export interface BookUpdate {
      * @maxLength 3
      */
   currency?: string;
-  /** @minItems 1 */
-  categories?: BookUpdateCategoriesItem[];
+  /**
+     * @minItems 1
+     * @items.minLength 1
+     */
+  categories?: string[];
+  isCompleted?: boolean;
   description?: string;
   format?: BookUpdateFormat;
   /** @nullable */

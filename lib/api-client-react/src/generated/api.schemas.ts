@@ -13,18 +13,6 @@ export interface ErrorResponse {
   error: string;
 }
 
-export type BookCategoriesItem = typeof BookCategoriesItem[keyof typeof BookCategoriesItem];
-
-
-export const BookCategoriesItem = {
-  Romance: 'Romance',
-  Werewolf: 'Werewolf',
-  Paranormal: 'Paranormal',
-  Dark_Romance: 'Dark Romance',
-  Billionaire_Romance: 'Billionaire Romance',
-  Completed_Series: 'Completed Series',
-} as const;
-
 export type BookFormat = typeof BookFormat[keyof typeof BookFormat];
 
 
@@ -41,8 +29,12 @@ export interface Book {
   price: number;
   priceNgn: number;
   currency: string;
-  /** @minItems 1 */
-  categories: BookCategoriesItem[];
+  /**
+     * @minItems 1
+     * @items.minLength 1
+     */
+  categories: string[];
+  isCompleted: boolean;
   description: string;
   format: BookFormat;
   /** @nullable */
@@ -56,18 +48,6 @@ export interface Book {
   publishedAt: string;
   createdAt: string;
 }
-
-export type BookInputCategoriesItem = typeof BookInputCategoriesItem[keyof typeof BookInputCategoriesItem];
-
-
-export const BookInputCategoriesItem = {
-  Romance: 'Romance',
-  Werewolf: 'Werewolf',
-  Paranormal: 'Paranormal',
-  Dark_Romance: 'Dark Romance',
-  Billionaire_Romance: 'Billionaire Romance',
-  Completed_Series: 'Completed Series',
-} as const;
 
 export type BookInputFormat = typeof BookInputFormat[keyof typeof BookInputFormat];
 
@@ -93,8 +73,12 @@ export interface BookInput {
      * @maxLength 3
      */
   currency: string;
-  /** @minItems 1 */
-  categories: BookInputCategoriesItem[];
+  /**
+     * @minItems 1
+     * @items.minLength 1
+     */
+  categories: string[];
+  isCompleted: boolean;
   description: string;
   format: BookInputFormat;
   /** @nullable */
@@ -110,18 +94,6 @@ export interface BookInput {
   featured: boolean;
   publishedAt: string;
 }
-
-export type BookUpdateCategoriesItem = typeof BookUpdateCategoriesItem[keyof typeof BookUpdateCategoriesItem];
-
-
-export const BookUpdateCategoriesItem = {
-  Romance: 'Romance',
-  Werewolf: 'Werewolf',
-  Paranormal: 'Paranormal',
-  Dark_Romance: 'Dark Romance',
-  Billionaire_Romance: 'Billionaire Romance',
-  Completed_Series: 'Completed Series',
-} as const;
 
 export type BookUpdateFormat = typeof BookUpdateFormat[keyof typeof BookUpdateFormat];
 
@@ -147,8 +119,12 @@ export interface BookUpdate {
      * @maxLength 3
      */
   currency?: string;
-  /** @minItems 1 */
-  categories?: BookUpdateCategoriesItem[];
+  /**
+     * @minItems 1
+     * @items.minLength 1
+     */
+  categories?: string[];
+  isCompleted?: boolean;
   description?: string;
   format?: BookUpdateFormat;
   /** @nullable */
@@ -181,12 +157,20 @@ export interface PageViewInput {
 export interface Category {
   name: string;
   count: number;
+  id: string;
+  featured: boolean;
 }
 
 export interface StorefrontSummary {
   featured: Book[];
   newArrivals: Book[];
   categories: Category[];
+}
+
+export interface CategoryInput {
+  /** @minLength 1 */
+  name: string;
+  featured?: boolean;
 }
 
 export interface OrderInput {

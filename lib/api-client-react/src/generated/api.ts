@@ -27,6 +27,8 @@ import type {
   Book,
   BookInput,
   BookUpdate,
+  Category,
+  CategoryInput,
   CheckoutSession,
   Download,
   ErrorResponse,
@@ -1342,6 +1344,297 @@ export const useCreateBook = <TError = ErrorType<BadRequestResponse | Unauthoriz
         TContext
       > => {
       return useMutation(getCreateBookMutationOptions(options));
+    }
+
+export const getListCategoriesUrl = () => {
+
+
+
+
+  return `/api/admin/categories`
+}
+
+/**
+ * @summary List catalogue categories
+ */
+export const listCategories = async ( options?: Parameters<typeof customFetch>[1]): Promise<Category[]> => {
+
+  return customFetch<Category[]>(getListCategoriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCategoriesQueryKey = () => {
+    return [
+    `/api/admin/categories`
+    ] as const;
+    }
+
+
+export const getListCategoriesQueryOptions = <TData = Awaited<ReturnType<typeof listCategories>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCategoriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCategories>>> = ({ signal }) => listCategories({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCategories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listCategories>>>
+export type ListCategoriesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary List catalogue categories
+ */
+
+export function useListCategories<TData = Awaited<ReturnType<typeof listCategories>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCategoriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCategoryUrl = () => {
+
+
+
+
+  return `/api/admin/categories`
+}
+
+/**
+ * @summary Add a catalogue category
+ */
+export const createCategory = async (categoryInput: CategoryInput, options?: Parameters<typeof customFetch>[1]): Promise<Category> => {
+
+  return customFetch<Category>(getCreateCategoryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(categoryInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCategory>>, TError,{data: BodyType<CategoryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCategory>>, TError,{data: BodyType<CategoryInput>}, TContext> => {
+
+const mutationKey = ['createCategory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCategory>>, {data: BodyType<CategoryInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCategory(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof createCategory>>>
+    export type CreateCategoryMutationBody = BodyType<CategoryInput>
+    export type CreateCategoryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+    /**
+ * @summary Add a catalogue category
+ */
+export const useCreateCategory = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCategory>>, TError,{data: BodyType<CategoryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCategory>>,
+        TError,
+        {data: BodyType<CategoryInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCategoryMutationOptions(options));
+    }
+
+export const getUpdateCategoryUrl = (categoryId: string,) => {
+
+
+
+
+  return `/api/admin/categories/${categoryId}`
+}
+
+/**
+ * @summary Rename or feature a category
+ */
+export const updateCategory = async (categoryId: string,
+    categoryInput: CategoryInput, options?: Parameters<typeof customFetch>[1]): Promise<Category> => {
+
+  return customFetch<Category>(getUpdateCategoryUrl(categoryId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(categoryInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateCategoryMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCategory>>, TError,{categoryId: string;data: BodyType<CategoryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCategory>>, TError,{categoryId: string;data: BodyType<CategoryInput>}, TContext> => {
+
+const mutationKey = ['updateCategory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCategory>>, {categoryId: string;data: BodyType<CategoryInput>}> = (props) => {
+          const {categoryId,data} = props ?? {};
+
+          return  updateCategory(categoryId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof updateCategory>>>
+    export type UpdateCategoryMutationBody = BodyType<CategoryInput>
+    export type UpdateCategoryMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+    /**
+ * @summary Rename or feature a category
+ */
+export const useUpdateCategory = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCategory>>, TError,{categoryId: string;data: BodyType<CategoryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCategory>>,
+        TError,
+        {categoryId: string;data: BodyType<CategoryInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateCategoryMutationOptions(options));
+    }
+
+export const getDeleteCategoryUrl = (categoryId: string,) => {
+
+
+
+
+  return `/api/admin/categories/${categoryId}`
+}
+
+/**
+ * @summary Delete an unused category
+ */
+export const deleteCategory = async (categoryId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteCategoryUrl(categoryId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteCategoryMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCategory>>, TError,{categoryId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCategory>>, TError,{categoryId: string}, TContext> => {
+
+const mutationKey = ['deleteCategory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCategory>>, {categoryId: string}> = (props) => {
+          const {categoryId} = props ?? {};
+
+          return  deleteCategory(categoryId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCategory>>>
+
+    export type DeleteCategoryMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | ErrorResponse>
+
+    /**
+ * @summary Delete an unused category
+ */
+export const useDeleteCategory = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCategory>>, TError,{categoryId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCategory>>,
+        TError,
+        {categoryId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteCategoryMutationOptions(options));
     }
 
 export const getUpdateBookUrl = (bookId: string,) => {

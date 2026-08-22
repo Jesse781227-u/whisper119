@@ -17,10 +17,12 @@ import {
   UpdateBookBody,
   UpdateBookResponse,
   DeleteBookParams,
+  ListCategoriesResponse, CreateCategoryBody, CreateCategoryResponse,
+  UpdateCategoryParams, UpdateCategoryBody, UpdateCategoryResponse, DeleteCategoryParams,
 } from "@workspace/api-zod";
-import { analyticsEventsTable, booksTable, db, ordersTable } from "@workspace/db";
+import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable, db, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../lib/auth";
-import { getOrderById, orderResponse, publicBook } from "../lib/bookstore";
+import { getOrderById, orderResponse, publicBook, publicBooks, replaceBookCategories } from "../lib/bookstore";
 import { confirmManualOrder } from "../lib/delivery";
 import { initializePaystack } from "../lib/payments";
 
@@ -52,6 +54,7 @@ router.post("/admin/login", async (_req, res): Promise<void> => {
 
 router.use("/admin/dashboard", requireAdmin);
 router.use("/admin/books", requireAdmin);
+router.use("/admin/categories", requireAdmin);
 router.use("/admin/orders", requireAdmin);
 router.use("/storage/uploads", requireAdmin);
 
@@ -86,7 +89,40 @@ router.get("/admin/dashboard", async (_req, res): Promise<void> => {
 
 router.get("/admin/books", async (_req, res): Promise<void> => {
   const books = await db.select().from(booksTable).orderBy(desc(booksTable.createdAt));
-  res.json(ListAdminBooksResponse.parse(books.map(publicBook)));
+  res.json(ListAdminBooksResponse.parse(await publicBooks(books)));
+});
+
+router.get("/admin/categories", async (_req, res): Promise<void> => {
+  const rows = await db.select({ id: categoriesTable.id, name: categoriesTable.name, featured: categoriesTable.featured, count: sql<number>`count(${bookCategoriesTable.bookId})` })
+    .from(categoriesTable).leftJoin(bookCategoriesTable, eq(bookCategoriesTable.categoryId, categoriesTable.id)).groupBy(categoriesTable.id).orderBy(categoriesTable.name);
+  res.json(ListCategoriesResponse.parse(rows.map(row => ({ ...row, count: Number(row.count) }))));
+});
+
+router.post("/admin/categories", async (req, res): Promise<void> => {
+  const parsed = CreateCategoryBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  try {
+    const [category] = await db.insert(categoriesTable).values({ id: randomUUID(), name: parsed.data.name.trim(), featured: parsed.data.featured ?? false }).returning();
+    res.status(201).json(CreateCategoryResponse.parse({ ...category, count: 0 }));
+  } catch (error) { res.status(isUniqueConstraintError(error) ? 409 : 500).json({ error: isUniqueConstraintError(error) ? "That category already exists." : "The category could not be created." }); }
+});
+
+router.patch("/admin/categories/:categoryId", async (req, res): Promise<void> => {
+  const params = UpdateCategoryParams.safeParse(req.params); const parsed = UpdateCategoryBody.safeParse(req.body);
+  if (!params.success || !parsed.success) { res.status(400).json({ error: "Invalid category update." }); return; }
+  const [category] = await db.update(categoriesTable).set({ name: parsed.data.name.trim(), featured: parsed.data.featured }).where(eq(categoriesTable.id, params.data.categoryId)).returning();
+  if (!category) { res.status(404).json({ error: "Category not found" }); return; }
+  const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(bookCategoriesTable).where(eq(bookCategoriesTable.categoryId, category.id));
+  res.json(UpdateCategoryResponse.parse({ ...category, count: Number(count) }));
+});
+
+router.delete("/admin/categories/:categoryId", async (req, res): Promise<void> => {
+  const parsed = DeleteCategoryParams.safeParse(req.params); if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(bookCategoriesTable).where(eq(bookCategoriesTable.categoryId, parsed.data.categoryId));
+  if (Number(count)) { res.status(409).json({ error: "Reassign this category before deleting it." }); return; }
+  const deleted = await db.delete(categoriesTable).where(eq(categoriesTable.id, parsed.data.categoryId)).returning();
+  if (!deleted.length) { res.status(404).json({ error: "Category not found" }); return; }
+  res.status(204).send();
 });
 
 router.post("/admin/books", async (req, res): Promise<void> => {
@@ -103,11 +139,10 @@ router.post("/admin/books", async (req, res): Promise<void> => {
     return;
   }
   try {
+    const { categories, ...bookData } = parsed.data;
     const [book] = await db.insert(booksTable).values({
       id: randomUUID(),
-      ...parsed.data,
-      priceNgn: parsed.data.priceNgn,
-      fileObjectPath: parsed.data.fileObjectPath,
+      ...bookData,
       publishedAt: new Date(parsed.data.publishedAt),
     }).returning();
     if (!book) {
@@ -115,7 +150,8 @@ router.post("/admin/books", async (req, res): Promise<void> => {
       res.status(500).json({ error: "The book could not be added to the catalogue." });
       return;
     }
-    res.status(201).json(CreateBookResponse.parse(publicBook(book)));
+    await replaceBookCategories(book.id, categories);
+    res.status(201).json(CreateBookResponse.parse((await publicBooks([book]))[0]));
   } catch (error) {
     req.log.error({ err: error, slug: parsed.data.slug }, "Admin book creation failed");
     if (isUniqueConstraintError(error)) {
@@ -144,15 +180,17 @@ router.patch("/admin/books/:bookId", async (req, res): Promise<void> => {
     res.status(400).json({ error: error instanceof Error ? error.message : "Invalid payment link." });
     return;
   }
+  const { categories, ...bookData } = parsed.data;
   const [book] = await db.update(booksTable).set({
-    ...parsed.data,
+    ...bookData,
     publishedAt: parsed.data.publishedAt ? new Date(parsed.data.publishedAt) : undefined,
   }).where(eq(booksTable.id, params.data.bookId)).returning();
   if (!book) {
     res.status(404).json({ error: "Book not found" });
     return;
   }
-  res.json(UpdateBookResponse.parse(publicBook(book)));
+  if (categories) await replaceBookCategories(book.id, categories);
+  res.json(UpdateBookResponse.parse((await publicBooks([book]))[0]));
 });
 
 router.delete("/admin/books/:bookId", async (req, res): Promise<void> => {
