@@ -3,17 +3,17 @@ import { Link, useLocation } from "wouter"
 import { useQueryClient } from "@tanstack/react-query"
 import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Eye, WalletCards } from "lucide-react"
 import {
-  getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey,
+  getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey, getListCategoriesQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
+  useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory,
   useCreateBook, useDeleteBook, useUpdateBook, useConfirmAdminOrder,
   requestUploadUrl as requestUploadUrlApi,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
 import { firebaseDb } from "@/lib/firebase"
-import type { Book, BookInput, BookInputFormat, BookUpdate, Order } from "@workspace/api-client-react"
+import type { Book, BookInput, BookInputFormat, BookUpdate, Order, Category } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
-import { GENRE_CATEGORIES } from "@/data/catalog"
 import { useToast } from "@/hooks/use-toast"
 
 const fieldClass = "h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
@@ -86,12 +86,16 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [title, setTitle] = useState(book?.title ?? "")
   const [author, setAuthor] = useState(book?.author ?? "")
   const [price, setPrice] = useState(String(book?.price ?? ""))
-  const [categories, setCategories] = useState<(typeof GENRE_CATEGORIES)[number][]>(book?.categories?.length ? [...book.categories] : ["Romance"])
+  const { data: categoryData } = useListCategories()
+  const availableCategories = Array.isArray(categoryData) ? categoryData : []
+  const [categorySearch, setCategorySearch] = useState("")
+  const [categories, setCategories] = useState<string[]>(book?.categories?.length ? [...book.categories] : [])
   const [slug, setSlug] = useState(book?.slug ?? "")
   const [description, setDescription] = useState(book?.description ?? "")
   const [payoneerLink, setPayoneerLink] = useState(book?.payoneerLink ?? "")
   const [format, setFormat] = useState<BookInputFormat>(book?.format ?? "EPUB")
   const [featured, setFeatured] = useState(book?.featured ?? false)
+  const [isCompleted, setIsCompleted] = useState(book?.isCompleted ?? false)
   const [publishedAt, setPublishedAt] = useState(book?.publishedAt ? book.publishedAt.slice(0, 16) : new Date().toISOString().slice(0, 16))
   const [ebookFile, setEbookFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
@@ -221,6 +225,7 @@ function BookForm({ book, onDone }: BookFormProps) {
           categories,
           format,
           featured,
+          isCompleted,
           publishedAt: new Date(publishedAt).toISOString(),
           payoneerLink: payoneerLink.trim() || null,
         }
@@ -264,6 +269,7 @@ function BookForm({ book, onDone }: BookFormProps) {
           fileObjectPath,
           fileName: ebook.name,
           featured,
+          isCompleted,
           publishedAt: new Date(publishedAt).toISOString(),
         }
         await createBook.mutateAsync({ data: payload })
@@ -308,17 +314,34 @@ function BookForm({ book, onDone }: BookFormProps) {
       <label><span className="mb-2 block text-xs font-bold">Author</span><input data-testid="input-book-author" required value={author} onChange={e => setAuthor(e.target.value)} className={fieldClass} /></label>
       <label><span className="mb-2 block text-xs font-bold">Slug</span><input required value={slug} onChange={e => setSlug(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Used in catalogue links; keep it lowercase with hyphens.</span></label>
       <label><span className="mb-2 block text-xs font-bold">Price (USD)</span><input data-testid="input-book-price" required min="0" step="0.01" type="number" value={price} onChange={e => setPrice(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">USD is the source price. Nigerian pricing is calculated automatically at checkout.</span></label>
-      <fieldset className="sm:col-span-2"><legend className="mb-2 block text-xs font-bold">Categories</legend><div className="grid gap-2 sm:grid-cols-2">{GENRE_CATEGORIES.map((genre) => <label key={genre} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={categories.includes(genre)} onChange={(event) => setCategories((current) => event.target.checked ? [...new Set([...current, genre])] : current.filter((item) => item !== genre))} />{genre}</label>)}</div><span className="mt-1 block text-xs text-muted-foreground">Choose every category that applies to this book.</span></fieldset>
+      <fieldset className="sm:col-span-2"><legend className="mb-2 block text-xs font-bold">Categories</legend><input value={categorySearch} onChange={event => setCategorySearch(event.target.value)} placeholder="Search categories" className={`${fieldClass} mb-2`} /><div className="flex min-h-11 flex-wrap gap-2 rounded-xl border border-border bg-background p-2">{categories.map(category => <button type="button" key={category} onClick={() => setCategories(current => current.filter(item => item !== category))} className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">{category} ×</button>)}{availableCategories.filter(category => !categories.includes(category.name) && category.name.toLowerCase().includes(categorySearch.toLowerCase())).slice(0, 12).map(category => <button type="button" key={category.id} onClick={() => setCategories(current => [...current, category.name])} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:border-primary hover:text-primary">{category.name}</button>)}</div><span className="mt-1 block text-xs text-muted-foreground">Choose every category that applies to this book.</span></fieldset>
       <label><span className="mb-2 block text-xs font-bold">Format</span><select value={format} onChange={e => setFormat(e.target.value as BookInputFormat)} className={fieldClass}><option>EPUB</option><option>PDF</option></select></label>
       <label><span className="mb-2 block text-xs font-bold">Ebook file {book && <span className="font-normal text-muted-foreground">(optional replacement)</span>}</span><input data-testid="input-book-file" required={!book} accept={format === "PDF" ? ".pdf,application/pdf" : ".epub,application/epub+zip"} type="file" onChange={e => setEbookFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
       <label><span className="mb-2 block text-xs font-bold">Cover image <span className="font-normal text-muted-foreground">({book ? "optional replacement" : "optional"})</span></span><input accept="image/png,image/jpeg,image/webp" type="file" onChange={e => setCoverFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
-      <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={featured} onChange={e => setFeatured(e.target.checked)} />Show this book in Featured</label>
+      <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={featured} onChange={e => setFeatured(e.target.checked)} />Show this book in Featured</label><label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={isCompleted} onChange={e => setIsCompleted(e.target.checked)} />Completed series</label>
       <label><span className="mb-2 block text-xs font-bold">Publish date</span><input type="datetime-local" value={publishedAt} onChange={e => setPublishedAt(e.target.value)} className={fieldClass} /></label>
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
        <label><span className="mb-2 block text-xs font-bold">Payoneer link (International) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payoneer-link" type="url" value={payoneerLink} onChange={e => setPayoneerLink(e.target.value)} placeholder="https://â€¦" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For international buyers. This link never confirms payment by itself.</span></label>
        <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{submitLabel}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
        {error && <p role="alert" className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
     </form>
+  </section>
+}
+
+function CategoryManager() {
+  const queryClient = useQueryClient()
+  const { data } = useListCategories()
+  const create = useCreateCategory()
+  const update = useUpdateCategory()
+  const remove = useDeleteCategory()
+  const [name, setName] = useState("")
+  const categories: Category[] = Array.isArray(data) ? data : []
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: getListCategoriesQueryKey() })
+
+  return <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Taxonomy</p><h2 className="mt-1 text-xl font-extrabold">Manage categories</h2></div>
+    <div className="flex gap-2"><input value={name} onChange={event => setName(event.target.value)} placeholder="New category name" className={fieldClass} /><button type="button" disabled={!name.trim() || create.isPending} onClick={() => create.mutate({ data: { name: name.trim() } }, { onSuccess: () => { setName(""); refresh() } })} className="shrink-0 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground">Add</button></div>
+    <div className="mt-4 divide-y divide-border">{categories.map(category => <div key={category.id} className="flex flex-wrap items-center gap-2 py-3"><input defaultValue={category.name} aria-label={`Name for ${category.name}`} onBlur={event => { const next = event.target.value.trim(); if (next && next !== category.name) update.mutate({ categoryId: category.id, data: { name: next, featured: category.featured } }, { onSuccess: refresh }) }} className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" /><span className="text-xs text-muted-foreground">{category.count} books</span><button type="button" onClick={() => update.mutate({ categoryId: category.id, data: { name: category.name, featured: !category.featured } }, { onSuccess: refresh })} className={`rounded-full px-3 py-1.5 text-xs font-bold ${category.featured ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>{category.featured ? "Featured" : "Feature"}</button><button type="button" disabled={Boolean(category.count) || remove.isPending} onClick={() => remove.mutate({ categoryId: category.id }, { onSuccess: refresh })} className="rounded-full border border-border px-3 py-1.5 text-xs font-bold text-destructive disabled:cursor-not-allowed disabled:opacity-40">Delete</button></div>)}</div>
   </section>
 }
 
@@ -523,7 +546,7 @@ export default function Admin() {
     </section>
     {activeTab === "catalogue" && <div className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button type="button" data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} aria-expanded={form === "new"} aria-controls="book-form" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add book"}</button></div>
-     {form === "new" && <BookForm onDone={() => setForm(null)} />}{form && form !== "new" && <BookForm book={form} onDone={() => setForm(null)} />}
+    <CategoryManager />{form === "new" && <BookForm onDone={() => setForm(null)} />}{form && form !== "new" && <BookForm book={form} onDone={() => setForm(null)} />}
      <div>
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <div className="divide-y divide-border">
