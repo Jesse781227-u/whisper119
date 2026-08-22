@@ -3,7 +3,6 @@ import { BookOpen, ChevronDown, Menu, Search, ShoppingBag, UserRound, X } from "
 import { useEffect, useState } from "react"
 import { useGetStorefrontSummary } from "@workspace/api-client-react"
 import { useCart } from "@/components/cart-provider"
-import { EMPTY_CATEGORIES } from "@/data/catalog"
 
 export function Navbar() {
   const { items } = useCart()
@@ -12,7 +11,7 @@ export function Navbar() {
   const [menuVisible, setMenuVisible] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [location] = useLocation()
-  const categories = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : EMPTY_CATEGORIES
+  const categories = Array.isArray(summary?.categories) ? summary.categories : []
 
   useEffect(() => {
     if (!open) {
@@ -75,11 +74,12 @@ export function Navbar() {
 
         <nav className="no-scrollbar mx-auto hidden max-w-7xl gap-2 overflow-x-auto px-4 pb-3 sm:px-6 md:flex" aria-label="Book categories">
           <Link href="/shop" className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${location === "/shop" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary"}`}>All books</Link>
-          {categories.map((category) => (
+          {categories.filter(category => category.featured || category.count > 0).slice(0, 6).map((category) => (
             <Link key={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} className="shrink-0 rounded-full bg-secondary px-4 py-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-primary/10 hover:text-primary">
               {category.name}
             </Link>
           ))}
+          <Link href="/categories" className="shrink-0 rounded-full border border-primary/30 px-4 py-2 text-xs font-semibold text-primary">Browse all</Link>
         </nav>
       </div>
 
@@ -123,6 +123,7 @@ export function Navbar() {
                         <Link href="/shop" onClick={closeMenu} className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-primary hover:bg-background">
                           All books
                         </Link>
+                        <Link href="/categories" onClick={closeMenu} className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-primary hover:bg-background">Browse all categories</Link>
                         {categories.map((category) => (
                           <Link key={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} onClick={closeMenu} className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-background hover:text-primary">
                             {category.name}

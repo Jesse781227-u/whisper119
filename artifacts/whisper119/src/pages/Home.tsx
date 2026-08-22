@@ -3,7 +3,6 @@ import { Link } from "wouter"
 import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { EMPTY_CATEGORIES } from "@/data/catalog"
 
 function SectionHeading({ eyebrow, title, href = "/shop" }: { eyebrow?: string; title: string; href?: string }) {
   return (
@@ -76,7 +75,7 @@ export default function Home() {
   const featured = Array.isArray(summary?.featured) && summary.featured.length > 0 ? summary.featured : catalogue.slice(0, 8)
   const arrivals = Array.isArray(summary?.newArrivals) && summary.newArrivals.length > 0 ? summary.newArrivals : catalogue.slice(8, 16)
   const hasBooks = featured.length > 0 || arrivals.length > 0
-  const sections = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : EMPTY_CATEGORIES
+  const sections = Array.isArray(summary?.categories) ? summary.categories : []
   const isLoadingShelf = isLoading || isCatalogueLoading
   const shelfError = Boolean(error || catalogueError)
 
@@ -118,6 +117,8 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">{arrivals.slice(0, 8).map((book) => <BookCard key={book.id} book={book} />)}</div>
             </section>
           ) : null}
+
+          <section className="mt-9"><SectionHeading eyebrow="Explore" title="Browse by category" href="/categories" /><div className="flex flex-wrap gap-2">{sections.filter(category => category.featured || category.count > 0).slice(0, 6).map(category => <Link key={category.id} href={`/shop?category=${encodeURIComponent(category.name)}`} className="rounded-full border border-border bg-card px-4 py-2.5 text-xs font-bold transition-colors hover:border-primary hover:text-primary">{category.name}<span className="ml-2 text-muted-foreground">{category.count}</span></Link>)}<Link href="/categories" className="rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground">More</Link></div></section>
 
           {sections.slice(0, 3).map((category) => (
             <section key={category.name} className="mt-9">
