@@ -1,5 +1,5 @@
-import { and, arrayContains, desc, eq, ilike, inArray, lte, or } from "drizzle-orm";
-import { db, booksTable, orderItemsTable, ordersTable, type Book, type Order, type OrderItem } from "@workspace/db";
+import { and, desc, eq, ilike, inArray, lte, or } from "drizzle-orm";
+import { bookCategoriesTable, booksTable, categoriesTable, db, orderItemsTable, ordersTable, type Book, type Order, type OrderItem } from "@workspace/db";
 
 export function coverUrl(book: Book): string | null {
   if (book.coverObjectPath?.startsWith("http://") || book.coverObjectPath?.startsWith("https://")) {
@@ -16,7 +16,7 @@ export function coverUrl(book: Book): string | null {
   return `/api/storage${book.coverObjectPath}`;
 }
 
-export function publicBook(book: Book) {
+export function publicBook(book: Book, categories: string[] = []) {
   return {
     id: book.id,
     slug: book.slug,
@@ -25,7 +25,8 @@ export function publicBook(book: Book) {
     price: book.price,
     priceNgn: book.priceNgn,
     currency: book.currency,
-    categories: book.categories,
+    categories,
+    isCompleted: book.isCompleted,
     description: book.description,
     format: book.format,
     paystackLink: book.paystackLink,
@@ -45,12 +46,43 @@ export async function findBooks(filters: {
   maxPrice?: number;
 }): Promise<Book[]> {
   const conditions = [
-    filters.category ? arrayContains(booksTable.categories, [filters.category]) : undefined,
     filters.format ? eq(booksTable.format, filters.format) : undefined,
     filters.maxPrice !== undefined ? lte(booksTable.price, filters.maxPrice) : undefined,
     filters.search ? or(ilike(booksTable.title, `%${filters.search}%`), ilike(booksTable.author, `%${filters.search}%`)) : undefined,
   ].filter(Boolean);
+  if (filters.category) {
+    return db.select({ book: booksTable }).from(booksTable)
+      .innerJoin(bookCategoriesTable, eq(bookCategoriesTable.bookId, booksTable.id))
+      .innerJoin(categoriesTable, eq(categoriesTable.id, bookCategoriesTable.categoryId))
+      .where(and(eq(categoriesTable.name, filters.category), ...conditions))
+      .orderBy(desc(booksTable.publishedAt))
+      .then(rows => rows.map(row => row.book));
+  }
   return db.select().from(booksTable).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(booksTable.publishedAt));
+}
+
+export async function categoryNamesForBooks(bookIds: string[]) {
+  if (!bookIds.length) return new Map<string, string[]>();
+  const rows = await db.select({ bookId: bookCategoriesTable.bookId, name: categoriesTable.name })
+    .from(bookCategoriesTable)
+    .innerJoin(categoriesTable, eq(categoriesTable.id, bookCategoriesTable.categoryId))
+    .where(inArray(bookCategoriesTable.bookId, bookIds));
+  const result = new Map<string, string[]>();
+  for (const row of rows) result.set(row.bookId, [...(result.get(row.bookId) ?? []), row.name]);
+  return result;
+}
+
+export async function publicBooks(books: Book[]) {
+  const names = await categoryNamesForBooks(books.map(book => book.id));
+  return books.map(book => publicBook(book, names.get(book.id) ?? []));
+}
+
+export async function replaceBookCategories(bookId: string, names: string[]) {
+  const categories = await db.select({ id: categoriesTable.id, name: categoriesTable.name })
+    .from(categoriesTable).where(inArray(categoriesTable.name, names));
+  if (categories.length !== new Set(names).size) throw new Error("One or more selected categories no longer exists.");
+  await db.delete(bookCategoriesTable).where(eq(bookCategoriesTable.bookId, bookId));
+  await db.insert(bookCategoriesTable).values(categories.map(category => ({ bookId, categoryId: category.id })));
 }
 
 export async function orderWithItems(order: Order) {
