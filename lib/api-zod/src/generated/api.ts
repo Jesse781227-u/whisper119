@@ -30,6 +30,7 @@ export const ListBooksQueryParams = zod.object({
 
 
 
+
 export const ListBooksResponseItem = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -38,7 +39,8 @@ export const ListBooksResponseItem = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series'])).min(1),
+  "categories": zod.array(zod.string().min(1)).min(1),
+  "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "paystackLink": zod.string().nullable(),
@@ -62,6 +64,7 @@ export const GetBookParams = zod.object({
 
 
 
+
 export const GetBookResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -70,7 +73,8 @@ export const GetBookResponse = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series'])).min(1),
+  "categories": zod.array(zod.string().min(1)).min(1),
+  "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "paystackLink": zod.string().nullable(),
@@ -90,6 +94,8 @@ export const GetBookResponse = zod.object({
 
 
 
+
+
 export const GetStorefrontSummaryResponse = zod.object({
   "featured": zod.array(zod.object({
   "id": zod.string(),
@@ -99,7 +105,8 @@ export const GetStorefrontSummaryResponse = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series'])).min(1),
+  "categories": zod.array(zod.string().min(1)).min(1),
+  "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "paystackLink": zod.string().nullable(),
@@ -118,7 +125,8 @@ export const GetStorefrontSummaryResponse = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series'])).min(1),
+  "categories": zod.array(zod.string().min(1)).min(1),
+  "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "paystackLink": zod.string().nullable(),
@@ -131,7 +139,9 @@ export const GetStorefrontSummaryResponse = zod.object({
 })),
   "categories": zod.array(zod.object({
   "name": zod.string(),
-  "count": zod.number()
+  "count": zod.number(),
+  "id": zod.string(),
+  "featured": zod.boolean()
 }))
 })
 
@@ -373,6 +383,7 @@ export const RecordPageViewResponse = zod.void()
 
 
 
+
 export const ListAdminBooksResponseItem = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -381,7 +392,8 @@ export const ListAdminBooksResponseItem = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series'])).min(1),
+  "categories": zod.array(zod.string().min(1)).min(1),
+  "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "paystackLink": zod.string().nullable(),
@@ -413,6 +425,7 @@ export const createBookBodyCurrencyMax = 3;
 
 
 
+
 export const CreateBookBody = zod.object({
   "title": zod.string().min(1),
   "slug": zod.string().min(1),
@@ -420,7 +433,8 @@ export const CreateBookBody = zod.object({
   "price": zod.number().min(createBookBodyPriceMin),
   "priceNgn": zod.number().min(createBookBodyPriceNgnMin),
   "currency": zod.string().min(createBookBodyCurrencyMin).max(createBookBodyCurrencyMax),
-  "categories": zod.array(zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series'])).min(1),
+  "categories": zod.array(zod.string().min(1)).min(1),
+  "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "paystackLink": zod.string().nullable(),
@@ -435,6 +449,7 @@ export const CreateBookBody = zod.object({
 
 
 
+
 export const CreateBookResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -443,7 +458,8 @@ export const CreateBookResponse = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series'])).min(1),
+  "categories": zod.array(zod.string().min(1)).min(1),
+  "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "paystackLink": zod.string().nullable(),
@@ -454,6 +470,70 @@ export const CreateBookResponse = zod.object({
   "publishedAt": zod.string(),
   "createdAt": zod.string()
 })
+
+
+/**
+ * @summary List catalogue categories
+ */
+export const ListCategoriesResponseItem = zod.object({
+  "name": zod.string(),
+  "count": zod.number(),
+  "id": zod.string(),
+  "featured": zod.boolean()
+})
+export const ListCategoriesResponse = zod.array(ListCategoriesResponseItem)
+
+
+/**
+ * @summary Add a catalogue category
+ */
+
+
+
+export const CreateCategoryBody = zod.object({
+  "name": zod.string().min(1),
+  "featured": zod.boolean().optional()
+})
+
+export const CreateCategoryResponse = zod.object({
+  "name": zod.string(),
+  "count": zod.number(),
+  "id": zod.string(),
+  "featured": zod.boolean()
+})
+
+
+/**
+ * @summary Rename or feature a category
+ */
+export const UpdateCategoryParams = zod.object({
+  "categoryId": zod.coerce.string()
+})
+
+
+
+
+export const UpdateCategoryBody = zod.object({
+  "name": zod.string().min(1),
+  "featured": zod.boolean().optional()
+})
+
+export const UpdateCategoryResponse = zod.object({
+  "name": zod.string(),
+  "count": zod.number(),
+  "id": zod.string(),
+  "featured": zod.boolean()
+})
+
+
+/**
+ * @summary Delete an unused category
+ */
+export const DeleteCategoryParams = zod.object({
+  "categoryId": zod.coerce.string()
+})
+
+export const DeleteCategoryResponse = zod.void()
 
 
 /**
@@ -478,6 +558,7 @@ export const updateBookBodyCurrencyMax = 3;
 
 
 
+
 export const UpdateBookBody = zod.object({
   "title": zod.string().min(1).optional(),
   "slug": zod.string().min(1).optional(),
@@ -485,7 +566,8 @@ export const UpdateBookBody = zod.object({
   "price": zod.number().min(updateBookBodyPriceMin).optional(),
   "priceNgn": zod.number().min(updateBookBodyPriceNgnMin).optional(),
   "currency": zod.string().min(updateBookBodyCurrencyMin).max(updateBookBodyCurrencyMax).optional(),
-  "categories": zod.array(zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series'])).min(1).optional(),
+  "categories": zod.array(zod.string().min(1)).min(1).optional(),
+  "isCompleted": zod.boolean().optional(),
   "description": zod.string().optional(),
   "format": zod.enum(['PDF', 'EPUB']).optional(),
   "paystackLink": zod.string().nullish(),
@@ -500,6 +582,7 @@ export const UpdateBookBody = zod.object({
 
 
 
+
 export const UpdateBookResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -508,7 +591,8 @@ export const UpdateBookResponse = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.enum(['Romance', 'Werewolf', 'Paranormal', 'Dark Romance', 'Billionaire Romance', 'Completed Series'])).min(1),
+  "categories": zod.array(zod.string().min(1)).min(1),
+  "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
   "paystackLink": zod.string().nullable(),
