@@ -79,6 +79,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StorefrontSummary"
+  /language-requests:
+    post:
+      operationId: createLanguageRequest
+      tags: [storefront]
+      summary: Request an unavailable book language
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LanguageRequestInput"
+      responses:
+        "201":
+          description: Language request received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LanguageRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /orders:
     post:
       operationId: createOrder
@@ -616,6 +636,8 @@ components:
         id: { type: string }
         slug: { type: string }
         title: { type: string }
+        titleGroupId: { type: string }
+        language: { type: string }
         author: { type: string }
         price: { type: number }
         priceNgn: { type: number }
@@ -634,11 +656,13 @@ components:
         featured: { type: boolean }
         publishedAt: { type: string }
         createdAt: { type: string }
-      required: [id, slug, title, author, price, priceNgn, currency, categories, isCompleted, description, format, paystackLink, payoneerLink, coverUrl, fileName, featured, publishedAt, createdAt]
+      required: [id, slug, title, titleGroupId, language, author, price, priceNgn, currency, categories, isCompleted, description, format, paystackLink, payoneerLink, coverUrl, fileName, featured, publishedAt, createdAt]
     BookInput:
       type: object
       properties:
         title: { type: string, minLength: 1 }
+        titleGroupId: { type: string, minLength: 1 }
+        language: { type: string, minLength: 2, maxLength: 12 }
         slug: { type: string, minLength: 1 }
         author: { type: string, minLength: 1 }
         price: { type: number, minimum: 0 }
@@ -658,11 +682,13 @@ components:
         fileName: { type: string, minLength: 1 }
         featured: { type: boolean }
         publishedAt: { type: string }
-      required: [title, slug, author, price, priceNgn, currency, categories, isCompleted, description, format, paystackLink, payoneerLink, coverObjectPath, fileObjectPath, fileName, featured, publishedAt]
+      required: [title, titleGroupId, language, slug, author, price, priceNgn, currency, categories, isCompleted, description, format, paystackLink, payoneerLink, coverObjectPath, fileObjectPath, fileName, featured, publishedAt]
     BookUpdate:
       type: object
       properties:
         title: { type: string, minLength: 1 }
+        titleGroupId: { type: string, minLength: 1 }
+        language: { type: string, minLength: 2, maxLength: 12 }
         slug: { type: string, minLength: 1 }
         author: { type: string, minLength: 1 }
         price: { type: number, minimum: 0 }
@@ -703,6 +729,25 @@ components:
         id: { type: string }
         featured: { type: boolean }
       required: [id, name, count, featured]
+    LanguageRequestInput:
+      type: object
+      properties:
+        bookId: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        country: { type: string, minLength: 2, maxLength: 80 }
+        language: { type: string, minLength: 2, maxLength: 80 }
+      required: [bookId, name, country, language]
+    LanguageRequest:
+      type: object
+      properties:
+        id: { type: string }
+        bookId: { type: string }
+        bookTitle: { type: string }
+        name: { type: string }
+        country: { type: string }
+        language: { type: string }
+        createdAt: { type: string }
+      required: [id, bookId, bookTitle, name, country, language, createdAt]
     CategoryInput:
       type: object
       properties:

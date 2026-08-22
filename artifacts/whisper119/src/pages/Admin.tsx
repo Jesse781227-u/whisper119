@@ -64,6 +64,7 @@ function AdminNav({ onLogout }: { onLogout: () => void }) {
 }
 
 type BookFormProps = { book?: Book; onDone: () => void }
+type LanguageRequest = { id: string; bookTitle: string; name: string; country: string; language: string; createdAt: string }
 type BookFormPhase = "idle" | "validating" | "uploading" | "saving"
 type UploadProgressHandler = (bytesTransferred: number, totalBytes: number) => void
 
@@ -84,6 +85,8 @@ function BookForm({ book, onDone }: BookFormProps) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [title, setTitle] = useState(book?.title ?? "")
+  const [titleGroupId, setTitleGroupId] = useState(book?.titleGroupId ?? "")
+  const [language, setLanguage] = useState(book?.language ?? "en")
   const [author, setAuthor] = useState(book?.author ?? "")
   const [price, setPrice] = useState(String(book?.price ?? ""))
   const { data: categoryData } = useListCategories()
@@ -106,7 +109,7 @@ function BookForm({ book, onDone }: BookFormProps) {
   async function uploadFile(file: File, onProgress: UploadProgressHandler) {
     const uploadResponse = await requestUploadUrlApi(
       { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" },
-      { responseType: "json" },
+      {},
     )
     if (!uploadResponse || typeof uploadResponse !== "object" || !("uploadURL" in uploadResponse) || !("objectPath" in uploadResponse)) {
       throw new Error("The server returned an empty upload response. Check the API deployment and server logs.")
@@ -185,11 +188,13 @@ function BookForm({ book, onDone }: BookFormProps) {
 
     try {
       const titleValue = title.trim()
+      const titleGroupValue = titleGroupId.trim() || titleValue.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
       const authorValue = author.trim()
       const descriptionValue = description.trim()
       const priceValue = Number(price)
 
       if (!titleValue) throw new Error("Enter a book title.")
+      if (!language.trim()) throw new Error("Choose the book language.")
       if (!book && !authorValue) throw new Error("Enter the author name.")
       if (!price.trim()) throw new Error("Enter the USD price.")
       if (!Number.isFinite(priceValue) || priceValue < 0) throw new Error("Enter a valid non-negative USD price.")
@@ -218,6 +223,8 @@ function BookForm({ book, onDone }: BookFormProps) {
       if (book) {
         const data: BookUpdate = {
           title: titleValue,
+          titleGroupId: titleGroupValue,
+          language: language.trim().toLowerCase(),
           slug: slug.trim(),
           author: authorValue,
           description: descriptionValue,
@@ -255,6 +262,8 @@ function BookForm({ book, onDone }: BookFormProps) {
         setPhase("saving")
         const payload: BookInput = {
           title: titleValue,
+          titleGroupId: titleGroupValue,
+          language: language.trim().toLowerCase(),
           author: authorValue,
           slug: titleValue.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
           price: priceValue,
@@ -312,6 +321,8 @@ function BookForm({ book, onDone }: BookFormProps) {
      <form onSubmit={submit} noValidate className="mt-6 grid gap-4 sm:grid-cols-2">
       <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>
       <label><span className="mb-2 block text-xs font-bold">Author</span><input data-testid="input-book-author" required value={author} onChange={e => setAuthor(e.target.value)} className={fieldClass} /></label>
+      <label><span className="mb-2 block text-xs font-bold">Language</span><select value={language} onChange={e => setLanguage(e.target.value)} className={fieldClass}><option value="en">English</option><option value="fr">French</option><option value="es">Spanish</option><option value="de">German</option><option value="pt">Portuguese</option><option value="ar">Arabic</option><option value="yo">Yoruba</option><option value="ig">Igbo</option></select></label>
+      <label><span className="mb-2 block text-xs font-bold">Title group</span><input value={titleGroupId} onChange={e => setTitleGroupId(e.target.value)} placeholder="Same ID for translated editions" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Use the same group ID for every language edition of this title.</span></label>
       <label><span className="mb-2 block text-xs font-bold">Slug</span><input required value={slug} onChange={e => setSlug(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Used in catalogue links; keep it lowercase with hyphens.</span></label>
       <label><span className="mb-2 block text-xs font-bold">Price (USD)</span><input data-testid="input-book-price" required min="0" step="0.01" type="number" value={price} onChange={e => setPrice(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">USD is the source price. Nigerian pricing is calculated automatically at checkout.</span></label>
       <fieldset className="sm:col-span-2"><legend className="mb-2 block text-xs font-bold">Categories</legend><input value={categorySearch} onChange={event => setCategorySearch(event.target.value)} placeholder="Search categories" className={`${fieldClass} mb-2`} /><div className="flex min-h-11 flex-wrap gap-2 rounded-xl border border-border bg-background p-2">{categories.map(category => <button type="button" key={category} onClick={() => setCategories(current => current.filter(item => item !== category))} className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">{category} ×</button>)}{availableCategories.filter(category => !categories.includes(category.name) && category.name.toLowerCase().includes(categorySearch.toLowerCase())).slice(0, 12).map(category => <button type="button" key={category.id} onClick={() => setCategories(current => [...current, category.name])} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:border-primary hover:text-primary">{category.name}</button>)}</div><span className="mt-1 block text-xs text-muted-foreground">Choose every category that applies to this book.</span></fieldset>
@@ -365,6 +376,12 @@ export default function Admin() {
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminSaving, setAdminSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<"catalogue" | "orders">("catalogue")
+  const [languageRequests, setLanguageRequests] = useState<LanguageRequest[]>([])
+
+  useEffect(() => {
+    if (!enabled) return
+    void fetch("/api/admin/language-requests").then((response) => response.ok ? response.json() : []).then((data: unknown) => setLanguageRequests(Array.isArray(data) ? data as LanguageRequest[] : [])).catch(() => setLanguageRequests([]))
+  }, [enabled])
 
   useEffect(() => {
     if (!firebaseDb) {
@@ -546,7 +563,9 @@ export default function Admin() {
     </section>
     {activeTab === "catalogue" && <div className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button type="button" data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} aria-expanded={form === "new"} aria-controls="book-form" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add book"}</button></div>
-    <CategoryManager />{form === "new" && <BookForm onDone={() => setForm(null)} />}{form && form !== "new" && <BookForm book={form} onDone={() => setForm(null)} />}
+    <CategoryManager />
+    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Reader demand</p><h2 className="mt-1 text-xl font-extrabold">Language requests</h2></div>{languageRequests.length ? <div className="divide-y divide-border">{languageRequests.map((request) => <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"><div><p className="font-bold">{request.language} for {request.bookTitle}</p><p className="mt-1 text-xs text-muted-foreground">{request.name} · {request.country}</p></div><span className="text-xs text-muted-foreground">{formatDate(request.createdAt)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">No language requests yet.</p>}</section>
+    {form === "new" && <BookForm onDone={() => setForm(null)} />}{form && form !== "new" && <BookForm book={form} onDone={() => setForm(null)} />}
      <div>
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <div className="divide-y divide-border">

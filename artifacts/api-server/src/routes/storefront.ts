@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { GetBookParams, GetBookResponse, GetStorefrontSummaryResponse, ListBooksQueryParams, ListBooksResponse } from "@workspace/api-zod";
+import { randomUUID } from "node:crypto";
+import { CreateLanguageRequestBody, CreateLanguageRequestResponse, GetBookParams, GetBookResponse, GetStorefrontSummaryResponse, ListBooksQueryParams, ListBooksResponse } from "@workspace/api-zod";
 import { count, desc, eq } from "drizzle-orm";
-import { bookCategoriesTable, booksTable, categoriesTable, db } from "@workspace/db";
+import { bookCategoriesTable, booksTable, categoriesTable, db, languageRequestsTable } from "@workspace/db";
 import { categoryNamesForBooks, findBooks, publicBook, publicBooks } from "../lib/bookstore";
 
 const router: IRouter = Router();
@@ -57,6 +58,21 @@ router.get("/books", async (req, res): Promise<void> => {
   }
   const books = await findBooks(parsed.data);
   res.json(ListBooksResponse.parse(await publicBooks(books)));
+});
+
+router.post("/language-requests", async (req, res): Promise<void> => {
+  const parsed = CreateLanguageRequestBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, parsed.data.bookId));
+  if (!book) { res.status(404).json({ error: "Book not found" }); return; }
+  const [request] = await db.insert(languageRequestsTable).values({
+    id: randomUUID(), bookId: book.id, name: parsed.data.name.trim(),
+    country: parsed.data.country.trim(), language: parsed.data.language.trim(),
+  }).returning();
+  res.status(201).json(CreateLanguageRequestResponse.parse({
+    id: request.id, bookId: book.id, bookTitle: book.title, name: request.name,
+    country: request.country, language: request.language, createdAt: request.createdAt.toISOString(),
+  }));
 });
 
 router.get("/books/:bookId", async (req, res): Promise<void> => {

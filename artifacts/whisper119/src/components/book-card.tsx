@@ -20,7 +20,7 @@ function CoverArtwork({ book }: { book: Book }) {
         </div>
       )}
       <span className="absolute bottom-2 left-2 rounded-md bg-black/70 px-2 py-1 text-[0.6rem] font-bold text-white backdrop-blur-sm">
-        {book.format}
+        {book.format} · {book.language.toUpperCase()}
       </span>
       <span className="absolute bottom-2 right-2 rounded-md bg-white/95 px-2 py-1 text-[0.6rem] font-extrabold text-slate-900 shadow-sm dark:bg-slate-950/90 dark:text-white">
         <ConvertedPrice amountUsd={book.price} />

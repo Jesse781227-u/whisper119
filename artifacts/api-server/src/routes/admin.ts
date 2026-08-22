@@ -20,7 +20,7 @@ import {
   ListCategoriesResponse, CreateCategoryBody, CreateCategoryResponse,
   UpdateCategoryParams, UpdateCategoryBody, UpdateCategoryResponse, DeleteCategoryParams,
 } from "@workspace/api-zod";
-import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable, db, ordersTable } from "@workspace/db";
+import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable, db, languageRequestsTable, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook, publicBooks, replaceBookCategories } from "../lib/bookstore";
 import { confirmManualOrder } from "../lib/delivery";
@@ -90,6 +90,12 @@ router.get("/admin/dashboard", async (_req, res): Promise<void> => {
 router.get("/admin/books", async (_req, res): Promise<void> => {
   const books = await db.select().from(booksTable).orderBy(desc(booksTable.createdAt));
   res.json(ListAdminBooksResponse.parse(await publicBooks(books)));
+});
+
+router.get("/admin/language-requests", async (_req, res): Promise<void> => {
+  const rows = await db.select({ id: languageRequestsTable.id, bookId: languageRequestsTable.bookId, bookTitle: booksTable.title, name: languageRequestsTable.name, country: languageRequestsTable.country, language: languageRequestsTable.language, createdAt: languageRequestsTable.createdAt })
+    .from(languageRequestsTable).innerJoin(booksTable, eq(booksTable.id, languageRequestsTable.bookId)).orderBy(desc(languageRequestsTable.createdAt));
+  res.json(rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() })));
 });
 
 router.get("/admin/categories", async (_req, res): Promise<void> => {

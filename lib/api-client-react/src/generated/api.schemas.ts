@@ -25,6 +25,8 @@ export interface Book {
   id: string;
   slug: string;
   title: string;
+  titleGroupId: string;
+  language: string;
   author: string;
   price: number;
   priceNgn: number;
@@ -60,6 +62,13 @@ export const BookInputFormat = {
 export interface BookInput {
   /** @minLength 1 */
   title: string;
+  /** @minLength 1 */
+  titleGroupId: string;
+  /**
+     * @minLength 2
+     * @maxLength 12
+     */
+  language: string;
   /** @minLength 1 */
   slug: string;
   /** @minLength 1 */
@@ -106,6 +115,13 @@ export const BookUpdateFormat = {
 export interface BookUpdate {
   /** @minLength 1 */
   title?: string;
+  /** @minLength 1 */
+  titleGroupId?: string;
+  /**
+     * @minLength 2
+     * @maxLength 12
+     */
+  language?: string;
   /** @minLength 1 */
   slug?: string;
   /** @minLength 1 */
@@ -165,6 +181,36 @@ export interface StorefrontSummary {
   featured: Book[];
   newArrivals: Book[];
   categories: Category[];
+}
+
+export interface LanguageRequestInput {
+  /** @minLength 1 */
+  bookId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  country: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  language: string;
+}
+
+export interface LanguageRequest {
+  id: string;
+  bookId: string;
+  bookTitle: string;
+  name: string;
+  country: string;
+  language: string;
+  createdAt: string;
 }
 
 export interface CategoryInput {

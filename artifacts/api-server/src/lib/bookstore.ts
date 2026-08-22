@@ -21,6 +21,8 @@ export function publicBook(book: Book, categories: string[] = []) {
     id: book.id,
     slug: book.slug,
     title: book.title,
+    titleGroupId: book.titleGroupId,
+    language: book.language,
     author: book.author,
     price: book.price,
     priceNgn: book.priceNgn,

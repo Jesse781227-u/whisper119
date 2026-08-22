@@ -3,7 +3,7 @@ import { CopyLinkIcon, InstagramIcon, NewTwitterIcon, WhatsappIcon } from "@huge
 import { ArrowLeft, Check, ChevronDown, ChevronUp, ExternalLink, Mail, ShoppingCart } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useLocation, useParams } from "wouter"
-import { useGetBook, useListBooks } from "@workspace/api-client-react"
+import { useCreateLanguageRequest, useGetBook, useListBooks } from "@workspace/api-client-react"
 import { BookCard, BookCover } from "@/components/book-card"
 import { ConvertedPrice } from "@/components/converted-price"
 import { useCart } from "@/components/cart-provider"
@@ -39,6 +39,11 @@ export default function BookDetail() {
   const { items, addItem } = useCart()
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [requestName, setRequestName] = useState("")
+  const [requestCountry, setRequestCountry] = useState("")
+  const [requestLanguage, setRequestLanguage] = useState("")
+  const [requestSent, setRequestSent] = useState(false)
+  const languageRequest = useCreateLanguageRequest()
 
   const catalogue = Array.isArray(apiBooks) ? apiBooks : []
   const book = apiBook ?? catalogue.find((item) => item.id === bookId || item.slug === bookId)
@@ -133,6 +138,7 @@ export default function BookDetail() {
   const inCart = items.some((item) => item.id === book.id)
   const heroStyle = book.coverUrl ? { backgroundImage: `linear-gradient(180deg, hsl(229 45% 10% / .2), hsl(229 45% 8% / .94)), url("${book.coverUrl}")` } : undefined
   const descriptors = [...book.categories, book.format, "Email delivery"]
+  const languageEditions = catalogue.filter((item) => item.titleGroupId === book.titleGroupId)
 
   function addAndNavigate(path: string) {
     if (!inCart && book) addItem(book)
@@ -234,6 +240,16 @@ export default function BookDetail() {
             <ShareLink label="Share on X" href={twitterUrl}><HugeiconsIcon icon={NewTwitterIcon} size={18} /></ShareLink>
             <ShareButton label="Copy link" onClick={() => void copyShareUrl()}>{copied ? <Check className="h-4 w-4 text-primary" /> : <HugeiconsIcon icon={CopyLinkIcon} size={18} />}</ShareButton>
             {copied && <span className="ml-2 text-xs font-bold text-primary">Link copied</span>}
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">Available languages</p>
+          <h2 className="mt-1 text-xl font-extrabold">Choose your reading language</h2>
+          <div className="mt-4 flex flex-wrap gap-2">{languageEditions.map((edition) => <Link key={edition.id} href={`/book/${edition.id}`} className={`rounded-full px-3 py-2 text-xs font-extrabold ${edition.id === book.id ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-primary/10 hover:text-primary"}`}>{edition.language.toUpperCase()}</Link>)}</div>
+          <div className="mt-5 border-t border-border pt-5">
+            <p className="text-sm font-extrabold">Can’t find your language?</p>
+            {requestSent ? <p className="mt-2 text-sm text-primary">Thanks — we’ve recorded your request.</p> : <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={(event) => { event.preventDefault(); languageRequest.mutate({ data: { bookId: book.id, name: requestName.trim(), country: requestCountry.trim(), language: requestLanguage.trim() } }, { onSuccess: () => setRequestSent(true) }) }}><input required value={requestName} onChange={(event) => setRequestName(event.target.value)} placeholder="Your name" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><input required value={requestCountry} onChange={(event) => setRequestCountry(event.target.value)} placeholder="Country" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><input required value={requestLanguage} onChange={(event) => setRequestLanguage(event.target.value)} placeholder="Requested language" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><button disabled={languageRequest.isPending} className="h-11 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{languageRequest.isPending ? "Sending…" : "Request language"}</button></form>}
           </div>
         </section>
 

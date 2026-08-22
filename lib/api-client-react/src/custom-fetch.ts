@@ -17,6 +17,7 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _nativeFetch: typeof globalThis.fetch | null = null;
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -42,6 +43,19 @@ export function setBaseUrl(url: string | null): void {
  */
 export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
+  if (typeof globalThis.fetch !== "function") return;
+  if (getter && !_nativeFetch) {
+    _nativeFetch = globalThis.fetch.bind(globalThis);
+    globalThis.fetch = async (input, init = {}) => {
+      const token = await getter();
+      const headers = new Headers(init.headers);
+      if (token && !headers.has("authorization")) headers.set("authorization", `Bearer ${token}`);
+      return _nativeFetch!(input, { ...init, headers });
+    };
+  } else if (!getter && _nativeFetch) {
+    globalThis.fetch = _nativeFetch;
+    _nativeFetch = null;
+  }
 }
 
 function isRequest(input: RequestInfo | URL): input is Request {

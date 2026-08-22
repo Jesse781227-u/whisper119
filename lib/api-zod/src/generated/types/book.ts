@@ -11,6 +11,8 @@ export interface Book {
   id: string;
   slug: string;
   title: string;
+  titleGroupId: string;
+  language: string;
   author: string;
   price: number;
   priceNgn: number;

@@ -11,6 +11,13 @@ export interface BookUpdate {
   /** @minLength 1 */
   title?: string;
   /** @minLength 1 */
+  titleGroupId?: string;
+  /**
+     * @minLength 2
+     * @maxLength 12
+     */
+  language?: string;
+  /** @minLength 1 */
   slug?: string;
   /** @minLength 1 */
   author?: string;

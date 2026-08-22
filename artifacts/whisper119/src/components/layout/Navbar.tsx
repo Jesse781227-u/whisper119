@@ -3,6 +3,7 @@ import { BookOpen, ChevronDown, Menu, Search, ShoppingBag, UserRound, X } from "
 import { useEffect, useState } from "react"
 import { useGetStorefrontSummary } from "@workspace/api-client-react"
 import { useCart } from "@/components/cart-provider"
+import { LanguageRegionSelector } from "@/components/language-region-selector"
 
 export function Navbar() {
   const { items } = useCart()
@@ -69,6 +70,7 @@ export function Navbar() {
             {items.length > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.58rem] text-primary-foreground">{items.length}</span>}
           </Link>
           <Link href="/account" aria-label="Reader account" className="hidden rounded-full p-2 text-muted-foreground hover:bg-secondary sm:block"><UserRound className="h-4 w-4" /></Link>
+          <LanguageRegionSelector />
           <span aria-hidden="true" className="hidden h-8 w-px bg-border sm:block" />
         </div>
 

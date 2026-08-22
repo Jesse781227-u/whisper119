@@ -1,0 +1,24 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "https://whisper119.com",
+          "https://www.whisper119.com"
+        ],
+        "methods": [
+          "GET",
+          "PUT"
+        ],
+        "headers": [
+          "Content-Type"
+        ]
+      },
+      "exposeHeaders": [
+        "ETag",
+        "Content-Length"
+      ],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}

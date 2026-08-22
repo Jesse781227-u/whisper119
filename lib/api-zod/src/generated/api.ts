@@ -35,6 +35,8 @@ export const ListBooksResponseItem = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
+  "titleGroupId": zod.string(),
+  "language": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
   "priceNgn": zod.number(),
@@ -69,6 +71,8 @@ export const GetBookResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
+  "titleGroupId": zod.string(),
+  "language": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
   "priceNgn": zod.number(),
@@ -101,6 +105,8 @@ export const GetStorefrontSummaryResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
+  "titleGroupId": zod.string(),
+  "language": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
   "priceNgn": zod.number(),
@@ -121,6 +127,8 @@ export const GetStorefrontSummaryResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
+  "titleGroupId": zod.string(),
+  "language": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
   "priceNgn": zod.number(),
@@ -143,6 +151,38 @@ export const GetStorefrontSummaryResponse = zod.object({
   "id": zod.string(),
   "featured": zod.boolean()
 }))
+})
+
+
+/**
+ * @summary Request an unavailable book language
+ */
+
+export const createLanguageRequestBodyNameMax = 120;
+
+export const createLanguageRequestBodyCountryMin = 2;
+export const createLanguageRequestBodyCountryMax = 80;
+
+export const createLanguageRequestBodyLanguageMin = 2;
+export const createLanguageRequestBodyLanguageMax = 80;
+
+
+
+export const CreateLanguageRequestBody = zod.object({
+  "bookId": zod.string().min(1),
+  "name": zod.string().min(1).max(createLanguageRequestBodyNameMax),
+  "country": zod.string().min(createLanguageRequestBodyCountryMin).max(createLanguageRequestBodyCountryMax),
+  "language": zod.string().min(createLanguageRequestBodyLanguageMin).max(createLanguageRequestBodyLanguageMax)
+})
+
+export const CreateLanguageRequestResponse = zod.object({
+  "id": zod.string(),
+  "bookId": zod.string(),
+  "bookTitle": zod.string(),
+  "name": zod.string(),
+  "country": zod.string(),
+  "language": zod.string(),
+  "createdAt": zod.string()
 })
 
 
@@ -388,6 +428,8 @@ export const ListAdminBooksResponseItem = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
+  "titleGroupId": zod.string(),
+  "language": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
   "priceNgn": zod.number(),
@@ -412,6 +454,10 @@ export const ListAdminBooksResponse = zod.array(ListAdminBooksResponseItem)
  */
 
 
+export const createBookBodyLanguageMin = 2;
+export const createBookBodyLanguageMax = 12;
+
+
 
 export const createBookBodyPriceMin = 0;
 
@@ -428,6 +474,8 @@ export const createBookBodyCurrencyMax = 3;
 
 export const CreateBookBody = zod.object({
   "title": zod.string().min(1),
+  "titleGroupId": zod.string().min(1),
+  "language": zod.string().min(createBookBodyLanguageMin).max(createBookBodyLanguageMax),
   "slug": zod.string().min(1),
   "author": zod.string().min(1),
   "price": zod.number().min(createBookBodyPriceMin),
@@ -454,6 +502,8 @@ export const CreateBookResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
+  "titleGroupId": zod.string(),
+  "language": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
   "priceNgn": zod.number(),
@@ -545,6 +595,10 @@ export const UpdateBookParams = zod.object({
 
 
 
+export const updateBookBodyLanguageMin = 2;
+export const updateBookBodyLanguageMax = 12;
+
+
 
 export const updateBookBodyPriceMin = 0;
 
@@ -561,6 +615,8 @@ export const updateBookBodyCurrencyMax = 3;
 
 export const UpdateBookBody = zod.object({
   "title": zod.string().min(1).optional(),
+  "titleGroupId": zod.string().min(1).optional(),
+  "language": zod.string().min(updateBookBodyLanguageMin).max(updateBookBodyLanguageMax).optional(),
   "slug": zod.string().min(1).optional(),
   "author": zod.string().min(1).optional(),
   "price": zod.number().min(updateBookBodyPriceMin).optional(),
@@ -587,6 +643,8 @@ export const UpdateBookResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
+  "titleGroupId": zod.string(),
+  "language": zod.string(),
   "author": zod.string(),
   "price": zod.number(),
   "priceNgn": zod.number(),
