@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS book_categories (
 ALTER TABLE books ADD COLUMN IF NOT EXISTS is_completed boolean NOT NULL DEFAULT false;
 
 INSERT INTO categories (id, name)
-SELECT lower(regexp_replace(name, '[^a-z0-9]+', '-', 'g')), name
+SELECT lower(regexp_replace(lower(name), '[^a-z0-9]+', '-', 'g')), name
 FROM (VALUES
   ('Dark romance'), ('Light romance / fluffy romance'), ('MM romance (BL)'), ('FF romance (GL)'),
   ('Mafia romance'), ('Billionaire romance'), ('Werewolf/Lycan romance'), ('Vampire romance'),
@@ -27,11 +27,6 @@ FROM (VALUES
   ('Contract marriage'), ('Possessive/obsessive love (yandere)'), ('Alien romance'), ('Sci-fi romance'), ('Dystopian romance'),
   ('Action/thriller romance'), ('Psychological thriller'), ('Crime thriller'), ('Ghost/horror romance'), ('Slow burn romance')
 ) AS seed(name)
-ON CONFLICT (name) DO NOTHING;
-
-INSERT INTO categories (id, name) VALUES
-  ('romance', 'Dark romance'), ('werewolf-lycan-romance', 'Werewolf/Lycan romance'),
-  ('paranormal-romance', 'Paranormal romance'), ('billionaire-romance', 'Billionaire romance')
 ON CONFLICT (name) DO NOTHING;
 
 DO $$
