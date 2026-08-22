@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 
-const languages = [["en", "English"], ["fr", "Français"], ["es", "Español"], ["de", "Deutsch"], ["pt", "Português"], ["ar", "العربية"], ["yo", "Yorùbá"], ["ig", "Igbo"]] as const
+const languages = [["en", "English"], ["fr", "Français"], ["de", "Deutsch"], ["ru", "Русский"], ["it", "Italiano"], ["es", "Español"]] as const
 const regions = [["NG", "Nigeria"], ["US", "United States"], ["GB", "United Kingdom"], ["CA", "Canada"], ["ZA", "South Africa"], ["FR", "France"]] as const
 
 export function LanguageRegionSelector() {
@@ -8,7 +8,8 @@ export function LanguageRegionSelector() {
   const [region, setRegion] = useState("NG")
 
   useEffect(() => {
-    setLanguage(localStorage.getItem("whisper-language") ?? "en")
+    const savedLanguage = localStorage.getItem("whisper-language") ?? "en"
+    setLanguage(languages.some(([code]) => code === savedLanguage) ? savedLanguage : "en")
     setRegion(localStorage.getItem("whisper-region") ?? "NG")
   }, [])
 
