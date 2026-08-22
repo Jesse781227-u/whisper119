@@ -34,19 +34,40 @@ INSERT INTO categories (id, name) VALUES
   ('paranormal-romance', 'Paranormal romance'), ('billionaire-romance', 'Billionaire romance')
 ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO book_categories (book_id, category_id)
-SELECT b.id, c.id
-FROM books b
-JOIN LATERAL unnest(b.categories) old_name ON true
-JOIN categories c ON c.name = CASE old_name
-  WHEN 'Romance' THEN 'Dark romance'
-  WHEN 'Werewolf' THEN 'Werewolf/Lycan romance'
-  WHEN 'Paranormal' THEN 'Paranormal romance'
-  WHEN 'Dark Romance' THEN 'Dark romance'
-  WHEN 'Billionaire Romance' THEN 'Billionaire romance'
-  ELSE old_name
-END
-ON CONFLICT DO NOTHING;
+DO $$
+BEGIN
+  -- The legacy column is present on existing installations, but not on a
+  -- fresh database. Keep the migration valid in both cases and make it safe
+  -- to re-run after a partially completed deployment.
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = 'books'
+      AND column_name = 'categories'
+  ) THEN
+    EXECUTE $migration$
+      INSERT INTO book_categories (book_id, category_id)
+      SELECT b.id, c.id
+      FROM books b
+      JOIN LATERAL unnest(b.categories) old_name ON true
+      JOIN categories c ON c.name = CASE old_name
+        WHEN 'Romance' THEN 'Dark romance'
+        WHEN 'Werewolf' THEN 'Werewolf/Lycan romance'
+        WHEN 'Paranormal' THEN 'Paranormal romance'
+        WHEN 'Dark Romance' THEN 'Dark romance'
+        WHEN 'Billionaire Romance' THEN 'Billionaire romance'
+        ELSE old_name
+      END
+      ON CONFLICT DO NOTHING
+    $migration$;
 
-UPDATE books SET is_completed = true WHERE 'Completed Series' = ANY(categories);
-ALTER TABLE books DROP COLUMN IF EXISTS categories;
+    EXECUTE $migration$
+      UPDATE books
+      SET is_completed = true
+      WHERE 'Completed Series' = ANY(categories)
+    $migration$;
+
+    ALTER TABLE books DROP COLUMN categories;
+  END IF;
+END $$;
