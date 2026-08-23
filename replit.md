@@ -63,7 +63,7 @@ The private admin desk provides cookie-backed login, dashboard totals, catalogue
 ## Gotchas
 
 - Direct email attachments are capped conservatively at 20 MB combined because many recipient providers cap attachments around 10–25 MB. Oversized delivery fails closed and leaves `deliveryEmailSent` false for inspection.
-- `PAYSTACK_SECRET_KEY` and SMTP credentials are intentionally fail-closed; do not create fake payment or delivery behavior.
+- Flutterwave configuration uses `FLW_SECRET_KEY`, `FLW_PUBLIC_KEY`, `FLW_ENCRYPTION_KEY`, and `FLW_SECRET_HASH` plus SMTP credentials. Secret and encryption keys are server-only; do not commit them or create fake payment behavior.
 - Run `pnpm --filter @workspace/api-spec run codegen` after changing `lib/api-spec/openapi.yaml`, then run `pnpm --filter @workspace/db run push` after schema changes.
 - Vite configs use build-safe defaults for `PORT` and `BASE_PATH`, because Render/build environments do not always provide runtime workflow variables.
 - The development catalogue has been intentionally cleared. Real books must be added through the private admin desk with both USD and NGN prices; no placeholder/demo records or seed script remain.

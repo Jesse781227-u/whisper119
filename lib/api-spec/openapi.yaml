@@ -112,7 +112,7 @@ paths:
               $ref: "#/components/schemas/OrderInput"
       responses:
         "201":
-          description: Pending order with Paystack authorization URL
+          description: Pending order with hosted payment authorization URL
           content:
             application/json:
               schema:
@@ -215,30 +215,6 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
-  /payments/paystack/webhook:
-    post:
-      operationId: paystackWebhook
-      tags: [orders]
-      summary: Confirm Paystack payments server-side
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PaystackWebhook"
-      responses:
-        "200":
-          description: Webhook accepted
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/WebhookResponse"
-        "401":
-          description: Invalid Paystack signature
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
   /admin/login:
     post:
       operationId: adminLogin
@@ -766,7 +742,7 @@ components:
       properties:
         email: { type: string, minLength: 3 }
         bookId: { type: string, minLength: 1 }
-        paymentMethod: { type: string, enum: [paystack, payoneer] }
+        paymentMethod: { type: string, enum: [flutterwave] }
         paymentReference: { type: string, minLength: 1, maxLength: 200 }
       required: [email, bookId, paymentMethod, paymentReference]
     PaymentConfirmation:
@@ -777,7 +753,7 @@ components:
         bookId: { type: string }
         bookTitle: { type: string }
         email: { type: string, minLength: 3 }
-        paymentMethod: { type: string, enum: [paystack, payoneer] }
+        paymentMethod: { type: string, enum: [flutterwave] }
         paymentReference: { type: string }
         status: { type: string, enum: [pending] }
         createdAt: { type: string }
@@ -801,7 +777,7 @@ components:
         subtotal: { type: number }
         status: { type: string, enum: [pending, paid, fulfilled, failed] }
         paymentStatus: { type: string }
-        paymentMethod: { type: string, enum: [paystack, payoneer] }
+        paymentMethod: { type: string, enum: [flutterwave] }
         paymentReference: { type: ["string", "null"] }
         deliveryEmailSent: { type: boolean }
         downloaded: { type: boolean }

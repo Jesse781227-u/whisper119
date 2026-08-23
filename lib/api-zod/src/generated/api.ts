@@ -224,7 +224,7 @@ export const confirmPaymentBodyPaymentReferenceMax = 200;
 export const ConfirmPaymentBody = zod.object({
   "email": zod.string().min(confirmPaymentBodyEmailMin),
   "bookId": zod.string().min(1),
-  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentMethod": zod.enum(['flutterwave']),
   "paymentReference": zod.string().min(1).max(confirmPaymentBodyPaymentReferenceMax)
 })
 
@@ -238,7 +238,7 @@ export const ConfirmPaymentResponse = zod.object({
   "bookId": zod.string(),
   "bookTitle": zod.string(),
   "email": zod.string().min(confirmPaymentResponseEmailMin),
-  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentMethod": zod.enum(['flutterwave']),
   "paymentReference": zod.string(),
   "status": zod.enum(['pending']),
   "createdAt": zod.string()
@@ -261,7 +261,7 @@ export const GetOrderResponse = zod.object({
   "subtotal": zod.number(),
   "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
-  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentMethod": zod.enum(['flutterwave']),
   "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
@@ -308,22 +308,6 @@ export const ListOrderDownloadsResponseItem = zod.object({
   "url": zod.string()
 })
 export const ListOrderDownloadsResponse = zod.array(ListOrderDownloadsResponseItem)
-
-
-/**
- * @summary Confirm Paystack payments server-side
- */
-export const PaystackWebhookBody = zod.object({
-  "event": zod.string(),
-  "data": zod.object({
-  "reference": zod.string(),
-  "status": zod.string().optional()
-})
-})
-
-export const PaystackWebhookResponse = zod.object({
-  "received": zod.boolean()
-})
 
 
 /**
@@ -380,7 +364,7 @@ export const GetAdminDashboardResponse = zod.object({
   "subtotal": zod.number(),
   "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
-  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentMethod": zod.enum(['flutterwave']),
   "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
@@ -689,7 +673,7 @@ export const ListAdminOrdersResponseItem = zod.object({
   "subtotal": zod.number(),
   "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
-  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentMethod": zod.enum(['flutterwave']),
   "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
@@ -724,7 +708,7 @@ export const GetAdminOrderResponse = zod.object({
   "subtotal": zod.number(),
   "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
-  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentMethod": zod.enum(['flutterwave']),
   "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),
@@ -759,7 +743,7 @@ export const ConfirmAdminOrderResponse = zod.object({
   "subtotal": zod.number(),
   "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
   "paymentStatus": zod.string(),
-  "paymentMethod": zod.enum(['paystack', 'payoneer']),
+  "paymentMethod": zod.enum(['flutterwave']),
   "paymentReference": zod.string().nullable(),
   "deliveryEmailSent": zod.boolean(),
   "downloaded": zod.boolean(),

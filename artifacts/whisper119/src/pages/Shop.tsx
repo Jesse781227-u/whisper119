@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter"
 import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { FALLBACK_BOOKS, FALLBACK_CATEGORIES } from "@/data/catalog"
 
 type FormatFilter = "" | "PDF" | "EPUB"
 
@@ -47,8 +48,8 @@ export default function Shop() {
     },
   )
   const { data: summary } = useGetStorefrontSummary()
-  const books = Array.isArray(booksData) ? booksData : []
-  const categories = Array.isArray(summary?.categories) ? summary.categories : []
+  const books = Array.isArray(booksData) && booksData.length > 0 ? booksData : FALLBACK_BOOKS.filter((book) => !category || book.categories.includes(category))
+  const categories = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : FALLBACK_CATEGORIES
   const hasFilters = Boolean(search || category || format || maxPrice)
 
   function updateUrl(next: { search?: string; category?: string; format?: FormatFilter; maxPrice?: string }) {

@@ -2,11 +2,12 @@ import { Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "wouter"
 import { useGetStorefrontSummary } from "@workspace/api-client-react"
+import { FALLBACK_CATEGORIES } from "@/data/catalog"
 
 export default function Categories() {
   const { data, isLoading } = useGetStorefrontSummary()
   const [search, setSearch] = useState("")
-  const categories = Array.isArray(data?.categories) ? data.categories : []
+  const categories = Array.isArray(data?.categories) && data.categories.length > 0 ? data.categories : FALLBACK_CATEGORIES
   const visible = useMemo(() => categories.filter(category => category.name.toLowerCase().includes(search.toLowerCase())), [categories, search])
 
   return <main className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6 sm:pt-12">

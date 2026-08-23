@@ -1,4 +1,4 @@
-import { BookOpen, Mail } from "lucide-react"
+import { Mail } from "lucide-react"
 import { Link } from "wouter"
 
 export function Footer() {
@@ -8,8 +8,7 @@ export function Footer() {
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-sm">
             <Link href="/" className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen className="h-4 w-4" /></span>
-              <span className="text-lg font-extrabold">Whisper 119</span>
+              <img src="/whisper-119-logo.png" alt="Whisper 119" className="h-10 w-auto max-w-[12rem] object-contain dark:invert" />
             </Link>
             <p className="mt-2 text-[0.68rem] font-extrabold uppercase tracking-[0.2em] text-primary">browse, buy, read</p>
           </div>

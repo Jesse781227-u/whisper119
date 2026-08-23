@@ -24,7 +24,6 @@ import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable,
 import { requireAdmin } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook, publicBooks, replaceBookCategories } from "../lib/bookstore";
 import { confirmManualOrder } from "../lib/delivery";
-import { initializePaystack } from "../lib/payments";
 
 const router: IRouter = Router();
 

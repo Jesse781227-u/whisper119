@@ -5,7 +5,7 @@ import { useConfirmPayment, useListBooks } from "@workspace/api-client-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 
-type PaymentMethod = "paystack" | "payoneer"
+type PaymentMethod = "flutterwave"
 
 function getQueryValue(name: string) {
   if (typeof window === "undefined") return ""
@@ -22,7 +22,7 @@ function getErrorMessage(error: unknown) {
 export default function ConfirmPayment() {
   const initialBookId = useMemo(() => getQueryValue("bookId"), [])
   const initialMethod = useMemo<PaymentMethod>(() => {
-    return getQueryValue("method") === "payoneer" ? "payoneer" : "paystack"
+    return "flutterwave"
   }, [])
   const [bookId, setBookId] = useState(initialBookId)
   const [email, setEmail] = useState("")
@@ -86,7 +86,7 @@ export default function ConfirmPayment() {
           <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">Payment confirmation</p>
           <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">Tell us where your payment landed.</h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-muted-foreground">
-            After paying through Paystack or Payoneer, share the transaction details below so the librarian can review your order. Your book is not delivered until payment is verified.
+            After paying through Flutterwave, share the transaction details below so the librarian can review your order. Your book is not delivered until payment is verified.
           </p>
         </div>
 
@@ -136,8 +136,7 @@ export default function ConfirmPayment() {
             <legend className="mb-2 text-xs font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Payment method</legend>
             <div className="grid gap-3 sm:grid-cols-2">
               {([
-                ["paystack", "Paystack", "Local payments in Nigerian naira"],
-                ["payoneer", "Payoneer", "International payments in USD"],
+                ["flutterwave", "Flutterwave", "Secure NGN and USD payments"],
               ] as const).map(([value, label, description]) => (
                 <label key={value} className={`cursor-pointer rounded-2xl border p-4 transition-colors ${paymentMethod === value ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/50"}`}>
                   <input type="radio" name="paymentMethod" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} className="sr-only" />
@@ -172,7 +171,7 @@ export default function ConfirmPayment() {
                 <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-primary">Reviewing</p>
                 <p className="mt-1 text-sm font-bold">{selectedBook.title}</p>
               </div>
-              <span className="text-right text-xs font-bold text-muted-foreground">{paymentMethod === "paystack" ? "Paystack" : "Payoneer"} payment</span>
+              <span className="text-right text-xs font-bold text-muted-foreground">Flutterwave payment</span>
             </div>
           )}
 

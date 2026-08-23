@@ -43,12 +43,10 @@ import type {
   PageViewInput,
   PaymentConfirmation,
   PaymentConfirmationInput,
-  PaystackWebhook,
   StorefrontSummary,
   UnauthorizedResponse,
   UploadInput,
-  UploadResponse,
-  WebhookResponse
+  UploadResponse
 } from './api.schemas';
 
 
@@ -897,84 +895,6 @@ export function useListOrderDownloads<TData = Awaited<ReturnType<typeof listOrde
 
 
 
-
-export const getPaystackWebhookUrl = () => {
-
-
-
-
-  return `/api/payments/paystack/webhook`
-}
-
-/**
- * @summary Confirm Paystack payments server-side
- */
-export const paystackWebhook = async (paystackWebhook: PaystackWebhook, options?: RequestInit): Promise<WebhookResponse> => {
-
-  const res = await fetch(getPaystackWebhookUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(paystackWebhook)
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: WebhookResponse = body ? JSON.parse(body) : {}
-  return data
-}
-
-
-
-
-
-export const getPaystackWebhookMutationOptions = <TError = ErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof paystackWebhook>>, TError,{data: PaystackWebhook}, TContext>, fetch?: RequestInit}
-): UseMutationOptions<Awaited<ReturnType<typeof paystackWebhook>>, TError,{data: PaystackWebhook}, TContext> => {
-
-const mutationKey = ['paystackWebhook'];
-const {mutation: mutationOptions, fetch: fetchOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, fetch: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof paystackWebhook>>, {data: PaystackWebhook}> = (props) => {
-          const {data} = props ?? {};
-
-          return  paystackWebhook(data,fetchOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type PaystackWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof paystackWebhook>>>
-    export type PaystackWebhookMutationBody = PaystackWebhook
-    export type PaystackWebhookMutationError = ErrorResponse
-
-    /**
- * @summary Confirm Paystack payments server-side
- */
-export const usePaystackWebhook = <TError = ErrorResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof paystackWebhook>>, TError,{data: PaystackWebhook}, TContext>, fetch?: RequestInit}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof paystackWebhook>>,
-        TError,
-        {data: PaystackWebhook},
-        TContext
-      > => {
-      return useMutation(getPaystackWebhookMutationOptions(options));
-    }
 
 export const getAdminLoginUrl = () => {
 

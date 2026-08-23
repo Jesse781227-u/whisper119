@@ -441,7 +441,7 @@ export default function Admin() {
   const bookList: Book[] = Array.isArray(books.data) ? books.data : []
   const orderList: Order[] = Array.isArray(orders.data) ? orders.data : []
   const handleConfirmOrder = (order: Order) => {
-    if (!window.confirm(`Confirm that payment for ${order.reference} has landed in your ${order.paymentMethod === "paystack" ? "Paystack" : "Payoneer"} account?`)) return
+    if (!window.confirm(`Confirm that payment for ${order.reference} has landed in your Flutterwave account?`)) return
     setConfirmingOrderId(order.id)
     setOrderActionError(null)
     confirmOrder.mutate({ orderId: order.id }, {

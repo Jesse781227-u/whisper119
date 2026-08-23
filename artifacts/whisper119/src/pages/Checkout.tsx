@@ -47,7 +47,7 @@ export default function Checkout() {
       <div className="mt-7">
         <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">Secure checkout</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">Almost yours.</h1>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Tell us where to send your reading. Payment is handled securely by Paystack.</p>
+      <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Tell us where to send your reading. Payment is handled securely by Flutterwave.</p>
       </div>
 
       <div className="mt-8 grid gap-7 lg:grid-cols-[1fr_20rem]">
@@ -82,7 +82,7 @@ export default function Checkout() {
           {createOrder.error && (
             <div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-destructive">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-              <p className="text-sm leading-6">We could not start payment. Paystack may not be configured or may not support this payment attempt. Check your details and retry.</p>
+              <p className="text-sm leading-6">We could not start payment. Flutterwave may not be configured or may not support this payment attempt. Check your details and retry.</p>
             </div>
           )}
 
@@ -91,7 +91,7 @@ export default function Checkout() {
           </button>
           <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-center text-[0.62rem] font-bold text-muted-foreground">
             <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5 text-primary" /> Secure payment</span>
-            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> Paystack protected</span>
+            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> Flutterwave protected</span>
           </div>
         </form>
 

@@ -59,7 +59,7 @@ export default function Cart() {
             <div className="mt-4 flex items-end justify-between border-b border-border pb-5"><span className="text-sm text-muted-foreground">Subtotal</span><span className="text-2xl font-extrabold"><ConvertedPrice amountUsd={dollarTotal} /></span></div>
             <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-primary" /> No shipping or hidden fees</div>
             <button type="button" onClick={() => setLocation("/checkout")} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-xs font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5">Continue to checkout <ArrowRight className="h-4 w-4" /></button>
-            <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Your files arrive as email attachments after Paystack confirms payment.</p>
+            <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Your files arrive as email attachments after Flutterwave confirms payment.</p>
           </aside>
         </div>
       )}

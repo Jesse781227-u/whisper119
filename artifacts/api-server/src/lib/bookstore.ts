@@ -31,8 +31,6 @@ export function publicBook(book: Book, categories: string[] = []) {
     isCompleted: book.isCompleted,
     description: book.description,
     format: book.format,
-    paystackLink: book.paystackLink,
-    payoneerLink: book.payoneerLink,
     coverUrl: coverUrl(book),
     fileName: book.fileName,
     featured: book.featured,

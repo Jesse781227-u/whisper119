@@ -235,8 +235,7 @@ export type PaymentConfirmationInputPaymentMethod = typeof PaymentConfirmationIn
 
 
 export const PaymentConfirmationInputPaymentMethod = {
-  paystack: 'paystack',
-  payoneer: 'payoneer',
+  flutterwave: 'flutterwave',
 } as const;
 
 export interface PaymentConfirmationInput {
@@ -256,8 +255,7 @@ export type PaymentConfirmationPaymentMethod = typeof PaymentConfirmationPayment
 
 
 export const PaymentConfirmationPaymentMethod = {
-  paystack: 'paystack',
-  payoneer: 'payoneer',
+  flutterwave: 'flutterwave',
 } as const;
 
 export type PaymentConfirmationStatus = typeof PaymentConfirmationStatus[keyof typeof PaymentConfirmationStatus];
@@ -301,8 +299,7 @@ export type OrderPaymentMethod = typeof OrderPaymentMethod[keyof typeof OrderPay
 
 
 export const OrderPaymentMethod = {
-  paystack: 'paystack',
-  payoneer: 'payoneer',
+  flutterwave: 'flutterwave',
 } as const;
 
 export interface OrderItem {

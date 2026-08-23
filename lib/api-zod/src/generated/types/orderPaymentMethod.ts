@@ -10,6 +10,5 @@ export type OrderPaymentMethod = typeof OrderPaymentMethod[keyof typeof OrderPay
 
 
 export const OrderPaymentMethod = {
-  paystack: 'paystack',
-  payoneer: 'payoneer',
+  flutterwave: 'flutterwave',
 } as const;
