@@ -3,7 +3,6 @@ import { Link } from "wouter"
 import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { FALLBACK_BOOKS, FALLBACK_CATEGORIES } from "@/data/catalog"
 
 function SectionHeading({ eyebrow, title, href = "/shop" }: { eyebrow?: string; title: string; href?: string }) {
   return (
@@ -72,11 +71,11 @@ export default function Home() {
       retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
     },
   })
-  const catalogue = Array.isArray(catalogueData) && catalogueData.length > 0 ? catalogueData : FALLBACK_BOOKS
+  const catalogue = Array.isArray(catalogueData) ? catalogueData : []
   const featured = Array.isArray(summary?.featured) && summary.featured.length > 0 ? summary.featured : catalogue.slice(0, 8)
   const arrivals = Array.isArray(summary?.newArrivals) && summary.newArrivals.length > 0 ? summary.newArrivals : catalogue.slice(8, 16)
   const hasBooks = featured.length > 0 || arrivals.length > 0
-  const sections = Array.isArray(summary?.categories) && summary.categories.length > 0 ? summary.categories : FALLBACK_CATEGORIES
+  const sections = Array.isArray(summary?.categories) ? summary.categories : []
   const isLoadingShelf = isLoading || isCatalogueLoading
   const shelfError = Boolean(error || catalogueError)
 

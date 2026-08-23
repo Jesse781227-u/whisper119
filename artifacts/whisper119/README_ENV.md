@@ -28,6 +28,7 @@ pnpm dev
 
 Set these values in the interactive prompt or in your shell environment before running the helper:
 
+- `VITE_API_BASE_URL` — the public URL of the API service, without `/api`
 - `VITE_FIREBASE_API_KEY`
 - `VITE_FIREBASE_AUTH_DOMAIN`
 - `VITE_FIREBASE_PROJECT_ID`
