@@ -17,10 +17,7 @@ export interface Book {
   price: number;
   priceNgn: number;
   currency: string;
-  /**
-     * @minItems 1
-     * @items.minLength 1
-     */
+  /** @items.minLength 1 */
   categories: string[];
   isCompleted: boolean;
   description: string;

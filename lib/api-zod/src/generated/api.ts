@@ -30,7 +30,6 @@ export const ListBooksQueryParams = zod.object({
 
 
 
-
 export const ListBooksResponseItem = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -41,7 +40,7 @@ export const ListBooksResponseItem = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.string().min(1)).min(1),
+  "categories": zod.array(zod.string().min(1)),
   "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
@@ -66,7 +65,6 @@ export const GetBookParams = zod.object({
 
 
 
-
 export const GetBookResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -77,7 +75,7 @@ export const GetBookResponse = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.string().min(1)).min(1),
+  "categories": zod.array(zod.string().min(1)),
   "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
@@ -98,8 +96,6 @@ export const GetBookResponse = zod.object({
 
 
 
-
-
 export const GetStorefrontSummaryResponse = zod.object({
   "featured": zod.array(zod.object({
   "id": zod.string(),
@@ -111,7 +107,7 @@ export const GetStorefrontSummaryResponse = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.string().min(1)).min(1),
+  "categories": zod.array(zod.string().min(1)),
   "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
@@ -133,7 +129,7 @@ export const GetStorefrontSummaryResponse = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.string().min(1)).min(1),
+  "categories": zod.array(zod.string().min(1)),
   "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
@@ -407,7 +403,6 @@ export const RecordPageViewResponse = zod.void()
 
 
 
-
 export const ListAdminBooksResponseItem = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -418,7 +413,7 @@ export const ListAdminBooksResponseItem = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.string().min(1)).min(1),
+  "categories": zod.array(zod.string().min(1)),
   "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
@@ -481,7 +476,6 @@ export const CreateBookBody = zod.object({
 
 
 
-
 export const CreateBookResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -492,7 +486,7 @@ export const CreateBookResponse = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.string().min(1)).min(1),
+  "categories": zod.array(zod.string().min(1)),
   "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
@@ -622,7 +616,6 @@ export const UpdateBookBody = zod.object({
 
 
 
-
 export const UpdateBookResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -633,7 +626,7 @@ export const UpdateBookResponse = zod.object({
   "price": zod.number(),
   "priceNgn": zod.number(),
   "currency": zod.string(),
-  "categories": zod.array(zod.string().min(1)).min(1),
+  "categories": zod.array(zod.string().min(1)),
   "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
