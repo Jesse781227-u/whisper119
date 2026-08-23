@@ -31,6 +31,10 @@ export function publicBook(book: Book, categories: string[] = []) {
     isCompleted: book.isCompleted,
     description: book.description,
     format: book.format,
+    // Kept as null for compatibility with older generated clients. Checkout
+    // is Flutterwave-only; these fields are never used to initiate payment.
+    paystackLink: null,
+    payoneerLink: null,
     coverUrl: coverUrl(book),
     fileName: book.fileName,
     featured: book.featured,
