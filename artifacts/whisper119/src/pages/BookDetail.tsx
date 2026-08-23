@@ -148,7 +148,7 @@ export default function BookDetail() {
   const shareUrl = window.location.href
   const shareTitle = book.title
   const shareText = `Read "${shareTitle}" by ${book.author}`
-  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? window.location.origin).replace(/\/+$/, "")
+  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? window.location.origin).replace(/\/+$/, "").replace(/\/api$/i, "")
   const previewUrl = `${apiBaseUrl}/api/share/books/${encodeURIComponent(book.id)}?redirect=${encodeURIComponent(shareUrl)}`
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} — ${previewUrl}`)}`
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(previewUrl)}`
