@@ -16,21 +16,30 @@ export function coverUrl(book: Book): string | null {
   return `/api/storage${book.coverObjectPath}`;
 }
 
+function isoDate(value: Date | string | null | undefined): string {
+  const date = value instanceof Date ? value : new Date(value ?? 0);
+  return Number.isNaN(date.getTime()) ? new Date(0).toISOString() : date.toISOString();
+}
+
+function publicFormat(value: string): "PDF" | "EPUB" {
+  return value.toUpperCase() === "PDF" ? "PDF" : "EPUB";
+}
+
 export function publicBook(book: Book, categories: string[] = []) {
   return {
     id: book.id,
-    slug: book.slug,
+    slug: book.slug || book.id,
     title: book.title,
-    titleGroupId: book.titleGroupId,
-    language: book.language,
+    titleGroupId: book.titleGroupId || book.id,
+    language: book.language || "en",
     author: book.author,
-    price: book.price,
-    priceNgn: book.priceNgn,
-    currency: book.currency,
-    categories,
+    price: Number(book.price) || 0,
+    priceNgn: Number(book.priceNgn) || 0,
+    currency: book.currency || "USD",
+    categories: categories.filter((category): category is string => typeof category === "string" && category.length > 0),
     isCompleted: book.isCompleted,
-    description: book.description,
-    format: book.format,
+    description: book.description || "",
+    format: publicFormat(book.format),
     // Kept as null for compatibility with older generated clients. Checkout
     // is Flutterwave-only; these fields are never used to initiate payment.
     paystackLink: null,
@@ -38,8 +47,8 @@ export function publicBook(book: Book, categories: string[] = []) {
     coverUrl: coverUrl(book),
     fileName: book.fileName,
     featured: book.featured,
-    publishedAt: book.publishedAt.toISOString(),
-    createdAt: book.createdAt.toISOString(),
+    publishedAt: isoDate(book.publishedAt),
+    createdAt: isoDate(book.createdAt),
   };
 }
 
