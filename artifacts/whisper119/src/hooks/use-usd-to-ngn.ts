@@ -8,7 +8,7 @@ type ExchangeRateResponse = {
 }
 
 async function fetchUsdRate(): Promise<ExchangeRateResponse> {
-  const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "")
+  const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "").replace(/\/api$/i, "")
   const response = await fetch(`${apiBase}/api/exchange-rates?target=USD`)
   if (!response.ok) throw new Error("Could not load the current exchange rate")
   return response.json() as Promise<ExchangeRateResponse>
@@ -32,4 +32,3 @@ export function useUsdToNgn() {
     isError: query.isError,
   }
 }
-
