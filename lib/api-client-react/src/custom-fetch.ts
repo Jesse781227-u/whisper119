@@ -28,6 +28,7 @@ let _nativeFetch: typeof globalThis.fetch | null = null;
  */
 export function setBaseUrl(url: string | null): void {
   _baseUrl = url ? url.replace(/\/+$/, "") : null;
+  installFetchWrapper();
 }
 
 /**
@@ -43,19 +44,23 @@ export function setBaseUrl(url: string | null): void {
  */
 export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
-  if (typeof globalThis.fetch !== "function") return;
-  if (getter && !_nativeFetch) {
-    _nativeFetch = globalThis.fetch.bind(globalThis);
-    globalThis.fetch = async (input, init = {}) => {
-      const token = await getter();
-      const headers = new Headers(init.headers);
-      if (token && !headers.has("authorization")) headers.set("authorization", `Bearer ${token}`);
-      return _nativeFetch!(input, { ...init, headers });
-    };
-  } else if (!getter && _nativeFetch) {
+  installFetchWrapper();
+  if (!getter && !_baseUrl && _nativeFetch) {
     globalThis.fetch = _nativeFetch;
     _nativeFetch = null;
   }
+}
+
+function installFetchWrapper(): void {
+  if (typeof globalThis.fetch !== "function" || _nativeFetch || (!_baseUrl && !_authTokenGetter)) return;
+
+  _nativeFetch = globalThis.fetch.bind(globalThis);
+  globalThis.fetch = async (input, init = {}) => {
+    const token = _authTokenGetter ? await _authTokenGetter() : null;
+    const headers = new Headers(init.headers);
+    if (token && !headers.has("authorization")) headers.set("authorization", `Bearer ${token}`);
+    return _nativeFetch!(applyBaseUrl(input), { ...init, headers });
+  };
 }
 
 function isRequest(input: RequestInfo | URL): input is Request {
