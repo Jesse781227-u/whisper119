@@ -38,9 +38,9 @@ export function buildPurchaseEmailHtml({
   <body style="margin:0;background:#faf8f5;color:#292522;font-family:Georgia,serif;line-height:1.6;">
     <div style="max-width:620px;margin:0 auto;padding:32px 22px;">
       <p>Hi there,</p>
-      <p>Thank you for your purchase! Your copy of &quot;${safeBookTitle}&quot; is attached to this email.</p>
-      <p>If you run into any trouble opening the file, just reply to this email and I'll sort it out.</p>
-      <p>— Whisper 119</p>
+      <p>Thank you for choosing Whisper 119. I hope &quot;${safeBookTitle}&quot; finds you at just the right moment. Your copy is attached.</p>
+      <p>If you need any help opening it, just reply to this email. I’ll be happy to help.</p>
+      <p>Wishing you a beautiful reading experience,<br />Whisper 119</p>
       <hr style="margin:28px 0;border:0;border-top:1px solid #d9d1c9;" />
       <p style="font-family:Arial,sans-serif;font-size:13px;letter-spacing:.12em;"><strong>RECEIPT</strong></p>
       <p style="font-family:Arial,sans-serif;font-size:14px;line-height:1.8;">
