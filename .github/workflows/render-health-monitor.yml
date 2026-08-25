@@ -1,0 +1,30 @@
+name: Keep Render backend awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check Render health endpoint
+        env:
+          HEALTH_URL: https://whisper119back.onrender.com/api/healthz
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if curl --fail --silent --show-error --location --max-time 30 "$HEALTH_URL"; then
+              echo
+              echo "Render backend is healthy."
+              exit 0
+            fi
+            echo "Health check attempt $attempt failed; retrying..."
+            sleep 5
+          done
+          echo "Render backend health check failed after 3 attempts." >&2
+          exit 1
