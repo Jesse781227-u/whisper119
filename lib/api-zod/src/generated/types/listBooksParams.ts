@@ -7,6 +7,7 @@
  */
 import type { CategoryQueryParameter } from './categoryQueryParameter';
 import type { FormatQueryParameter } from './formatQueryParameter';
+import type { LanguageQueryParameter } from './languageQueryParameter';
 import type { MaxPriceQueryParameter } from './maxPriceQueryParameter';
 import type { SearchQueryParameter } from './searchQueryParameter';
 
@@ -15,4 +16,5 @@ category?: CategoryQueryParameter;
 format?: FormatQueryParameter;
 search?: SearchQueryParameter;
 maxPrice?: MaxPriceQueryParameter;
+language?: LanguageQueryParameter;
 };

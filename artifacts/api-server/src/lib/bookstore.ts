@@ -57,21 +57,23 @@ export async function findBooks(filters: {
   format?: "PDF" | "EPUB";
   search?: string;
   maxPrice?: number;
+  language?: string;
 }): Promise<Book[]> {
   const conditions = [
     filters.format ? eq(booksTable.format, filters.format) : undefined,
     filters.maxPrice !== undefined ? lte(booksTable.price, filters.maxPrice) : undefined,
     filters.search ? or(ilike(booksTable.title, `%${filters.search}%`), ilike(booksTable.author, `%${filters.search}%`)) : undefined,
+    filters.language ? eq(booksTable.language, filters.language) : undefined,
   ].filter(Boolean);
   if (filters.category) {
     return db.select({ book: booksTable }).from(booksTable)
       .innerJoin(bookCategoriesTable, eq(bookCategoriesTable.bookId, booksTable.id))
       .innerJoin(categoriesTable, eq(categoriesTable.id, bookCategoriesTable.categoryId))
       .where(and(eq(categoriesTable.name, filters.category), ...conditions))
-      .orderBy(desc(booksTable.publishedAt))
+      .orderBy(booksTable.language, desc(booksTable.publishedAt))
       .then(rows => rows.map(row => row.book));
   }
-  return db.select().from(booksTable).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(booksTable.publishedAt));
+  return db.select().from(booksTable).where(conditions.length ? and(...conditions) : undefined).orderBy(booksTable.language, desc(booksTable.publishedAt));
 }
 
 export async function categoryNamesForBooks(bookIds: string[]) {

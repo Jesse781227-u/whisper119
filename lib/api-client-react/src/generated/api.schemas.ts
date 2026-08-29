@@ -418,6 +418,8 @@ export type SearchQueryParameter = string;
 
 export type MaxPriceQueryParameter = number;
 
+export type LanguageQueryParameter = string;
+
 export type StatusQueryParameter = typeof StatusQueryParameter[keyof typeof StatusQueryParameter];
 
 
@@ -433,6 +435,7 @@ category?: CategoryQueryParameter;
 format?: FormatQueryParameter;
 search?: SearchQueryParameter;
 maxPrice?: MaxPriceQueryParameter;
+language?: LanguageQueryParameter;
 };
 
 export type ListAdminOrdersParams = {

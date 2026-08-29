@@ -42,6 +42,7 @@ paths:
         - $ref: "#/components/parameters/FormatQuery"
         - $ref: "#/components/parameters/SearchQuery"
         - $ref: "#/components/parameters/MaxPriceQuery"
+        - $ref: "#/components/parameters/LanguageQuery"
       responses:
         "200":
           description: Book catalogue
@@ -566,6 +567,12 @@ components:
       required: false
       schema:
         type: number
+    LanguageQuery:
+      name: language
+      in: query
+      required: false
+      schema:
+        type: string
     StatusQuery:
       name: status
       in: query

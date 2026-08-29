@@ -24,7 +24,8 @@ export const ListBooksQueryParams = zod.object({
   "category": zod.coerce.string().optional(),
   "format": zod.enum(['PDF', 'EPUB']).optional(),
   "search": zod.coerce.string().optional(),
-  "maxPrice": zod.coerce.number().optional()
+  "maxPrice": zod.coerce.number().optional(),
+  "language": zod.coerce.string().optional()
 })
 
 
