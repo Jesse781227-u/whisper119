@@ -201,7 +201,7 @@ router.get("/orders/:orderId/downloads", async (req, res): Promise<void> => {
 
 router.post("/payments/flutterwave/webhook", async (req, res): Promise<void> => {
   const rawBody = (req as typeof req & { rawBody?: Buffer }).rawBody?.toString("utf8") ?? JSON.stringify(req.body);
-  if (!validFlutterwaveSignature(rawBody, req.header("flutterwave-signature"))) {
+  if (!validFlutterwaveSignature(rawBody, req.header("flutterwave-signature"), req.header("verif-hash"))) {
     res.status(401).json({ error: "Invalid Flutterwave signature" });
     return;
   }

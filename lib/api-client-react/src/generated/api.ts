@@ -2135,17 +2135,6 @@ export const confirmAdminOrder = async (orderId: string, options?: RequestInit):
   }
 )
 
-  if (!res.ok) {
-    const errorBody = await res.text();
-    let message = `Request failed (${res.status})`;
-    try {
-      const parsed = JSON.parse(errorBody) as { error?: string };
-      if (parsed.error) message = parsed.error;
-    } catch {
-      if (errorBody) message = errorBody;
-    }
-    throw new Error(message);
-  }
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
@@ -2279,3 +2268,4 @@ export const useRequestUploadUrl = <TError = BadRequestResponse | UnauthorizedRe
       > => {
       return useMutation(getRequestUploadUrlMutationOptions(options));
     }
+

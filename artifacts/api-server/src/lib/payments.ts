@@ -64,9 +64,11 @@ export async function confirmFlutterwaveTransaction(transactionId: string, refer
   await deliverOrderEmail(order.id);
 }
 
-export function validFlutterwaveSignature(rawBody: string, signature: string | undefined): boolean {
+export function validFlutterwaveSignature(rawBody: string, signature: string | undefined, legacySignature?: string): boolean {
   const hash = process.env.FLW_SECRET_HASH?.trim();
-  if (!hash || !signature) return false;
+  if (!hash) return false;
+  if (legacySignature === hash) return true;
+  if (!signature) return false;
   const expected = createHmac("sha256", hash).update(rawBody).digest("base64");
   return signature.length === expected.length && timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }

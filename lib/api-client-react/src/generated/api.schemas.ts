@@ -376,6 +376,11 @@ export interface AdminSession {
   email: string | null;
 }
 
+export type AdminDashboardRevenueByCurrency = {
+  USD: number;
+  NGN: number;
+};
+
 export interface AdminDashboard {
   totalOrders: number;
   pendingOrders: number;
@@ -384,6 +389,7 @@ export interface AdminDashboard {
   uniqueVisitors: number;
   paidOrders: number;
   totalRevenue: number;
+  revenueByCurrency: AdminDashboardRevenueByCurrency;
   recentOrders: Order[];
 }
 

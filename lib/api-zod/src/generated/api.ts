@@ -353,6 +353,10 @@ export const GetAdminDashboardResponse = zod.object({
   "uniqueVisitors": zod.number(),
   "paidOrders": zod.number(),
   "totalRevenue": zod.number(),
+  "revenueByCurrency": zod.object({
+  "USD": zod.number(),
+  "NGN": zod.number()
+}),
   "recentOrders": zod.array(zod.object({
   "id": zod.string(),
   "reference": zod.string(),

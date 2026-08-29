@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminDashboardRevenueByCurrency } from './adminDashboardRevenueByCurrency';
 import type { Order } from './order';
 
 export interface AdminDashboard {
@@ -15,5 +16,6 @@ export interface AdminDashboard {
   uniqueVisitors: number;
   paidOrders: number;
   totalRevenue: number;
+  revenueByCurrency: AdminDashboardRevenueByCurrency;
   recentOrders: Order[];
 }

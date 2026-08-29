@@ -7,6 +7,7 @@
  */
 
 export * from './adminDashboard';
+export * from './adminDashboardRevenueByCurrency';
 export * from './adminLoginInput';
 export * from './adminSession';
 export * from './badRequestResponse';

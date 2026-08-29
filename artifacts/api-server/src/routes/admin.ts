@@ -68,8 +68,13 @@ router.get("/admin/dashboard", async (_req, res): Promise<void> => {
   ]);
   const [sales] = await db.select({
     paidOrders: sql<number>`count(*)`,
-    totalRevenue: sql<number>`coalesce(sum(${ordersTable.subtotal}), 0)`,
   }).from(ordersTable).where(or(eq(ordersTable.status, "paid"), eq(ordersTable.status, "fulfilled")));
+  const revenueByCurrency = orders
+    .filter((order) => order.status === "paid" || order.status === "fulfilled")
+    .reduce((totals, order) => {
+      if (order.currency === "USD" || order.currency === "NGN") totals[order.currency] += Number(order.subtotal);
+      return totals;
+    }, { USD: 0, NGN: 0 });
   const recent = await Promise.all(orders.slice(0, 8).map(async (order) => {
     const result = await getOrderById(order.id);
     return result ? orderResponse(result.order, result.items) : null;
@@ -81,7 +86,8 @@ router.get("/admin/dashboard", async (_req, res): Promise<void> => {
     totalPageViews: Number(analytics?.totalPageViews ?? 0),
     uniqueVisitors: Number(analytics?.uniqueVisitors ?? 0),
     paidOrders: Number(sales?.paidOrders ?? 0),
-    totalRevenue: Number(sales?.totalRevenue ?? 0),
+    totalRevenue: revenueByCurrency.USD,
+    revenueByCurrency,
     recentOrders: recent.filter((order): order is NonNullable<typeof order> => Boolean(order)),
   }));
 });
