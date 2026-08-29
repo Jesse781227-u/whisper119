@@ -54,10 +54,13 @@ async function sendOrderEmail(
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
   const from = process.env.MAIL_FROM_ADDRESS;
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
   const smtpPort = Number(process.env.SMTP_PORT ?? 587);
   const smtpSecure = process.env.SMTP_SECURE === undefined ? smtpPort === 465 : process.env.SMTP_SECURE === "true";
   const smtpRequireTls = process.env.SMTP_REQUIRE_TLS === "true" || smtpPort === 2525 || smtpPort === 587;
-  if (!smtpHost || !smtpUser || !smtpPass || !from) throw new Error("SMTP_NOT_CONFIGURED");
+  const smtpConfigured = Boolean(smtpHost && smtpUser && smtpPass);
+  if (!from) throw new Error("MAIL_FROM_ADDRESS_NOT_CONFIGURED");
+  if (!resendApiKey && !smtpConfigured) throw new Error("EMAIL_DELIVERY_NOT_CONFIGURED");
   if (!items.length) throw new Error("ORDER_HAS_NO_ITEMS");
 
   const books = await db.select().from(booksTable).where(inArray(booksTable.id, items.map((item) => item.bookId)));
@@ -76,6 +79,34 @@ async function sendOrderEmail(
       contentType: book.format === "PDF" ? "application/pdf" : "application/epub+zip",
     });
   }
+  if (resendApiKey) {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": `whisper119-${order.id}`,
+      },
+      body: JSON.stringify({
+        from,
+        to: [order.email],
+        subject: "Your book from Whisper 119 is here ðŸ“š",
+        html,
+        attachments: attachments.map((attachment) => ({
+          filename: attachment.filename,
+          content: attachment.content.toString("base64"),
+          content_type: attachment.contentType,
+        })),
+      }),
+      signal: AbortSignal.timeout(SMTP_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`RESEND_DELIVERY_FAILED_${response.status}${details ? `: ${details.slice(0, 200)}` : ""}`);
+    }
+    return;
+  }
+
   const transporter = nodemailer.createTransport({
     host: smtpHost,
     port: smtpPort,
