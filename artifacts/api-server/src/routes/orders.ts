@@ -91,11 +91,6 @@ router.post("/orders/confirm-payment", async (req, res): Promise<void> => {
     return;
   }
 
-  if (parsed.data.paymentMethod !== "flutterwave") {
-    res.status(400).json({ error: "Flutterwave is the only supported payment provider." });
-    return;
-  }
-
   // Manual confirmation is a legacy review endpoint; hosted checkout creates
   // the authoritative NGN/USD order and webhook confirmation.
   const isLocalPayment = false;

@@ -748,7 +748,7 @@ components:
       properties:
         email: { type: string, minLength: 3 }
         bookId: { type: string, minLength: 1 }
-        paymentMethod: { type: string, enum: [flutterwave] }
+        paymentMethod: { type: string, enum: [flutterwave, payoneer] }
         paymentReference: { type: string, minLength: 1, maxLength: 200 }
       required: [email, bookId, paymentMethod, paymentReference]
     PaymentConfirmation:
@@ -759,7 +759,7 @@ components:
         bookId: { type: string }
         bookTitle: { type: string }
         email: { type: string, minLength: 3 }
-        paymentMethod: { type: string, enum: [flutterwave] }
+        paymentMethod: { type: string, enum: [flutterwave, payoneer] }
         paymentReference: { type: string }
         status: { type: string, enum: [pending] }
         createdAt: { type: string }
@@ -783,7 +783,7 @@ components:
         subtotal: { type: number }
         status: { type: string, enum: [pending, paid, fulfilled, failed] }
         paymentStatus: { type: string }
-        paymentMethod: { type: string, enum: [flutterwave] }
+        paymentMethod: { type: string, enum: [flutterwave, payoneer] }
         paymentReference: { type: ["string", "null"] }
         deliveryEmailSent: { type: boolean }
         downloaded: { type: boolean }

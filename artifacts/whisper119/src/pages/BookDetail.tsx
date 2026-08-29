@@ -283,7 +283,7 @@ export default function BookDetail() {
         </section>
 
         <section className="mt-8 rounded-2xl bg-secondary/70 p-5">
-           <div className="flex items-start gap-3"><Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-extrabold">I’ll send it to your inbox</p><p className="mt-1 text-xs leading-5 text-muted-foreground">After Paystack confirms payment, I’ll email your {book.format} file and receipt as real attachments. There are no public download links on this page.</p></div></div>
+           <div className="flex items-start gap-3"><Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-extrabold">I’ll send it to your inbox</p><p className="mt-1 text-xs leading-5 text-muted-foreground">After your payment is confirmed, I’ll email your {book.format} file and receipt as real attachments. There are no public download links on this page.</p></div></div>
         </section>
       </div>
 
