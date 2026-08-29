@@ -79,6 +79,22 @@ async function sendOrderEmail(
       contentType: book.format === "PDF" ? "application/pdf" : "application/epub+zip",
     });
   }
+  const bookTitle = items.map((item) => item.title).join(", ");
+  const paymentMethod = order.paymentMethod === "payoneer" ? "Payoneer" : "Flutterwave";
+  const purchaseDate = (order.paidAt ?? order.createdAt).toLocaleString("en-NG", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Africa/Lagos",
+  });
+  const html = buildPurchaseEmailHtml({
+    customerEmail: order.email,
+    bookTitle,
+    orderId: order.reference,
+    amount: order.subtotal,
+    currency: order.currency,
+    paymentMethod,
+    purchaseDate,
+  });
   if (resendApiKey) {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -116,22 +132,6 @@ async function sendOrderEmail(
     connectionTimeout: SMTP_TIMEOUT_MS,
     greetingTimeout: SMTP_TIMEOUT_MS,
     socketTimeout: SMTP_TIMEOUT_MS,
-  });
-  const bookTitle = items.map((item) => item.title).join(", ");
-  const paymentMethod = order.paymentMethod === "payoneer" ? "Payoneer" : "Flutterwave";
-  const purchaseDate = (order.paidAt ?? order.createdAt).toLocaleString("en-NG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Africa/Lagos",
-  });
-  const html = buildPurchaseEmailHtml({
-    customerEmail: order.email,
-    bookTitle,
-    orderId: order.reference,
-    amount: order.subtotal,
-    currency: order.currency,
-    paymentMethod,
-    purchaseDate,
   });
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   try {
