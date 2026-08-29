@@ -42,13 +42,26 @@ export async function confirmFlutterwaveTransaction(transactionId: string, refer
   const key = flutterwaveKey();
   if (!key) throw new Error("FLUTTERWAVE_NOT_CONFIGURED");
   const response = await fetch(`https://api.flutterwave.com/v3/transactions/${encodeURIComponent(transactionId)}/verify`, { headers: { Authorization: `Bearer ${key}` } });
-  const payload = (await response.json()) as { status: string; data?: { status?: string; tx_ref?: string; amount?: number; currency?: string } };
-  const paid = payload.status === "success" && payload.data?.status === "successful" && payload.data.tx_ref === reference && payload.data.currency === currency && Number(payload.data.amount) >= amount;
+  const payload = (await response.json()) as { status: string; data?: { status?: string; tx_ref?: string; reference?: string; amount?: number; charged_amount?: number; currency?: string } };
+  const transaction = payload.data;
+  const transactionStatus = transaction?.status?.toLowerCase();
+  const transactionReference = transaction?.tx_ref ?? transaction?.reference;
+  const paid = payload.status === "success"
+    && (transactionStatus === "successful" || transactionStatus === "succeeded")
+    && transactionReference === reference
+    && transaction?.currency?.toUpperCase() === currency.toUpperCase()
+    && Number(transaction.charged_amount ?? transaction.amount) >= amount;
   if (!response.ok || !paid) throw new Error("PAYMENT_NOT_CONFIRMED");
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.reference, reference));
-  if (!order || order.status === "paid") return;
-  await db.update(ordersTable).set({ status: "paid", paymentStatus: "success", paidAt: new Date(), paymentReference: transactionId }).where(eq(ordersTable.id, order.id));
-  try { await deliverOrderEmail(order.id); } catch { /* Payment remains paid; delivery can be retried. */ }
+  if (!order || order.status === "fulfilled") return;
+  if (order.status === "pending") {
+    await db.update(ordersTable)
+      .set({ status: "paid", paymentStatus: "success", paidAt: new Date(), paymentReference: transactionId })
+      .where(eq(ordersTable.id, order.id));
+  }
+  // Let the webhook retry if SMTP or ebook storage is temporarily unavailable.
+  // The order is already marked paid, so this is safe to run more than once.
+  await deliverOrderEmail(order.id);
 }
 
 export function validFlutterwaveSignature(rawBody: string, signature: string | undefined): boolean {

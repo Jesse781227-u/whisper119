@@ -26,10 +26,12 @@ export async function confirmManualOrder(orderId: string): Promise<{ order: type
 
 export async function deliverOrderEmail(orderId: string): Promise<void> {
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
-  if (!order || order.status !== "paid" || order.deliveryEmailSent) return;
+  if (!order || (order.status !== "paid" && order.status !== "fulfilled") || order.deliveryEmailSent) return;
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
   await sendOrderEmail(order, items);
-  await db.update(ordersTable).set({ deliveryEmailSent: true }).where(eq(ordersTable.id, order.id));
+  await db.update(ordersTable)
+    .set({ status: "fulfilled", paymentStatus: "confirmed", deliveryEmailSent: true })
+    .where(and(eq(ordersTable.id, order.id), eq(ordersTable.status, "paid")));
 }
 
 async function sendOrderEmail(

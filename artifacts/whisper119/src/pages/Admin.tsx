@@ -6,7 +6,7 @@ import {
   getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey, getListCategoriesQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
   useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory,
-  useCreateBook, useDeleteBook, useUpdateBook, useConfirmAdminOrder,
+  useCreateBook, useDeleteBook, useUpdateBook,
   requestUploadUrl as requestUploadUrlApi,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
@@ -367,10 +367,7 @@ export default function Admin() {
   const books = useListAdminBooks({ query: { queryKey: getListAdminBooksQueryKey(), enabled } })
   const deleteBook = useDeleteBook()
   const orders = useListAdminOrders(undefined, { query: { queryKey: ["/api/admin/orders"], enabled } })
-  const confirmOrder = useConfirmAdminOrder()
   const [form, setForm] = useState<"new" | Book | null>(null)
-  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)
-  const [orderActionError, setOrderActionError] = useState<string | null>(null)
   const [adminEmail, setAdminEmail] = useState("")
   const [adminEmails, setAdminEmails] = useState<string[]>([])
   const [adminLoading, setAdminLoading] = useState(true)
@@ -441,23 +438,6 @@ export default function Admin() {
   const stats = [{ label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" }, { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" }, { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" }, { label: "Revenue", value: formatPrice(dashboard.data?.totalRevenue ?? 0, "USD"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }]
   const bookList: Book[] = Array.isArray(books.data) ? books.data : []
   const orderList: Order[] = Array.isArray(orders.data) ? orders.data : []
-  const handleConfirmOrder = (order: Order) => {
-    if (!window.confirm(`Confirm that payment for ${order.reference} has landed in your Flutterwave account?`)) return
-    setConfirmingOrderId(order.id)
-    setOrderActionError(null)
-    confirmOrder.mutate({ orderId: order.id }, {
-      onSuccess: () => {
-        setConfirmingOrderId(null)
-        void queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
-        void orders.refetch()
-      },
-      onError: (error) => {
-        setConfirmingOrderId(null)
-        setOrderActionError(error instanceof Error ? error.message : "The order could not be confirmed. Please try again.")
-      },
-    })
-  }
-
   const handleDeleteBook = (book: Book) => {
     if (!window.confirm(`Delete â€œ${book.title}â€ from the catalogue? This cannot be undone.`)) return
     deleteBook.mutate({ bookId: book.id }, {
@@ -595,7 +575,7 @@ export default function Admin() {
     </div>
     </div>}
     {activeTab === "orders" && (
-     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p><h2 className="mt-1 text-2xl font-extrabold">Orders</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Check your Paystack or Payoneer dashboard before confirming a customer payment. Confirming here sends the ebook and receipt.</p></div>{orderActionError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">{orderActionError}</p>}<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{orderList.map(order => { const needsConfirmation = order.status === "pending" && Boolean(order.paymentReference); const statusLabel = order.status === "fulfilled" ? "Fulfilled" : needsConfirmation ? "Pending confirmation" : order.status; return <div key={order.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-secondary/50 sm:p-5"><Link href={`/order/${order.id}`} className="min-w-0 flex-1"><p className="font-mono text-xs font-bold">{order.reference}</p><p className="mt-1 truncate text-xs text-muted-foreground">{order.email} Â· {formatDate(order.createdAt)}</p></Link><div className="flex flex-wrap items-center justify-end gap-2"><span className={`rounded-full px-2.5 py-1 text-[0.62rem] font-bold ${needsConfirmation ? "bg-amber-500/15 text-amber-700" : order.status === "fulfilled" ? "bg-emerald-500/10 text-emerald-600" : "bg-secondary text-muted-foreground"}`}>{statusLabel}</span><span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span>{needsConfirmation && <button type="button" data-testid={`button-confirm-payment-${order.id}`} onClick={() => handleConfirmOrder(order)} disabled={confirmingOrderId === order.id} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-[0.68rem] font-extrabold text-primary-foreground disabled:cursor-wait disabled:opacity-60">{confirmingOrderId === order.id ? "Confirmingâ€¦" : "Confirm Payment"}</button>}</div></div> })}{!orders.isLoading && !orderList.length && <div className="p-10 text-center"><Clock3 className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No orders yet.</p></div>}</div></section>
+     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p><h2 className="mt-1 text-2xl font-extrabold">Orders</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Flutterwave webhooks verify payments automatically and trigger ebook delivery by email.</p></div><div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{orderList.map(order => { const statusLabel = order.status === "fulfilled" ? "Fulfilled" : order.status === "paid" ? "Paid — delivery retrying" : order.status; return <div key={order.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-secondary/50 sm:p-5"><Link href={`/order/${order.id}`} className="min-w-0 flex-1"><p className="font-mono text-xs font-bold">{order.reference}</p><p className="mt-1 truncate text-xs text-muted-foreground">{order.email} Â· {formatDate(order.createdAt)}</p></Link><div className="flex flex-wrap items-center justify-end gap-2"><span className={`rounded-full px-2.5 py-1 text-[0.62rem] font-bold ${order.status === "fulfilled" ? "bg-emerald-500/10 text-emerald-600" : order.status === "paid" ? "bg-sky-500/10 text-sky-700" : "bg-secondary text-muted-foreground"}`}>{statusLabel}</span><span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span></div></div> })}{!orders.isLoading && !orderList.length && <div className="p-10 text-center"><Clock3 className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No orders yet.</p></div>}</div></section>
     )}
   </div></main>
 }

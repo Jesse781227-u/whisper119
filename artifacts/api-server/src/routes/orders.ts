@@ -206,9 +206,10 @@ router.post("/payments/flutterwave/webhook", async (req, res): Promise<void> => 
     return;
   }
   const data = req.body?.data;
-  if (data?.id && data?.tx_ref) {
+  const reference = data?.tx_ref ?? data?.reference;
+  if (data?.id && reference) {
     try {
-      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.reference, data.tx_ref));
+      const [order] = await db.select().from(ordersTable).where(eq(ordersTable.reference, reference));
       if (order) await confirmFlutterwaveTransaction(String(data.id), order.reference, order.subtotal, order.currency);
     } catch (error) {
       req.log.error({ err: error }, "Flutterwave webhook confirmation failed");
