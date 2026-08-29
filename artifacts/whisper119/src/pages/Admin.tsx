@@ -367,7 +367,7 @@ export default function Admin() {
   const dashboard = useGetAdminDashboard({ query: { queryKey: getGetAdminDashboardQueryKey(), enabled } })
   const books = useListAdminBooks({ query: { queryKey: getListAdminBooksQueryKey(), enabled } })
   const deleteBook = useDeleteBook()
-  const orders = useListAdminOrders(undefined, { query: { queryKey: ["/api/admin/orders"], enabled } })
+  const orders = useListAdminOrders(undefined, { query: { queryKey: ["/api/admin/orders"], enabled, refetchInterval: 10_000, refetchOnWindowFocus: true } })
   const confirmOrder = useConfirmAdminOrder()
   const [form, setForm] = useState<"new" | Book | null>(null)
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)

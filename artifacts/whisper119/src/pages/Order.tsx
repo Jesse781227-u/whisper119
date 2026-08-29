@@ -1,13 +1,15 @@
 import { AlertTriangle, ArrowLeft, CheckCircle2, MailCheck, RefreshCcw } from "lucide-react"
 import { Link, useParams } from "wouter"
 import { useEffect } from "react"
-import { useGetOrder, useRetryOrderPayment } from "@workspace/api-client-react"
+import { getGetOrderQueryKey, useGetOrder, useRetryOrderPayment } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function Order() {
   const { orderId } = useParams<{ orderId: string }>()
-  const { data: order, isLoading, error, refetch } = useGetOrder(orderId!)
+  const { data: order, isLoading, error, refetch } = useGetOrder(orderId!, {
+    query: { queryKey: getGetOrderQueryKey(orderId!), refetchInterval: 10_000, refetchOnWindowFocus: true },
+  })
   const retryPayment = useRetryOrderPayment()
 
   useEffect(() => {
