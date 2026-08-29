@@ -352,7 +352,6 @@ export const GetAdminDashboardResponse = zod.object({
   "totalPageViews": zod.number(),
   "uniqueVisitors": zod.number(),
   "paidOrders": zod.number(),
-  "totalRevenue": zod.number(),
   "revenueByCurrency": zod.object({
   "USD": zod.number(),
   "NGN": zod.number()

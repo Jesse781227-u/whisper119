@@ -848,7 +848,6 @@ components:
         totalPageViews: { type: number }
         uniqueVisitors: { type: number }
         paidOrders: { type: number }
-        totalRevenue: { type: number }
         revenueByCurrency:
           type: object
           properties:
@@ -856,7 +855,7 @@ components:
             NGN: { type: number }
           required: [USD, NGN]
         recentOrders: { type: array, items: { $ref: "#/components/schemas/Order" } }
-      required: [totalOrders, pendingOrders, totalBooks, totalPageViews, uniqueVisitors, paidOrders, totalRevenue, revenueByCurrency, recentOrders]
+      required: [totalOrders, pendingOrders, totalBooks, totalPageViews, uniqueVisitors, paidOrders, revenueByCurrency, recentOrders]
     UploadInput:
       type: object
       properties:

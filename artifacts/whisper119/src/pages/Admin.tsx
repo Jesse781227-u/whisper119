@@ -438,7 +438,8 @@ export default function Admin() {
   if (!isAdmin) {
     return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">You must be an admin to access this page.</main>
   }
-  const stats = [{ label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" }, { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" }, { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" }, { label: "Revenue (USD)", value: formatPrice(dashboard.data?.totalRevenue ?? 0, "USD"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }]
+  const revenueByCurrency = dashboard.data?.revenueByCurrency ?? { USD: 0, NGN: 0 }
+  const stats = [{ label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" }, { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" }, { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" }, { label: "Revenue (USD)", value: formatPrice(revenueByCurrency.USD, "USD"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }, { label: "Revenue (NGN)", value: formatPrice(revenueByCurrency.NGN, "NGN"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }]
   const bookList: Book[] = Array.isArray(books.data) ? books.data : []
   const orderList: Order[] = Array.isArray(orders.data) ? orders.data : []
   const handleConfirmOrder = (order: Order) => {

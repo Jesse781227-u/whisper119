@@ -24,7 +24,6 @@ import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable,
 import { requireAdmin } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook, publicBooks, replaceBookCategories } from "../lib/bookstore";
 import { confirmManualOrder } from "../lib/delivery";
-import { getExchangeRates } from "../lib/exchange-rates";
 
 const router: IRouter = Router();
 
@@ -80,14 +79,6 @@ router.get("/admin/dashboard", async (_req, res): Promise<void> => {
     const result = await getOrderById(order.id);
     return result ? orderResponse(result.order, result.items) : null;
   }));
-  let totalRevenue = revenueByCurrency.USD;
-  try {
-    const rates = await getExchangeRates();
-    const usdPerNgn = rates.rates.USD;
-    if (Number.isFinite(usdPerNgn) && usdPerNgn > 0) totalRevenue += revenueByCurrency.NGN * usdPerNgn;
-  } catch (error) {
-    _req.log.warn({ err: error }, "Could not convert NGN revenue to USD");
-  }
   res.json(GetAdminDashboardResponse.parse({
     totalOrders: orders.length,
     pendingOrders: orders.filter((order) => order.status === "pending").length,
@@ -95,7 +86,6 @@ router.get("/admin/dashboard", async (_req, res): Promise<void> => {
     totalPageViews: Number(analytics?.totalPageViews ?? 0),
     uniqueVisitors: Number(analytics?.uniqueVisitors ?? 0),
     paidOrders: Number(sales?.paidOrders ?? 0),
-    totalRevenue,
     revenueByCurrency,
     recentOrders: recent.filter((order): order is NonNullable<typeof order> => Boolean(order)),
   }));

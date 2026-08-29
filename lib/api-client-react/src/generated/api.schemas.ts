@@ -388,7 +388,6 @@ export interface AdminDashboard {
   totalPageViews: number;
   uniqueVisitors: number;
   paidOrders: number;
-  totalRevenue: number;
   revenueByCurrency: AdminDashboardRevenueByCurrency;
   recentOrders: Order[];
 }
