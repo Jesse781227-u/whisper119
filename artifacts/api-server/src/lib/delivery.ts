@@ -61,7 +61,7 @@ async function sendOrderEmail(
   }
   const transporter = nodemailer.createTransport({ host: smtpHost, port: Number(process.env.SMTP_PORT ?? 587), secure: process.env.SMTP_SECURE === "true", auth: { user: smtpUser, pass: smtpPass } });
   const bookTitle = items.map((item) => item.title).join(", ");
-  const paymentMethod = "Flutterwave";
+  const paymentMethod = order.paymentMethod === "payoneer" ? "Payoneer" : "Flutterwave";
   const purchaseDate = (order.paidAt ?? order.createdAt).toLocaleString("en-NG", {
     dateStyle: "medium",
     timeStyle: "short",

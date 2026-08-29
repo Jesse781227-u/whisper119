@@ -11,4 +11,5 @@ export type PaymentConfirmationPaymentMethod = typeof PaymentConfirmationPayment
 
 export const PaymentConfirmationPaymentMethod = {
   flutterwave: 'flutterwave',
+  payoneer: 'payoneer',
 } as const;
