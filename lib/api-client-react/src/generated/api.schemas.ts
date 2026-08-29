@@ -216,6 +216,14 @@ export interface CategoryInput {
   featured?: boolean;
 }
 
+export type OrderInputCurrency = typeof OrderInputCurrency[keyof typeof OrderInputCurrency];
+
+
+export const OrderInputCurrency = {
+  NGN: 'NGN',
+  USD: 'USD',
+} as const;
+
 export interface OrderInput {
   /** @minLength 3 */
   email: string;
@@ -224,6 +232,7 @@ export interface OrderInput {
      * @maxLength 2
      */
   country: string;
+  currency: OrderInputCurrency;
   /** @minItems 1 */
   bookIds: string[];
 }

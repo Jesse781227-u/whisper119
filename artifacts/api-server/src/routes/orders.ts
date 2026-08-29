@@ -46,7 +46,7 @@ router.post("/orders", async (req, res): Promise<void> => {
   }
   const orderId = randomUUID();
   const reference = `W119-${Date.now().toString(36).toUpperCase()}-${orderId.slice(0, 6).toUpperCase()}`;
-  const currency = parsed.data.country.toUpperCase() === "NG" ? "NGN" : "USD";
+  const currency = parsed.data.currency;
   let selectedPrices: number[];
   try {
     selectedPrices = currency === "NGN"

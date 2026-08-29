@@ -197,6 +197,7 @@ export const createOrderBodyCountryMax = 2;
 export const CreateOrderBody = zod.object({
   "email": zod.string().min(createOrderBodyEmailMin),
   "country": zod.string().min(createOrderBodyCountryMin).max(createOrderBodyCountryMax),
+  "currency": zod.enum(['NGN', 'USD']),
   "bookIds": zod.array(zod.string()).min(1)
 })
 

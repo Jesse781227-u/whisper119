@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { OrderInputCurrency } from './orderInputCurrency';
 
 export interface OrderInput {
   /** @minLength 3 */
@@ -14,6 +15,7 @@ export interface OrderInput {
      * @maxLength 2
      */
   country: string;
+  currency: OrderInputCurrency;
   /** @minItems 1 */
   bookIds: string[];
 }

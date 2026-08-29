@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { countries } from "@/data/countries"
 import { languages } from "@/hooks/use-site-language"
 
 export function LanguageRegionSelector() {
   const [language, setLanguage] = useState("en")
+  const [languageSearch, setLanguageSearch] = useState("")
   const [region, setRegion] = useState("NG")
 
   useEffect(() => {
@@ -15,6 +16,7 @@ export function LanguageRegionSelector() {
 
   function updateLanguage(value: string) {
     setLanguage(value)
+    setLanguageSearch("")
     localStorage.setItem("whisper-language", value)
     document.documentElement.lang = value
     window.dispatchEvent(new Event("whisper-language-change"))
@@ -25,5 +27,10 @@ export function LanguageRegionSelector() {
     localStorage.setItem("whisper-region", value)
   }
 
-  return <div className="flex items-center gap-2 text-xs"><label className="sr-only" htmlFor="site-language">Language</label><select id="site-language" value={language} onChange={(event) => updateLanguage(event.target.value)} className="rounded-full border border-border bg-background px-2.5 py-1.5 font-semibold"><option value="en">Language</option>{languages.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select><label className="sr-only" htmlFor="site-region">Region</label><select id="site-region" value={region} onChange={(event) => updateRegion(event.target.value)} className="hidden rounded-full border border-border bg-background px-2.5 py-1.5 font-semibold sm:block"><option value="NG">Region</option>{countries.map(({ code, name }) => <option key={code} value={code}>{name}</option>)}</select></div>
+  const visibleLanguages = useMemo(() => {
+    const query = languageSearch.trim().toLowerCase()
+    return query ? languages.filter(([, label]) => label.toLowerCase().includes(query)) : languages
+  }, [languageSearch])
+
+  return <div className="flex items-center gap-2 text-xs"><div className="flex items-center gap-1"><label className="sr-only" htmlFor="language-search">Search languages</label><input id="language-search" value={languageSearch} onChange={(event) => setLanguageSearch(event.target.value)} placeholder="Search language" className="w-24 rounded-full border border-border bg-background px-2.5 py-1.5 font-semibold outline-none focus:border-primary sm:w-32" /><label className="sr-only" htmlFor="site-language">Language</label><select id="site-language" value={language} onChange={(event) => updateLanguage(event.target.value)} className="w-28 rounded-full border border-border bg-background px-2.5 py-1.5 font-semibold sm:w-36"><option value="en">Language</option>{visibleLanguages.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></div><label className="sr-only" htmlFor="site-region">Region</label><select id="site-region" value={region} onChange={(event) => updateRegion(event.target.value)} className="hidden rounded-full border border-border bg-background px-2.5 py-1.5 font-semibold sm:block"><option value="NG">Region</option>{countries.map(({ code, name }) => <option key={code} value={code}>{name}</option>)}</select></div>
 }

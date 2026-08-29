@@ -33,6 +33,7 @@ export * from './maxPriceQueryParameter';
 export * from './notFoundResponse';
 export * from './order';
 export * from './orderInput';
+export * from './orderInputCurrency';
 export * from './orderItem';
 export * from './orderPaymentMethod';
 export * from './orderStatus';

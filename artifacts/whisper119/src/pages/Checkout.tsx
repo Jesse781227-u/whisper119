@@ -14,6 +14,7 @@ export default function Checkout() {
   const [, setLocation] = useLocation()
   const [email, setEmail] = useState("")
   const [country, setCountry] = useState("US")
+  const [currency, setCurrency] = useState<"NGN" | "USD">("USD")
   const createOrder = useCreateOrder()
   const { rate: usdToNgnRate, isLoading: isRateLoading } = useUsdToNgn()
 
@@ -23,14 +24,13 @@ export default function Checkout() {
 
   if (items.length === 0) return null
 
-  const currency = country === "NG" ? "NGN" : "USD"
   const checkoutTotal = currency === "NGN" && usdToNgnRate ? dollarTotal * usdToNgnRate : dollarTotal
   const canSubmit = currency !== "NGN" || Boolean(usdToNgnRate)
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     createOrder.mutate(
-      { data: { email, country, bookIds: items.map((item) => item.id) } },
+      { data: { email, country, currency, bookIds: items.map((item) => item.id) } },
       {
         onSuccess: (response) => {
           clearCart()
@@ -63,6 +63,12 @@ export default function Checkout() {
                 <span className="mb-2 block text-xs font-bold text-foreground">Email address</span>
                 <input id="email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-4 focus:ring-primary/10" />
               </label>
+              <fieldset>
+                <legend className="mb-2 block text-xs font-bold text-foreground">Payment currency</legend>
+                <div className="grid grid-cols-2 gap-3">
+                  {(["NGN", "USD"] as const).map((option) => <label key={option} className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-extrabold ${currency === option ? "border-primary bg-primary/10 text-primary" : "border-border"}`}><input type="radio" name="currency" value={option} checked={currency === option} onChange={() => setCurrency(option)} className="sr-only" />{option}</label>)}
+                </div>
+              </fieldset>
               <label className="block">
                 <span className="mb-2 block text-xs font-bold text-foreground">Country</span>
                 <select id="country" required value={country} onChange={(event) => setCountry(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10">
