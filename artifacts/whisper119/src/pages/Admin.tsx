@@ -6,9 +6,8 @@ import {
   getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey, getListCategoriesQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
   useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory,
-  useCreateBook, useDeleteBook, useUpdateBook, useConfirmAdminOrder,
+  useCreateBook, useDeleteBook, useUpdateBook,
   requestUploadUrl as requestUploadUrlApi,
-  customFetch,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
@@ -368,10 +367,7 @@ export default function Admin() {
   const books = useListAdminBooks({ query: { queryKey: getListAdminBooksQueryKey(), enabled } })
   const deleteBook = useDeleteBook()
   const orders = useListAdminOrders(undefined, { query: { queryKey: ["/api/admin/orders"], enabled, refetchInterval: 10_000, refetchOnWindowFocus: true } })
-  const confirmOrder = useConfirmAdminOrder()
   const [form, setForm] = useState<"new" | Book | null>(null)
-  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)
-  const [orderActionError, setOrderActionError] = useState<string | null>(null)
   const [adminEmail, setAdminEmail] = useState("")
   const [adminEmails, setAdminEmails] = useState<string[]>([])
   const [adminLoading, setAdminLoading] = useState(true)
@@ -443,36 +439,9 @@ export default function Admin() {
   const stats = [{ label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" }, { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" }, { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" }, { label: "Revenue (USD)", value: formatPrice(revenueByCurrency.USD, "USD"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }, { label: "Revenue (NGN)", value: formatPrice(revenueByCurrency.NGN, "NGN"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }]
   const bookList: Book[] = Array.isArray(books.data) ? books.data : []
   const orderList: Order[] = Array.isArray(orders.data) ? orders.data : []
-  const handleConfirmOrder = (order: Order) => {
-    if (!window.confirm(`${order.status === "paid" ? "Retry delivery for" : "Confirm payment and send"} this order to ${order.email}?`)) return
-    setConfirmingOrderId(order.id)
-    setOrderActionError(null)
-    if (order.status === "paid") {
-      void customFetch(`/api/admin/orders/${encodeURIComponent(order.id)}/deliver`, { method: "POST", responseType: "json" })
-        .then(() => {
-          setConfirmingOrderId(null)
-          void queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
-          void orders.refetch()
-        })
-        .catch((error: unknown) => {
-          setConfirmingOrderId(null)
-          setOrderActionError(error instanceof Error ? error.message : "Delivery failed. Check the server delivery logs.")
-        })
-      return
-    }
-    confirmOrder.mutate({ orderId: order.id }, {
-      onSuccess: () => {
-        setConfirmingOrderId(null)
-        void queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
-        void orders.refetch()
-      },
-      onError: (error) => {
-        setConfirmingOrderId(null)
-        setOrderActionError(error instanceof Error ? error.message : "The order could not be confirmed. Please try again.")
-      },
-    })
-  }
-
+  const orderActionError: string | null = null
+  const confirmingOrderId: string | null = null
+  const handleConfirmOrder = (_order: Order) => undefined
   const handleDeleteBook = (book: Book) => {
     if (!window.confirm(`Delete â€œ${book.title}â€ from the catalogue? This cannot be undone.`)) return
     deleteBook.mutate({ bookId: book.id }, {
@@ -487,7 +456,7 @@ export default function Admin() {
     })
   }
 
-  return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
+  return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><style>{`[data-testid="button-confirm-payment-target"] { display: none !important; }`}</style><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Panel</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Manage your website effectively</h1><p className="mt-1 text-sm text-muted-foreground"></p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary"></p><h2 className="mt-1 text-2xl font-extrabold">Overview</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(s => <div key={s.label} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm"><div><p className="text-xs font-bold text-muted-foreground">{s.label}</p><p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-1 text-2xl font-extrabold">{s.value}</p></div><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span></div>)}</div></section>
     <nav aria-label="Admin sections" className="flex gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm">
