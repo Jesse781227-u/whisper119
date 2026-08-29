@@ -24,7 +24,8 @@ export const ListBooksQueryParams = zod.object({
   "category": zod.coerce.string().optional(),
   "format": zod.enum(['PDF', 'EPUB']).optional(),
   "search": zod.coerce.string().optional(),
-  "maxPrice": zod.coerce.number().optional()
+  "maxPrice": zod.coerce.number().optional(),
+  "language": zod.coerce.string().optional()
 })
 
 
@@ -760,12 +761,16 @@ export const ConfirmAdminOrderResponse = zod.object({
 
 
 
+export const requestUploadUrlBodyLanguageMin = 2;
+export const requestUploadUrlBodyLanguageMax = 80;
+
 
 
 export const RequestUploadUrlBody = zod.object({
   "name": zod.string().min(1),
   "size": zod.number().min(1),
-  "contentType": zod.string().min(1)
+  "contentType": zod.string().min(1),
+  "language": zod.string().min(requestUploadUrlBodyLanguageMin).max(requestUploadUrlBodyLanguageMax)
 })
 
 export const RequestUploadUrlResponse = zod.object({

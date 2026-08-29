@@ -24,13 +24,13 @@ async function requestUploadUrl(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    const { name, size, contentType } = parsed.data;
+    const { name, size, contentType, language } = parsed.data;
     const uploadURL = await objectStorageService.getObjectEntityUploadURL(contentType);
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
     res.json(RequestUploadUrlResponse.parse({
       uploadURL,
       objectPath,
-      metadata: { name, size, contentType },
+      metadata: { name, size, contentType, language },
     }));
   } catch (error) {
     req.log.error({ err: error }, 'Error generating upload URL');

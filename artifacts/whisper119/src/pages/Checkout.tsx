@@ -6,6 +6,7 @@ import { useCart } from "@/components/cart-provider"
 import { ConvertedPrice } from "@/components/converted-price"
 import { formatPrice } from "@/lib/utils"
 import { useUsdToNgn } from "@/hooks/use-usd-to-ngn"
+import { countries } from "@/data/countries"
 
 export default function Checkout() {
   const { items, total, clearCart } = useCart()
@@ -65,15 +66,7 @@ export default function Checkout() {
               <label className="block">
                 <span className="mb-2 block text-xs font-bold text-foreground">Country</span>
                 <select id="country" required value={country} onChange={(event) => setCountry(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10">
-                  <option value="US">United States</option>
-                  <option value="GB">United Kingdom</option>
-                  <option value="CA">Canada</option>
-                  <option value="AU">Australia</option>
-                  <option value="DE">Germany</option>
-                  <option value="FR">France</option>
-                  <option value="JP">Japan</option>
-                  <option value="NG">Nigeria</option>
-                  <option value="ZA">South Africa</option>
+                  {countries.map((option) => <option key={option.code} value={option.code}>{option.name}</option>)}
                 </select>
               </label>
             </div>

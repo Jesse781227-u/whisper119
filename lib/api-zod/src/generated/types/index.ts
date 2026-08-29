@@ -24,6 +24,7 @@ export * from './download';
 export * from './errorResponse';
 export * from './formatQueryParameter';
 export * from './healthStatus';
+export * from './languageQueryParameter';
 export * from './languageRequest';
 export * from './languageRequestInput';
 export * from './listAdminOrdersParams';

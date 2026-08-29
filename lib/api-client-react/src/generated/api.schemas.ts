@@ -382,6 +382,11 @@ export interface UploadInput {
   size: number;
   /** @minLength 1 */
   contentType: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  language: string;
 }
 
 export interface UploadResponse {
@@ -418,6 +423,8 @@ export type SearchQueryParameter = string;
 
 export type MaxPriceQueryParameter = number;
 
+export type LanguageQueryParameter = string;
+
 export type StatusQueryParameter = typeof StatusQueryParameter[keyof typeof StatusQueryParameter];
 
 
@@ -433,6 +440,7 @@ category?: CategoryQueryParameter;
 format?: FormatQueryParameter;
 search?: SearchQueryParameter;
 maxPrice?: MaxPriceQueryParameter;
+language?: LanguageQueryParameter;
 };
 
 export type ListAdminOrdersParams = {

@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter"
 import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useSiteLanguage } from "@/hooks/use-site-language"
 
 type FormatFilter = "" | "PDF" | "EPUB"
 
@@ -25,8 +26,10 @@ export default function Shop() {
   const [format, setFormat] = useState<FormatFilter>(initial.format)
   const [maxPrice, setMaxPrice] = useState(initial.maxPrice)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const language = useSiteLanguage()
   const { data: booksData, isLoading, error, refetch, isRefetching } = useListBooks(
     {
+      language,
       search: search || undefined,
       category: category || undefined,
       format: format || undefined,
@@ -35,6 +38,7 @@ export default function Shop() {
     {
       query: {
         queryKey: ["/api/books", {
+          language,
           search: search || undefined,
           category: category || undefined,
           format: format || undefined,
@@ -42,12 +46,11 @@ export default function Shop() {
         }],
         retry: 3,
         retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
-        placeholderData: (previousBooks) => previousBooks,
       },
     },
   )
   const { data: summary } = useGetStorefrontSummary()
-  const books = Array.isArray(booksData) ? booksData : []
+  const books = (Array.isArray(booksData) ? booksData : []).slice().sort((left, right) => left.language.localeCompare(right.language))
   const categories = Array.isArray(summary?.categories) ? summary.categories : []
   const hasFilters = Boolean(search || category || format || maxPrice)
 

@@ -9,6 +9,7 @@ import { ConvertedPrice } from "@/components/converted-price"
 import { useCart } from "@/components/cart-provider"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDate } from "@/lib/utils"
+import { countries } from "@/data/countries"
 
 function ShareButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
   return (
@@ -40,12 +41,12 @@ export default function BookDetail() {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   const [requestName, setRequestName] = useState("")
-  const [requestCountry, setRequestCountry] = useState("")
+  const [requestCountry, setRequestCountry] = useState("NG")
   const [requestLanguage, setRequestLanguage] = useState("")
   const [requestSent, setRequestSent] = useState(false)
   const languageRequest = useCreateLanguageRequest()
 
-  const catalogue = Array.isArray(apiBooks) ? apiBooks : []
+  const catalogue = (Array.isArray(apiBooks) ? apiBooks : []).slice().sort((left, right) => left.language.localeCompare(right.language))
   const book = apiBook ?? catalogue.find((item) => item.id === bookId || item.slug === bookId)
   const related = useMemo(() => (
     catalogue
@@ -249,7 +250,7 @@ export default function BookDetail() {
           <div className="mt-4 flex flex-wrap gap-2">{languageEditions.map((edition) => <Link key={edition.id} href={`/book/${edition.id}`} className={`rounded-full px-3 py-2 text-xs font-extrabold ${edition.id === book.id ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-primary/10 hover:text-primary"}`}>{edition.language.toUpperCase()}</Link>)}</div>
           <div className="mt-5 border-t border-border pt-5">
             <p className="text-sm font-extrabold">Can’t find your language?</p>
-            {requestSent ? <p className="mt-2 text-sm text-primary">Thanks — we’ve recorded your request.</p> : <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={(event) => { event.preventDefault(); languageRequest.mutate({ data: { bookId: book.id, name: requestName.trim(), country: requestCountry.trim(), language: requestLanguage.trim() } }, { onSuccess: () => setRequestSent(true) }) }}><input required value={requestName} onChange={(event) => setRequestName(event.target.value)} placeholder="Your name" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><input required value={requestCountry} onChange={(event) => setRequestCountry(event.target.value)} placeholder="Country" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><input required value={requestLanguage} onChange={(event) => setRequestLanguage(event.target.value)} placeholder="Requested language" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><button disabled={languageRequest.isPending} className="h-11 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{languageRequest.isPending ? "Sending…" : "Request language"}</button></form>}
+            {requestSent ? <p className="mt-2 text-sm text-primary">Thanks — we’ve recorded your request.</p> : <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={(event) => { event.preventDefault(); languageRequest.mutate({ data: { bookId: book.id, name: requestName.trim(), country: requestCountry.trim(), language: requestLanguage.trim() } }, { onSuccess: () => setRequestSent(true) }) }}><input required value={requestName} onChange={(event) => setRequestName(event.target.value)} placeholder="Your name" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><select required aria-label="Country" value={requestCountry} onChange={(event) => setRequestCountry(event.target.value)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm"><option value="">Country</option>{countries.map(({ code, name }) => <option key={code} value={code}>{name}</option>)}</select><input required value={requestLanguage} onChange={(event) => setRequestLanguage(event.target.value)} placeholder="Requested language" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><button disabled={languageRequest.isPending} className="h-11 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{languageRequest.isPending ? "Sending…" : "Request language"}</button></form>}
           </div>
         </section>
 
