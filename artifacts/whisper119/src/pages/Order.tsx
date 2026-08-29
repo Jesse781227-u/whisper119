@@ -1,13 +1,22 @@
 import { AlertTriangle, ArrowLeft, CheckCircle2, MailCheck, RefreshCcw } from "lucide-react"
 import { Link, useParams } from "wouter"
+import { useEffect } from "react"
 import { useGetOrder, useRetryOrderPayment } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function Order() {
   const { orderId } = useParams<{ orderId: string }>()
-  const { data: order, isLoading, error } = useGetOrder(orderId!)
+  const { data: order, isLoading, error, refetch } = useGetOrder(orderId!)
   const retryPayment = useRetryOrderPayment()
+
+  useEffect(() => {
+    const transactionId = new URLSearchParams(window.location.search).get("transaction_id")
+    if (!order || order.status !== "pending" || !transactionId) return
+    void fetch(`/api/orders/${encodeURIComponent(order.id)}/flutterwave-confirm?transaction_id=${encodeURIComponent(transactionId)}`)
+      .then((response) => { if (response.ok) void refetch() })
+      .catch(() => undefined)
+  }, [order, refetch])
 
   if (isLoading) {
     return <main className="mx-auto max-w-3xl px-4 pb-16 pt-8 sm:px-6"><Skeleton className="h-7 w-28" /><Skeleton className="mt-8 h-44 w-full rounded-2xl" /><Skeleton className="mt-7 h-64 w-full rounded-2xl" /></main>

@@ -157,6 +157,32 @@ router.get("/orders/:orderId", async (req, res): Promise<void> => {
   res.json(GetOrderResponse.parse(orderResponse(result.order, result.items)));
 });
 
+router.get("/orders/:orderId/flutterwave-confirm", async (req, res): Promise<void> => {
+  const parsed = GetOrderParams.safeParse(req.params);
+  const transactionId = typeof req.query.transaction_id === "string" ? req.query.transaction_id.trim() : "";
+  if (!parsed.success || !transactionId) {
+    res.status(400).json({ error: "A Flutterwave transaction ID is required." });
+    return;
+  }
+  const result = await getOrderById(parsed.data.orderId);
+  if (!result) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+  try {
+    await confirmFlutterwaveTransaction(transactionId, result.order.reference, result.order.subtotal, result.order.currency);
+    const updated = await getOrderById(result.order.id);
+    if (!updated) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+    res.json(GetOrderResponse.parse(orderResponse(updated.order, updated.items)));
+  } catch (error) {
+    req.log.error({ err: error, orderId: result.order.id }, "Flutterwave return confirmation failed");
+    res.status(502).json({ error: "Payment confirmation failed." });
+  }
+});
+
 router.post("/orders/:orderId/retry", async (req, res): Promise<void> => {
   const parsed = RetryOrderPaymentParams.safeParse(req.params);
   if (!parsed.success) {
