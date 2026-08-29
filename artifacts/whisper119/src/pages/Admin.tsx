@@ -8,6 +8,7 @@ import {
   useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory,
   useCreateBook, useDeleteBook, useUpdateBook, useConfirmAdminOrder,
   requestUploadUrl as requestUploadUrlApi,
+  customFetch,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
@@ -447,13 +448,7 @@ export default function Admin() {
     setConfirmingOrderId(order.id)
     setOrderActionError(null)
     if (order.status === "paid") {
-      void fetch(`/api/admin/orders/${encodeURIComponent(order.id)}/deliver`, { method: "POST" })
-        .then(async (response) => {
-          if (!response.ok) {
-            const body = await response.json().catch(() => null) as { error?: string } | null
-            throw new Error(body?.error || "Delivery failed. Check the server delivery logs.")
-          }
-        })
+      void customFetch(`/api/admin/orders/${encodeURIComponent(order.id)}/deliver`, { method: "POST", credentials: "include", responseType: "json" })
         .then(() => {
           setConfirmingOrderId(null)
           void queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
