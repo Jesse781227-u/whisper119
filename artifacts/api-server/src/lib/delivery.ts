@@ -5,7 +5,7 @@ import { buildPurchaseEmailHtml } from "./email";
 import { ObjectStorageService } from "./objectStorage";
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
-const SMTP_TIMEOUT_MS = 30_000;
+const SMTP_TIMEOUT_MS = Number(process.env.SMTP_TIMEOUT_MS ?? 120_000);
 
 export async function confirmManualOrder(orderId: string): Promise<{ order: typeof ordersTable.$inferSelect; items: typeof orderItemsTable.$inferSelect[] } | null> {
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
@@ -54,6 +54,8 @@ async function sendOrderEmail(
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
   const from = process.env.MAIL_FROM_ADDRESS;
+  const smtpPort = Number(process.env.SMTP_PORT ?? 587);
+  const smtpSecure = process.env.SMTP_SECURE === undefined ? smtpPort === 465 : process.env.SMTP_SECURE === "true";
   if (!smtpHost || !smtpUser || !smtpPass || !from) throw new Error("SMTP_NOT_CONFIGURED");
   if (!items.length) throw new Error("ORDER_HAS_NO_ITEMS");
 
@@ -75,8 +77,8 @@ async function sendOrderEmail(
   }
   const transporter = nodemailer.createTransport({
     host: smtpHost,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === "true",
+    port: smtpPort,
+    secure: smtpSecure,
     auth: { user: smtpUser, pass: smtpPass },
     connectionTimeout: SMTP_TIMEOUT_MS,
     greetingTimeout: SMTP_TIMEOUT_MS,
