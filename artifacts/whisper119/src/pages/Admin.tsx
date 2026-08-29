@@ -446,6 +446,25 @@ export default function Admin() {
     if (!window.confirm(`${order.status === "paid" ? "Retry delivery for" : "Confirm payment and send"} this order to ${order.email}?`)) return
     setConfirmingOrderId(order.id)
     setOrderActionError(null)
+    if (order.status === "paid") {
+      void fetch(`/api/admin/orders/${encodeURIComponent(order.id)}/deliver`, { method: "POST" })
+        .then(async (response) => {
+          if (!response.ok) {
+            const body = await response.json().catch(() => null) as { error?: string } | null
+            throw new Error(body?.error || "Delivery failed. Check the server delivery logs.")
+          }
+        })
+        .then(() => {
+          setConfirmingOrderId(null)
+          void queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
+          void orders.refetch()
+        })
+        .catch((error: unknown) => {
+          setConfirmingOrderId(null)
+          setOrderActionError(error instanceof Error ? error.message : "Delivery failed. Check the server delivery logs.")
+        })
+      return
+    }
     confirmOrder.mutate({ orderId: order.id }, {
       onSuccess: () => {
         setConfirmingOrderId(null)

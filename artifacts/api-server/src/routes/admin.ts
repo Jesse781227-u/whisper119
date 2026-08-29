@@ -23,7 +23,7 @@ import {
 import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable, db, languageRequestsTable, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook, publicBooks, replaceBookCategories } from "../lib/bookstore";
-import { confirmManualOrder } from "../lib/delivery";
+import { confirmManualOrder, deliverOrderEmail } from "../lib/delivery";
 
 const router: IRouter = Router();
 
@@ -268,6 +268,30 @@ router.post("/admin/orders/:orderId/confirm", async (req, res): Promise<void> =>
     }
     req.log.error({ err: error, orderId: parsed.data.orderId }, "Admin order confirmation failed");
     res.status(503).json({ error: "The order could not be confirmed. Please try again." });
+  }
+});
+
+router.post("/admin/orders/:orderId/deliver", async (req, res): Promise<void> => {
+  const parsed = ConfirmAdminOrderParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  try {
+    await deliverOrderEmail(parsed.data.orderId);
+    const result = await getOrderById(parsed.data.orderId);
+    if (!result) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
+    if (!result.order.deliveryEmailSent) {
+      res.status(409).json({ error: "Delivery was not completed. Check the server delivery logs." });
+      return;
+    }
+    res.json(GetAdminOrderResponse.parse(orderResponse(result.order, result.items)));
+  } catch (error) {
+    req.log.error({ err: error, orderId: parsed.data.orderId }, "Admin order delivery retry failed");
+    res.status(503).json({ error: error instanceof Error ? `Delivery failed: ${error.message}` : "Delivery failed. Check the server delivery logs." });
   }
 });
 
