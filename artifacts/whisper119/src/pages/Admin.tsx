@@ -448,7 +448,7 @@ export default function Admin() {
     setConfirmingOrderId(order.id)
     setOrderActionError(null)
     if (order.status === "paid") {
-      void customFetch(`/api/admin/orders/${encodeURIComponent(order.id)}/deliver`, { method: "POST", credentials: "include", responseType: "json" })
+      void customFetch(`/api/admin/orders/${encodeURIComponent(order.id)}/deliver`, { method: "POST", responseType: "json" })
         .then(() => {
           setConfirmingOrderId(null)
           void queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })

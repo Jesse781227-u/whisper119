@@ -31,7 +31,22 @@ app.use(
     },
   }),
 );
-app.use(cors());
+const allowedOrigins = new Set(
+  (process.env.CORS_ORIGINS ?? process.env.PUBLIC_APP_URL ?? "https://whisper119.com,https://www.whisper119.com")
+    .split(",")
+    .map((origin) => origin.trim().replace(/\/+$/, ""))
+    .filter(Boolean),
+);
+app.use(cors({
+  credentials: true,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin.replace(/\/+$/, ""))) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  },
+}));
 app.use(express.json({
   // Ebook bytes are uploaded directly to Firebase Storage. API requests only
   // contain small metadata payloads, but this gives them a useful upper bound.
