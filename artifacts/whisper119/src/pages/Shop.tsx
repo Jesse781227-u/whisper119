@@ -46,12 +46,11 @@ export default function Shop() {
         }],
         retry: 3,
         retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
-        placeholderData: (previousBooks) => previousBooks,
       },
     },
   )
   const { data: summary } = useGetStorefrontSummary()
-  const books = Array.isArray(booksData) ? booksData : []
+  const books = (Array.isArray(booksData) ? booksData : []).slice().sort((left, right) => left.language.localeCompare(right.language))
   const categories = Array.isArray(summary?.categories) ? summary.categories : []
   const hasFilters = Boolean(search || category || format || maxPrice)
 

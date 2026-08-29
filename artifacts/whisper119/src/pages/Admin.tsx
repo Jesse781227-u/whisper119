@@ -108,7 +108,7 @@ function BookForm({ book, onDone }: BookFormProps) {
 
   async function uploadFile(file: File, onProgress: UploadProgressHandler) {
     const uploadResponse = await requestUploadUrlApi(
-      { name: file.name, size: file.size, contentType: file.type || "application/octet-stream" },
+      { name: file.name, size: file.size, contentType: file.type || "application/octet-stream", language: language.trim().toLowerCase() },
       {},
     )
     if (!uploadResponse || typeof uploadResponse !== "object" || !("uploadURL" in uploadResponse) || !("objectPath" in uploadResponse)) {

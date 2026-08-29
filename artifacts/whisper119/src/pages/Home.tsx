@@ -73,7 +73,7 @@ export default function Home() {
       retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
     },
   })
-  const catalogue = Array.isArray(catalogueData) ? catalogueData : []
+  const catalogue = (Array.isArray(catalogueData) ? catalogueData : []).slice().sort((left, right) => left.language.localeCompare(right.language))
   const featured = catalogue.filter((book) => book.featured).slice(0, 8)
   const arrivals = catalogue.filter((book) => !featured.some((item) => item.id === book.id)).slice(0, 8)
   const hasBooks = featured.length > 0 || arrivals.length > 0

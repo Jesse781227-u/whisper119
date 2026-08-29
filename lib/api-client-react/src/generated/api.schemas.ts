@@ -382,6 +382,11 @@ export interface UploadInput {
   size: number;
   /** @minLength 1 */
   contentType: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  language: string;
 }
 
 export interface UploadResponse {
