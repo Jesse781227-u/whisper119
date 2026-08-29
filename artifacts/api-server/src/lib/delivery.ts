@@ -56,6 +56,7 @@ async function sendOrderEmail(
   const from = process.env.MAIL_FROM_ADDRESS;
   const smtpPort = Number(process.env.SMTP_PORT ?? 587);
   const smtpSecure = process.env.SMTP_SECURE === undefined ? smtpPort === 465 : process.env.SMTP_SECURE === "true";
+  const smtpRequireTls = process.env.SMTP_REQUIRE_TLS === "true" || smtpPort === 2525 || smtpPort === 587;
   if (!smtpHost || !smtpUser || !smtpPass || !from) throw new Error("SMTP_NOT_CONFIGURED");
   if (!items.length) throw new Error("ORDER_HAS_NO_ITEMS");
 
@@ -79,6 +80,7 @@ async function sendOrderEmail(
     host: smtpHost,
     port: smtpPort,
     secure: smtpSecure,
+    requireTLS: smtpRequireTls,
     auth: { user: smtpUser, pass: smtpPass },
     connectionTimeout: SMTP_TIMEOUT_MS,
     greetingTimeout: SMTP_TIMEOUT_MS,
