@@ -442,7 +442,7 @@ export default function Admin() {
   const bookList: Book[] = Array.isArray(books.data) ? books.data : []
   const orderList: Order[] = Array.isArray(orders.data) ? orders.data : []
   const handleConfirmOrder = (order: Order) => {
-    if (!window.confirm(`Confirm payment and send this order to ${order.email}?`)) return
+    if (!window.confirm(`${order.status === "paid" ? "Retry delivery for" : "Confirm payment and send"} this order to ${order.email}?`)) return
     setConfirmingOrderId(order.id)
     setOrderActionError(null)
     confirmOrder.mutate({ orderId: order.id }, {

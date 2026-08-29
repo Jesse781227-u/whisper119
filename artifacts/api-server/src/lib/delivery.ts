@@ -10,19 +10,30 @@ const SMTP_TIMEOUT_MS = 30_000;
 export async function confirmManualOrder(orderId: string): Promise<{ order: typeof ordersTable.$inferSelect; items: typeof orderItemsTable.$inferSelect[] } | null> {
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
   if (!order) return null;
-  if (order.status !== "pending") {
+  if (order.status !== "pending" && !(order.status === "paid" && !order.deliveryEmailSent)) {
     throw new Error("ORDER_NOT_PENDING");
   }
 
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
-  await sendOrderEmail(order, items);
-
-  const [updated] = await db.update(ordersTable)
-    .set({ status: "fulfilled", paymentStatus: "confirmed", deliveryEmailSent: true, paidAt: new Date() })
+  const [paidOrder] = order.status === "pending" ? await db.update(ordersTable)
+    .set({ status: "paid", paymentStatus: "confirmed", paidAt: order.paidAt ?? new Date() })
     .where(and(eq(ordersTable.id, order.id), eq(ordersTable.status, "pending")))
+    .returning() : [order];
+  if (!paidOrder) return null;
+
+  try {
+    await sendOrderEmail(paidOrder, items);
+  } catch (error) {
+    console.error("Manual order payment confirmed, but delivery failed", { orderId, error });
+    return { order: paidOrder, items };
+  }
+
+  const [fulfilledOrder] = await db.update(ordersTable)
+    .set({ status: "fulfilled", paymentStatus: "confirmed", deliveryEmailSent: true })
+    .where(and(eq(ordersTable.id, order.id), eq(ordersTable.status, "paid")))
     .returning();
-  if (!updated) return null;
-  return { order: updated, items };
+  if (!fulfilledOrder) return null;
+  return { order: fulfilledOrder, items };
 }
 
 export async function deliverOrderEmail(orderId: string): Promise<void> {
