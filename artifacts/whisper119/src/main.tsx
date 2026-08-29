@@ -5,7 +5,7 @@ import { setBaseUrl } from '@workspace/api-client-react';
 
 import './index.css';
 
-const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "")
+const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "https://whisper119back.onrender.com")
   .replace(/\/+$/, "")
   .replace(/\/api$/i, "");
 

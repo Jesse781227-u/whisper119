@@ -52,7 +52,7 @@ function getCurrencyForLocale(locale: string) {
 }
 
 async function fetchExchangeRate(target: string) {
-    const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "").replace(/\/api$/i, "")
+    const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "https://whisper119back.onrender.com").replace(/\/+$/, "").replace(/\/api$/i, "")
     const response = await fetch(`${apiBase}/api/exchange-rates?target=${encodeURIComponent(target)}`)
   if (!response.ok) {
     throw new Error("Could not load exchange rates")
