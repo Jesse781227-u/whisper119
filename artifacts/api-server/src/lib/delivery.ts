@@ -5,6 +5,7 @@ import { buildPurchaseEmailHtml } from "./email";
 import { ObjectStorageService } from "./objectStorage";
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+const SMTP_TIMEOUT_MS = 30_000;
 
 export async function confirmManualOrder(orderId: string): Promise<{ order: typeof ordersTable.$inferSelect; items: typeof orderItemsTable.$inferSelect[] } | null> {
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
@@ -61,7 +62,15 @@ async function sendOrderEmail(
       contentType: book.format === "PDF" ? "application/pdf" : "application/epub+zip",
     });
   }
-  const transporter = nodemailer.createTransport({ host: smtpHost, port: Number(process.env.SMTP_PORT ?? 587), secure: process.env.SMTP_SECURE === "true", auth: { user: smtpUser, pass: smtpPass } });
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE === "true",
+    auth: { user: smtpUser, pass: smtpPass },
+    connectionTimeout: SMTP_TIMEOUT_MS,
+    greetingTimeout: SMTP_TIMEOUT_MS,
+    socketTimeout: SMTP_TIMEOUT_MS,
+  });
   const bookTitle = items.map((item) => item.title).join(", ");
   const paymentMethod = order.paymentMethod === "payoneer" ? "Payoneer" : "Flutterwave";
   const purchaseDate = (order.paidAt ?? order.createdAt).toLocaleString("en-NG", {
@@ -78,13 +87,24 @@ async function sendOrderEmail(
     paymentMethod,
     purchaseDate,
   });
-  await transporter.sendMail({
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      transporter.sendMail({
     from,
     to: order.email,
     subject: "Your book from Whisper 119 is here 📚",
     html,
     attachments,
-  });
+      }),
+      new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error("SMTP_DELIVERY_TIMEOUT")), SMTP_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+    transporter.close();
+  }
 }
 
 async function downloadEbookContent(fileObjectPath: string, storage: ObjectStorageService): Promise<Buffer> {
