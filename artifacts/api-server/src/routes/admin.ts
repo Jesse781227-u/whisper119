@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import {
   GetAdminDashboardResponse,
   GetAdminOrderParams,
@@ -18,11 +18,28 @@ import {
   ListCategoriesResponse, CreateCategoryBody, CreateCategoryResponse,
   UpdateCategoryParams, UpdateCategoryBody, UpdateCategoryResponse, DeleteCategoryParams,
 } from "@workspace/api-zod";
-import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable, db, languageRequestsTable, ordersTable } from "@workspace/db";
+import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable, db, languageRequestsTable, orderItemsTable, ordersTable } from "@workspace/db";
 import { requireAdmin } from "../lib/auth";
 import { getOrderById, orderResponse, publicBook, publicBooks, replaceBookCategories } from "../lib/bookstore";
 
 const router: IRouter = Router();
+const PENDING_ORDER_TIMEOUT_MS = 16 * 60 * 1000;
+
+async function pruneStalePendingOrders(): Promise<void> {
+  const cutoff = new Date(Date.now() - PENDING_ORDER_TIMEOUT_MS);
+  const staleOrders = await db.select({ id: ordersTable.id })
+    .from(ordersTable)
+    .where(and(eq(ordersTable.status, "pending"), lt(ordersTable.createdAt, cutoff)));
+
+  if (!staleOrders.length) return;
+
+  const staleOrderIds = staleOrders.map((order) => order.id);
+  await db.transaction(async (tx) => {
+    await tx.delete(orderItemsTable).where(inArray(orderItemsTable.orderId, staleOrderIds));
+    await tx.delete(ordersTable)
+      .where(and(eq(ordersTable.status, "pending"), inArray(ordersTable.id, staleOrderIds)));
+  });
+}
 
 function validateExternalLink(link: string | null | undefined): string | null | undefined {
   if (link === undefined || link === null || link.trim() === "") {
@@ -55,6 +72,7 @@ router.use("/admin/orders", requireAdmin);
 router.use("/storage/uploads", requireAdmin);
 
 router.get("/admin/dashboard", async (_req, res): Promise<void> => {
+  await pruneStalePendingOrders();
   const [orders, books, [analytics]] = await Promise.all([
     db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt)),
     db.select().from(booksTable),
@@ -215,6 +233,7 @@ router.delete("/admin/books/:bookId", async (req, res): Promise<void> => {
 });
 
 router.get("/admin/orders", async (req, res): Promise<void> => {
+  await pruneStalePendingOrders();
   const parsed = ListAdminOrdersQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
