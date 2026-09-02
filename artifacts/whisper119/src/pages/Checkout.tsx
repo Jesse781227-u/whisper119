@@ -48,6 +48,7 @@ export default function Checkout() {
         <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">Secure checkout</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">Almost yours.</h1>
       <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Tell us where to send your reading. Payment is handled securely by Flutterwave.</p>
+      <p className="mt-4 max-w-2xl rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs leading-6 text-muted-foreground"><strong className="text-foreground">Digital Download:</strong> This is an ebook in PDF and/or EPUB format. Your purchase will be delivered by email after payment confirmation. No physical product will be shipped.</p>
       </div>
 
       <div className="mt-8 grid gap-7 lg:grid-cols-[1fr_20rem]">
@@ -91,6 +92,7 @@ export default function Checkout() {
             <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5 text-primary" /> Secure payment</span>
             <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> Flutterwave protected</span>
           </div>
+          <p className="text-center text-[0.68rem] leading-5 text-muted-foreground">By completing your purchase, you agree to our <Link href="/terms" className="text-primary hover:underline">Terms &amp; Conditions</Link> and acknowledge our <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link> and <Link href="/refunds" className="text-primary hover:underline">Refund Policy</Link>.</p>
         </form>
 
         <aside className="h-fit rounded-2xl border border-border bg-card p-5 shadow-sm lg:sticky lg:top-32">

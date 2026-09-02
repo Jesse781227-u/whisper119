@@ -18,6 +18,7 @@ import Order from '@/pages/Order';
 import ConfirmPayment from '@/pages/ConfirmPayment';
 import Account from '@/pages/Account';
 import Admin, { AdminLogin } from '@/pages/Admin';
+import { Terms, Privacy, Refunds, Contact } from '@/pages/PublicPages';
 import { Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 import { AuthProvider } from '@/components/auth-provider';
 import { PageViewTracker } from '@/components/page-view-tracker';
@@ -107,6 +108,10 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/about" component={About} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/refunds" component={Refunds} />
+      <Route path="/contact" component={Contact} />
       <Route path="/shop" component={Shop} />
       <Route path="/categories" component={Categories} />
       <Route path="/book/:bookId" component={BookDetail} />
