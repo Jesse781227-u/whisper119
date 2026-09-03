@@ -1,6 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { CopyLinkIcon, InstagramIcon, NewTwitterIcon, WhatsappIcon } from "@hugeicons/core-free-icons"
-import { ArrowLeft, Check, ChevronDown, ChevronUp, ExternalLink, Mail, ShoppingCart } from "lucide-react"
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Mail, ShoppingCart } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useLocation, useParams } from "wouter"
 import { useCreateLanguageRequest, useGetBook, useListBooks } from "@workspace/api-client-react"
@@ -268,44 +268,19 @@ export default function BookDetail() {
           </section>
         )}
 
-        <section className="mt-8 rounded-2xl border border-primary/20 bg-secondary/70 p-5">
-           <div className="flex items-start gap-3"><ExternalLink className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-extrabold">Choose how you’d like to pay</p><p className="mt-1 text-xs leading-5 text-muted-foreground">You’ll pay on the provider’s website, then return here to confirm your payment with your transaction reference.</p></div></div>
-           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-             <div className="space-y-2">
-               {book.paystackLink ? <a href={book.paystackLink} target="_blank" rel="noreferrer" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5">Pay with Paystack <ExternalLink className="h-3.5 w-3.5" /></a> : <span className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-border px-4 text-xs font-bold text-muted-foreground">Paystack link coming soon</span>}
-               {book.paystackLink && <Link href={`/confirm-payment?bookId=${encodeURIComponent(book.id)}&method=paystack`} className="block text-center text-[0.68rem] font-bold text-primary hover:text-foreground">I paid with Paystack — confirm it</Link>}
-             </div>
-             <div className="space-y-2">
-               {book.payoneerLink ? <a href={book.payoneerLink} target="_blank" rel="noreferrer" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-background px-4 text-xs font-extrabold text-foreground transition-colors hover:border-primary hover:text-primary">Pay with Payoneer <ExternalLink className="h-3.5 w-3.5" /></a> : <span className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-border px-4 text-xs font-bold text-muted-foreground">Payoneer link coming soon</span>}
-               {book.payoneerLink && <Link href={`/confirm-payment?bookId=${encodeURIComponent(book.id)}&method=payoneer`} className="block text-center text-[0.68rem] font-bold text-primary hover:text-foreground">I paid with Payoneer — confirm it</Link>}
-             </div>
-           </div>
-        </section>
-
         <section className="mt-8 rounded-2xl bg-secondary/70 p-5">
            <div className="flex items-start gap-3"><Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-extrabold">I’ll send it to your inbox</p><p className="mt-1 text-xs leading-5 text-muted-foreground">After your payment is confirmed, I’ll email your {book.format} file and receipt as real attachments. There are no public download links on this page.</p></div></div>
         </section>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 shadow-[0_-8px_24px_hsl(224_30%_22%_/_0.12)] backdrop-blur-xl">
-        <div className="mx-auto grid max-w-3xl gap-2 sm:grid-cols-[1fr_1.15fr_1.15fr]">
+        <div className="mx-auto grid max-w-3xl gap-2 sm:grid-cols-2">
           <button type="button" onClick={() => addAndNavigate("/cart")} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card text-[0.68rem] font-extrabold uppercase tracking-wide text-foreground transition-colors hover:border-primary hover:text-primary">
             {inCart ? <Check className="h-4 w-4 text-primary" /> : <ShoppingCart className="h-4 w-4" />} {inCart ? "In cart" : "Add to cart"}
           </button>
-          {book.paystackLink ? (
-            <a href={book.paystackLink} target="_blank" rel="noreferrer" className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-center text-[0.62rem] font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:-translate-y-0.5 sm:text-[0.68rem]">
-              Pay with Paystack <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-            </a>
-          ) : (
-            <span className="flex h-12 items-center justify-center rounded-xl border border-border px-3 text-center text-[0.62rem] font-bold text-muted-foreground sm:text-[0.68rem]">Paystack link coming soon</span>
-          )}
-          {book.payoneerLink ? (
-            <a href={book.payoneerLink} target="_blank" rel="noreferrer" className="flex h-12 items-center justify-center gap-2 rounded-xl border border-primary/40 bg-card px-3 text-center text-[0.62rem] font-extrabold uppercase tracking-wide text-foreground transition-colors hover:border-primary hover:text-primary sm:text-[0.68rem]">
-              Pay with Payoneer <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-            </a>
-          ) : (
-            <span className="flex h-12 items-center justify-center rounded-xl border border-border px-3 text-center text-[0.62rem] font-bold text-muted-foreground sm:text-[0.68rem]">Payoneer link coming soon</span>
-          )}
+          <button type="button" onClick={() => addAndNavigate("/checkout")} className="flex h-12 flex-1 items-center justify-center rounded-xl bg-primary px-3 text-center text-[0.68rem] font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:-translate-y-0.5">
+            Buy now
+          </button>
         </div>
       </div>
     </main>

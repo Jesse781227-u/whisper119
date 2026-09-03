@@ -96,7 +96,6 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [categories, setCategories] = useState<string[]>(book?.categories?.length ? [...book.categories] : [])
   const [slug, setSlug] = useState(book?.slug ?? "")
   const [description, setDescription] = useState(book?.description ?? "")
-  const [payoneerLink, setPayoneerLink] = useState(book?.payoneerLink ?? "")
   const [format, setFormat] = useState<BookInputFormat>(book?.format ?? "EPUB")
   const [featured, setFeatured] = useState(book?.featured ?? false)
   const [isCompleted, setIsCompleted] = useState(book?.isCompleted ?? false)
@@ -203,15 +202,6 @@ function BookForm({ book, onDone }: BookFormProps) {
       if (!categories.length) throw new Error("Choose at least one category.")
       if (!book && !ebookFile) throw new Error("Choose the ebook file before saving this book.")
 
-      if (payoneerLink.trim()) {
-        try {
-          const url = new URL(payoneerLink.trim())
-          if (!["http:", "https:"].includes(url.protocol)) throw new Error()
-        } catch {
-          throw new Error("Payoneer link must be a valid HTTP or HTTPS URL.")
-        }
-      }
-
       if (coverFile && !coverFile.type.startsWith("image/")) {
         throw new Error("The cover image must be a PNG, JPEG, or WebP image.")
       }
@@ -235,7 +225,6 @@ function BookForm({ book, onDone }: BookFormProps) {
           featured,
           isCompleted,
           publishedAt: new Date(publishedAt).toISOString(),
-          payoneerLink: payoneerLink.trim() || null,
         }
         if (ebookFile || coverFile) {
           setPhase("uploading")
@@ -274,7 +263,7 @@ function BookForm({ book, onDone }: BookFormProps) {
           description: descriptionValue,
           format,
           paystackLink: null,
-          payoneerLink: payoneerLink.trim() || null,
+          payoneerLink: null,
           coverObjectPath,
           fileObjectPath,
           fileName: ebook.name,
@@ -333,7 +322,6 @@ function BookForm({ book, onDone }: BookFormProps) {
       <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={featured} onChange={e => setFeatured(e.target.checked)} />Show this book in Featured</label><label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={isCompleted} onChange={e => setIsCompleted(e.target.checked)} />Completed series</label>
       <label><span className="mb-2 block text-xs font-bold">Publish date</span><input type="datetime-local" value={publishedAt} onChange={e => setPublishedAt(e.target.value)} className={fieldClass} /></label>
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
-       <label><span className="mb-2 block text-xs font-bold">Payoneer link (International) <span className="font-normal text-muted-foreground">(informational only)</span></span><input data-testid="input-book-payoneer-link" type="url" value={payoneerLink} onChange={e => setPayoneerLink(e.target.value)} placeholder="https://â€¦" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">For international buyers. This link never confirms payment by itself.</span></label>
        <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{submitLabel}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
        {error && <p role="alert" className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
     </form>

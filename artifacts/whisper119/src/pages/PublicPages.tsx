@@ -56,7 +56,7 @@ export function Terms() {
     <h2>2. Delivery</h2><p>Digital products are delivered by email after payment confirmation.</p><p>It is the buyer&apos;s responsibility to provide an accurate email address at checkout.</p>
     <h2>3. All sales are final</h2><p>All sales are final once the ebook file has been delivered.</p><p>See the Refund Policy for the specific process if a file was not received.</p>
     <h2>4. Intellectual property</h2><p>Audrey Leilani Global Limited reserves all intellectual property rights to all content sold on this website.</p><p>Unauthorised reproduction or distribution of purchased content — including but not limited to copying, sharing, reselling, or publishing the file elsewhere — is prohibited.</p>
-    <h2>5. Payment processing</h2><p>Payments are processed by Flutterwave and Paystack.</p><p>Whisper 119 does not directly collect or store your payment card details.</p>
+    <h2>5. Payment processing</h2><p>Payments are processed securely by our payment provider.</p><p>Whisper 119 does not directly collect or store your payment card details.</p>
     <h2>6. Governing law</h2><p>These terms are governed by the laws of Nigeria.</p>
     <h2>7. Contact</h2><p>Questions about these terms can be sent to the email address on the <Link href="/contact" className="text-primary hover:underline">Contact page</Link>.</p>
   </PolicyPage>
@@ -67,8 +67,8 @@ export function Privacy() {
     <p>Whisper 119, operated by Audrey Leilani Global Limited, collects your email address and name at checkout solely to deliver your purchased ebook and send order confirmation.</p>
     <h2>What we collect</h2><p>Name and email address, provided by you at checkout.</p>
     <h2>How we use it</h2><p>Solely to deliver your purchased ebook file and send your order confirmation/receipt.</p><p>We do not use this information for any other purpose without your consent.</p>
-    <h2>What we don&apos;t do</h2><p>We do not sell your personal information to third parties.</p><p>We do not store payment card information — payment processing is handled securely by Flutterwave and Paystack, and your card details are entered directly with them, not with us.</p>
-    <h2>Third-party processors</h2><p>Flutterwave and Paystack process payments on our behalf and handle your payment information according to their own privacy policies.</p>
+    <h2>What we don&apos;t do</h2><p>We do not sell your personal information to third parties.</p><p>We do not store payment card information. Your card details are entered directly with our secure payment provider, not with us.</p>
+    <h2>Third-party processors</h2><p>Our payment provider processes payments on our behalf and handles your payment information according to its own privacy policy.</p>
     <h2>Your rights</h2><p>You may contact us at any time to request deletion of your data.</p><p>Requests can be sent to the email address on the <Link href="/contact" className="text-primary hover:underline">Contact page</Link>.</p>
     <h2>Changes to this policy</h2><p>This policy may be updated from time to time; the effective date above will be revised accordingly.</p>
   </PolicyPage>

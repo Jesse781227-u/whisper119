@@ -41,19 +41,6 @@ async function pruneStalePendingOrders(): Promise<void> {
   });
 }
 
-function validateExternalLink(link: string | null | undefined): string | null | undefined {
-  if (link === undefined || link === null || link.trim() === "") {
-    return link === undefined ? undefined : null;
-  }
-  try {
-    const url = new URL(link);
-    if (!["http:", "https:"].includes(url.protocol)) throw new Error("Unsupported protocol");
-    return link;
-  } catch {
-    throw new Error("Payment links must be valid HTTP or HTTPS URLs.");
-  }
-}
-
 function isUniqueConstraintError(error: unknown): boolean {
   return typeof error === "object"
     && error !== null
@@ -157,13 +144,6 @@ router.post("/admin/books", async (req, res): Promise<void> => {
     return;
   }
   try {
-    validateExternalLink(parsed.data.paystackLink);
-    validateExternalLink(parsed.data.payoneerLink);
-  } catch (error) {
-    res.status(400).json({ error: error instanceof Error ? error.message : "Invalid payment link." });
-    return;
-  }
-  try {
     const { categories, ...bookData } = parsed.data;
     const [book] = await db.insert(booksTable).values({
       id: randomUUID(),
@@ -196,13 +176,6 @@ router.patch("/admin/books/:bookId", async (req, res): Promise<void> => {
   }
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  try {
-    validateExternalLink(parsed.data.paystackLink);
-    validateExternalLink(parsed.data.payoneerLink);
-  } catch (error) {
-    res.status(400).json({ error: error instanceof Error ? error.message : "Invalid payment link." });
     return;
   }
   const { categories, ...bookData } = parsed.data;
