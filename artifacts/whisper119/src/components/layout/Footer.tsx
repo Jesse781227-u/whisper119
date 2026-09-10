@@ -11,6 +11,7 @@ export function Footer() {
               <img src="/whisper-119-logo.png" alt="Whisper 119" className="h-10 w-auto max-w-[12rem] object-contain dark:invert" />
             </Link>
             <p className="mt-2 text-[0.68rem] font-extrabold uppercase tracking-[0.2em] text-primary">browse, buy, read</p>
+            <p className="mt-4 text-sm font-medium text-muted-foreground">Whisper 119, operated by Audrey Leilani Global Limited</p>
           </div>
           <div>
             <p className="rule-label mb-3">Legal / Information</p>
@@ -20,7 +21,7 @@ export function Footer() {
               <Link href="/contact" className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground hover:text-primary"><Mail className="h-3.5 w-3.5" /> Contact</Link>
               <Link href="/terms" className="font-semibold text-muted-foreground hover:text-primary">Terms &amp; Conditions</Link>
               <Link href="/privacy" className="font-semibold text-muted-foreground hover:text-primary">Privacy Policy</Link>
-              <Link href="/refunds" className="font-semibold text-muted-foreground hover:text-primary">Refund Policy</Link>
+              <Link href="/refund" className="font-semibold text-muted-foreground hover:text-primary">Refund Policy</Link>
             </div>
           </div>
         </div>

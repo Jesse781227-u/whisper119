@@ -92,7 +92,7 @@ export default function Checkout() {
             <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5 text-primary" /> Secure payment</span>
             <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> Flutterwave protected</span>
           </div>
-          <p className="text-center text-[0.68rem] leading-5 text-muted-foreground">By completing your purchase, you agree to our <Link href="/terms" className="text-primary hover:underline">Terms &amp; Conditions</Link> and acknowledge our <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link> and <Link href="/refunds" className="text-primary hover:underline">Refund Policy</Link>.</p>
+          <p className="text-center text-[0.68rem] leading-5 text-muted-foreground">By completing your purchase, you agree to our <Link href="/terms" className="text-primary hover:underline">Terms &amp; Conditions</Link> and acknowledge our <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link> and <Link href="/refund" className="text-primary hover:underline">Refund Policy</Link>.</p>
         </form>
 
         <aside className="h-fit rounded-2xl border border-border bg-card p-5 shadow-sm lg:sticky lg:top-32">
