@@ -104,7 +104,6 @@ export function Contact() {
         <p><span className="font-bold text-foreground">Business:</span> Audrey Leilani Global Limited</p>
         <p><span className="font-bold text-foreground">Registration:</span> RC 9270417</p>
         <p><span className="font-bold text-foreground">Email:</span> <a href="mailto:anastasiaibeh67@gmail.com" className="text-primary hover:underline">anastasiaibeh67@gmail.com</a> / <a href="mailto:ibehanastasia726@gmail.com" className="text-primary hover:underline">ibehanastasia726@gmail.com</a></p>
-        <p className="text-xl font-extrabold text-foreground sm:text-2xl"><span className="font-bold text-foreground">Phone:</span> <a href="tel:+2348038578646" className="text-primary hover:underline">+234 803 857 8646</a></p>
         <p><span className="font-bold text-foreground">Address:</span> Number 6 Unity Street, Off Location Road, Obigbo, Rivers State, Nigeria</p>
       </div>
     </div>
