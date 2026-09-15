@@ -9,6 +9,7 @@ import { booksTable, db, orderItemsTable, ordersTable } from "@workspace/db";
 import { getOrderById, orderResponse } from "../lib/bookstore";
 import { confirmFlutterwaveTransaction, initializeFlutterwave, paymentProvider, validFlutterwaveSignature } from "../lib/payments";
 import { getExchangeRates } from "../lib/exchange-rates";
+import { upsertSubscriber } from "../lib/subscribers";
 
 const router: IRouter = Router();
 
@@ -129,6 +130,14 @@ router.post("/orders/confirm-payment", async (req, res): Promise<void> => {
       format: book.format,
     });
   });
+
+  if (parsed.data.newsletterOptIn !== false) {
+    try {
+      await upsertSubscriber({ email: parsed.data.email, source: "purchase" });
+    } catch (error) {
+      req.log.error({ err: error, orderId }, "Could not capture newsletter consent");
+    }
+  }
 
   res.status(201).json(ConfirmPaymentResponse.parse({
     orderId,

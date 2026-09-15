@@ -28,6 +28,7 @@ export default function ConfirmPayment() {
   const [email, setEmail] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initialMethod)
   const [paymentReference, setPaymentReference] = useState("")
+  const [newsletterOptIn, setNewsletterOptIn] = useState(true)
   const [submitted, setSubmitted] = useState(false)
   const { data: books, isLoading: isBooksLoading } = useListBooks(undefined, {
     query: {
@@ -49,6 +50,7 @@ export default function ConfirmPayment() {
           bookId,
           paymentMethod,
           paymentReference: paymentReference.trim(),
+          newsletterOptIn,
         },
       },
       { onSuccess: () => setSubmitted(true) },
@@ -164,6 +166,16 @@ export default function ConfirmPayment() {
               className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary"
             />
             <span className="mt-2 block text-xs leading-5 text-muted-foreground">Please enter the provider’s reference, not a password or card number.</span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-secondary/40 p-4 transition-colors hover:border-primary/60">
+            <input
+              type="checkbox"
+              checked={newsletterOptIn}
+              onChange={(event) => setNewsletterOptIn(event.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+            />
+            <span className="text-sm font-semibold leading-6">Keep me updated on new releases from Whisper 119.</span>
           </label>
 
           {selectedBook && (

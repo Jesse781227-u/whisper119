@@ -1,23 +1,70 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "wouter"
 import { useQueryClient } from "@tanstack/react-query"
-import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Eye, WalletCards } from "lucide-react"
+import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Eye, WalletCards, Mail, CalendarClock, Send } from "lucide-react"
 import {
   getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey, getListCategoriesQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
   useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory,
   useCreateBook, useDeleteBook, useUpdateBook,
   requestUploadUrl as requestUploadUrlApi,
+  getListNewsletterMessagesQueryKey, useListNewsletterMessages, useCreateNewsletterMessage, useUpdateNewsletterMessage, useSendNewsletterMessage,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
 import { firebaseDb } from "@/lib/firebase"
-import type { Book, BookInput, BookInputFormat, BookUpdate, Order, Category } from "@workspace/api-client-react"
+import type { Book, BookInput, BookInputFormat, BookUpdate, Order, Category, NewsletterMessage } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { languages } from "@/hooks/use-site-language"
 
 const fieldClass = "h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+
+function previewMarkdown(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/^### (.+)$/gm, "<h3>$1</h3>").replace(/^## (.+)$/gm, "<h2>$1</h2>").replace(/^# (.+)$/gm, "<h1>$1</h1>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>').replace(/\n/g, "<br />")
+}
+
+function NewsletterPanel() {
+  const messages = useListNewsletterMessages({ query: { queryKey: getListNewsletterMessagesQueryKey() } })
+  const create = useCreateNewsletterMessage()
+  const update = useUpdateNewsletterMessage()
+  const send = useSendNewsletterMessage()
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const [selected, setSelected] = useState<NewsletterMessage | null>(null)
+  const [subject, setSubject] = useState("")
+  const [bodyMarkdown, setBodyMarkdown] = useState("")
+  const [scheduledAt, setScheduledAt] = useState("")
+
+  function edit(message: NewsletterMessage | null) {
+    setSelected(message)
+    setSubject(message?.subject ?? "")
+    setBodyMarkdown(message?.bodyMarkdown ?? "")
+    setScheduledAt(message?.scheduledAt ? message.scheduledAt.slice(0, 16) : "")
+  }
+
+  function save(schedule = false) {
+    const data = { subject: subject.trim(), bodyMarkdown: bodyMarkdown.trim(), scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
+    const onSuccess = () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: schedule ? "Newsletter scheduled" : "Draft saved" }) }
+    if (selected) update.mutate({ messageId: selected.id, data }, { onSuccess })
+    else create.mutate({ data }, { onSuccess: (message) => { edit(message); onSuccess() } })
+  }
+
+  function sendNow() {
+    if (!selected || !window.confirm("Send this newsletter to all subscribed readers now?")) return
+    send.mutate({ messageId: selected.id }, { onSuccess: () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: "Newsletter sent" }) } })
+  }
+
+  const messageList = Array.isArray(messages.data) ? messages.data : []
+  return <section className="space-y-5">
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Newsletter</p><h2 className="mt-1 text-2xl font-extrabold">Messages</h2><p className="mt-1 text-sm text-muted-foreground">Compose updates for subscribed readers.</p></div><button type="button" onClick={() => edit(null)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> New message</button></div>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{messages.isLoading ? <p className="p-6 text-sm text-muted-foreground">Loading messages...</p> : messageList.length ? messageList.map(message => <button type="button" key={message.id} onClick={() => edit(message)} className="flex w-full flex-wrap items-center gap-3 p-4 text-left transition-colors hover:bg-secondary/50 sm:p-5"><Mail className="h-5 w-5 shrink-0 text-primary" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{message.subject}</span><span className="mt-1 block text-xs text-muted-foreground">{message.status === "scheduled" && message.scheduledAt ? `Scheduled ${formatDate(message.scheduledAt)}` : message.sentAt ? `Sent ${formatDate(message.sentAt)}` : "Draft"}</span></span><span className="rounded-full bg-secondary px-2.5 py-1 text-[0.65rem] font-bold uppercase">{message.status}</span>{message.status === "sent" && <span className="text-right text-xs text-muted-foreground">{message.stats.sent} sent · {message.stats.opened} opened · {message.stats.clicked} clicked</span>}</button>) : <p className="p-8 text-center text-sm text-muted-foreground">No newsletter messages yet.</p>}</div>
+    {(selected || subject || bodyMarkdown) && <div className="grid gap-5 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6 lg:grid-cols-2"><div><div className="mb-5 flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{selected ? "Edit message" : "Compose"}</p><h3 className="text-xl font-extrabold">Newsletter draft</h3></div></div><label className="block"><span className="mb-2 block text-xs font-bold">Subject</span><input value={subject} onChange={event => setSubject(event.target.value)} disabled={selected?.status === "sent"} className={fieldClass} /></label><label className="mt-4 block"><span className="mb-2 block text-xs font-bold">Body in Markdown</span><textarea value={bodyMarkdown} onChange={event => setBodyMarkdown(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} min-h-64 py-3`} placeholder="# A note from me\n\nWrite your newsletter here..." /></label><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => save()} disabled={Boolean(selected?.status === "sent") || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground"><Pencil className="h-3.5 w-3.5" /> Save draft</button>{selected?.status !== "sent" && <><input type="datetime-local" value={scheduledAt} onChange={event => setScheduledAt(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs" /><button type="button" onClick={() => save(true)} disabled={!scheduledAt || update.isPending || create.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-primary px-4 text-xs font-extrabold text-primary"><CalendarClock className="h-3.5 w-3.5" /> Schedule</button><button type="button" onClick={sendNow} disabled={send.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-foreground px-4 text-xs font-extrabold text-background"><Send className="h-3.5 w-3.5" /> {send.isPending ? "Sending..." : "Send now"}</button></>}</div></div><div className="rounded-xl border border-border bg-background p-5"><p className="mb-4 text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Live preview</p><article className="prose prose-sm max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: previewMarkdown(bodyMarkdown) }} /></div>{selected && <div className="lg:col-span-2"><p className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Engagement</p><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{([['Sent', selected.stats.sent], ['Delivered', selected.stats.delivered], ['Opened', selected.stats.opened], ['Clicked', selected.stats.clicked], ['Bounced', selected.stats.bounced], ['Complained', selected.stats.complained]] as const).map(([label, value]) => <div key={label} className="rounded-xl border border-border bg-background p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-extrabold">{value}</p></div>)}</div></div>}</div>}
+  </section>
+}
 
 export function AdminLogin() {
   const [location, setLocation] = useLocation()
@@ -361,7 +408,7 @@ export default function Admin() {
   const [adminLoading, setAdminLoading] = useState(true)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminSaving, setAdminSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<"catalogue" | "orders">("catalogue")
+  const [activeTab, setActiveTab] = useState<"catalogue" | "orders" | "newsletter">("catalogue")
   const [languageRequests, setLanguageRequests] = useState<LanguageRequest[]>([])
 
   useEffect(() => {
@@ -450,6 +497,7 @@ export default function Admin() {
     <nav aria-label="Admin sections" className="flex gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm">
       <button type="button" onClick={() => setActiveTab("catalogue")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "catalogue" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Catalogue</button>
       <button type="button" onClick={() => setActiveTab("orders")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "orders" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Orders{orderList.length > 0 && <span className="ml-2 rounded-full bg-background/30 px-1.5 py-0.5">{orderList.length}</span>}</button>
+      <button type="button" onClick={() => setActiveTab("newsletter")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "newsletter" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Newsletter</button>
     </nav>
     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-5 flex items-center justify-between gap-3">
@@ -569,5 +617,6 @@ export default function Admin() {
     {activeTab === "orders" && (
     <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p><h2 className="mt-1 text-2xl font-extrabold">Orders</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Flutterwave webhooks verify payments automatically and trigger ebook delivery by email.</p></div>{orderActionError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">{orderActionError}</p>}<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{orderList.map(order => { const needsDelivery = order.status === "pending" || (order.status === "paid" && !order.deliveryEmailSent); const statusLabel = order.status === "fulfilled" ? "Fulfilled" : order.status === "paid" ? "Paid — delivery pending" : order.status; return <div key={order.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-secondary/50 sm:p-5"><Link href={`/order/${order.id}`} className="min-w-0 flex-1"><p className="font-mono text-xs font-bold">{order.reference}</p><p className="mt-1 truncate text-xs text-muted-foreground">{order.email} Â· {formatDate(order.createdAt)}</p></Link><div className="flex flex-wrap items-center justify-end gap-2"><span className={`rounded-full px-2.5 py-1 text-[0.62rem] font-bold ${order.status === "fulfilled" ? "bg-emerald-500/10 text-emerald-600" : order.status === "paid" ? "bg-sky-500/10 text-sky-700" : "bg-secondary text-muted-foreground"}`}>{statusLabel}</span><span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span>{needsDelivery && <button type="button" data-testid="button-confirm-payment-target" onClick={() => handleConfirmOrder(order)} disabled={confirmingOrderId === order.id} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-[0.68rem] font-extrabold text-primary-foreground disabled:cursor-wait disabled:opacity-60">{confirmingOrderId === order.id ? "Sending…" : order.status === "paid" ? "Retry delivery" : "Confirm & Send"}</button>}</div></div> })}{!orders.isLoading && !orderList.length && <div className="p-10 text-center"><Clock3 className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No orders yet.</p></div>}</div></section>
     )}
+    {activeTab === "newsletter" && <NewsletterPanel />}
   </div></main>
 }

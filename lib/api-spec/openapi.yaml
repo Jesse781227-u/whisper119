@@ -100,6 +100,26 @@ paths:
                 $ref: "#/components/schemas/LanguageRequest"
         "400":
           $ref: "#/components/responses/BadRequest"
+  /newsletter/subscribe:
+    post:
+      operationId: subscribeNewsletter
+      tags: [storefront]
+      summary: Subscribe an email address to newsletter updates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterSubscriptionInput"
+      responses:
+        "201":
+          description: Newsletter subscription created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterSubscription"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /orders:
     post:
       operationId: createOrder
@@ -216,6 +236,85 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+  /admin/newsletter/messages:
+    get:
+      operationId: listNewsletterMessages
+      tags: [admin]
+      summary: List newsletter messages and engagement statistics
+      responses:
+        "200":
+          description: Newsletter messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/NewsletterMessage" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createNewsletterMessage
+      tags: [admin]
+      summary: Create a newsletter draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewsletterMessageInput" }
+      responses:
+        "201":
+          description: Newsletter draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NewsletterMessage" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/newsletter/messages/{messageId}:
+    patch:
+      operationId: updateNewsletterMessage
+      tags: [admin]
+      summary: Update a newsletter draft
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewsletterMessageUpdateInput" }
+      responses:
+        "200":
+          description: Updated newsletter message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NewsletterMessage" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/newsletter/messages/{messageId}/send:
+    post:
+      operationId: sendNewsletterMessage
+      tags: [admin]
+      summary: Send a newsletter immediately
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Sent newsletter message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NewsletterMessage" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/BadRequest"
   /admin/login:
     post:
       operationId: adminLogin
@@ -751,7 +850,56 @@ components:
         bookId: { type: string, minLength: 1 }
         paymentMethod: { type: string, enum: [flutterwave, payoneer] }
         paymentReference: { type: string, minLength: 1, maxLength: 200 }
+        newsletterOptIn: { type: boolean, default: true }
       required: [email, bookId, paymentMethod, paymentReference]
+    NewsletterSubscriptionInput:
+      type: object
+      properties:
+        email: { type: string, minLength: 3 }
+      required: [email]
+    NewsletterSubscription:
+      type: object
+      properties:
+        subscribed: { type: boolean }
+      required: [subscribed]
+    NewsletterMessageInput:
+      type: object
+      properties:
+        subject: { type: string, minLength: 1, maxLength: 200 }
+        bodyMarkdown: { type: string, minLength: 1 }
+        scheduledAt: { type: [string, "null"] }
+      required: [subject, bodyMarkdown]
+    NewsletterMessageUpdateInput:
+      type: object
+      properties:
+        subject: { type: string, minLength: 1, maxLength: 200 }
+        bodyMarkdown: { type: string, minLength: 1 }
+        scheduledAt: { type: [string, "null"] }
+      required: [subject, bodyMarkdown]
+    NewsletterMessageStats:
+      type: object
+      properties:
+        sent: { type: number }
+        delivered: { type: number }
+        opened: { type: number }
+        clicked: { type: number }
+        bounced: { type: number }
+        complained: { type: number }
+      required: [sent, delivered, opened, clicked, bounced, complained]
+    NewsletterMessage:
+      type: object
+      properties:
+        id: { type: string }
+        subject: { type: string }
+        bodyHtml: { type: string }
+        bodyMarkdown: { type: string }
+        status: { type: string, enum: [draft, scheduled, sent] }
+        scheduledAt: { type: [string, "null"] }
+        sentAt: { type: [string, "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+        stats: { $ref: "#/components/schemas/NewsletterMessageStats" }
+      required: [id, subject, bodyHtml, bodyMarkdown, status, scheduledAt, sentAt, createdAt, updatedAt, stats]
     PaymentConfirmation:
       type: object
       properties:

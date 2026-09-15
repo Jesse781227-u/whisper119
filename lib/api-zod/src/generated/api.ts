@@ -184,6 +184,22 @@ export const CreateLanguageRequestResponse = zod.object({
 
 
 /**
+ * @summary Subscribe an email address to newsletter updates
+ */
+export const subscribeNewsletterBodyEmailMin = 3;
+
+
+
+export const SubscribeNewsletterBody = zod.object({
+  "email": zod.string().min(subscribeNewsletterBodyEmailMin)
+})
+
+export const SubscribeNewsletterResponse = zod.object({
+  "subscribed": zod.boolean()
+})
+
+
+/**
  * @summary Create a pending order and initialize payment
  */
 export const createOrderBodyEmailMin = 3;
@@ -217,13 +233,14 @@ export const confirmPaymentBodyEmailMin = 3;
 
 export const confirmPaymentBodyPaymentReferenceMax = 200;
 
-
+export const confirmPaymentBodyNewsletterOptInDefault = true;
 
 export const ConfirmPaymentBody = zod.object({
   "email": zod.string().min(confirmPaymentBodyEmailMin),
   "bookId": zod.string().min(1),
   "paymentMethod": zod.enum(['flutterwave', 'payoneer']),
-  "paymentReference": zod.string().min(1).max(confirmPaymentBodyPaymentReferenceMax)
+  "paymentReference": zod.string().min(1).max(confirmPaymentBodyPaymentReferenceMax),
+  "newsletterOptIn": zod.boolean().default(confirmPaymentBodyNewsletterOptInDefault)
 })
 
 export const confirmPaymentResponseEmailMin = 3;
@@ -306,6 +323,133 @@ export const ListOrderDownloadsResponseItem = zod.object({
   "url": zod.string()
 })
 export const ListOrderDownloadsResponse = zod.array(ListOrderDownloadsResponseItem)
+
+
+/**
+ * @summary List newsletter messages and engagement statistics
+ */
+export const ListNewsletterMessagesResponseItem = zod.object({
+  "id": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "bodyMarkdown": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'sent']),
+  "scheduledAt": zod.string().nullable(),
+  "sentAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "stats": zod.object({
+  "sent": zod.number(),
+  "delivered": zod.number(),
+  "opened": zod.number(),
+  "clicked": zod.number(),
+  "bounced": zod.number(),
+  "complained": zod.number()
+})
+})
+export const ListNewsletterMessagesResponse = zod.array(ListNewsletterMessagesResponseItem)
+
+
+/**
+ * @summary Create a newsletter draft
+ */
+export const createNewsletterMessageBodySubjectMax = 200;
+
+
+
+
+export const CreateNewsletterMessageBody = zod.object({
+  "subject": zod.string().min(1).max(createNewsletterMessageBodySubjectMax),
+  "bodyMarkdown": zod.string().min(1),
+  "scheduledAt": zod.string().nullish()
+})
+
+export const CreateNewsletterMessageResponse = zod.object({
+  "id": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "bodyMarkdown": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'sent']),
+  "scheduledAt": zod.string().nullable(),
+  "sentAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "stats": zod.object({
+  "sent": zod.number(),
+  "delivered": zod.number(),
+  "opened": zod.number(),
+  "clicked": zod.number(),
+  "bounced": zod.number(),
+  "complained": zod.number()
+})
+})
+
+
+/**
+ * @summary Update a newsletter draft
+ */
+export const UpdateNewsletterMessageParams = zod.object({
+  "messageId": zod.coerce.string()
+})
+
+export const updateNewsletterMessageBodySubjectMax = 200;
+
+
+
+
+export const UpdateNewsletterMessageBody = zod.object({
+  "subject": zod.string().min(1).max(updateNewsletterMessageBodySubjectMax),
+  "bodyMarkdown": zod.string().min(1),
+  "scheduledAt": zod.string().nullish()
+})
+
+export const UpdateNewsletterMessageResponse = zod.object({
+  "id": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "bodyMarkdown": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'sent']),
+  "scheduledAt": zod.string().nullable(),
+  "sentAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "stats": zod.object({
+  "sent": zod.number(),
+  "delivered": zod.number(),
+  "opened": zod.number(),
+  "clicked": zod.number(),
+  "bounced": zod.number(),
+  "complained": zod.number()
+})
+})
+
+
+/**
+ * @summary Send a newsletter immediately
+ */
+export const SendNewsletterMessageParams = zod.object({
+  "messageId": zod.coerce.string()
+})
+
+export const SendNewsletterMessageResponse = zod.object({
+  "id": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "bodyMarkdown": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'sent']),
+  "scheduledAt": zod.string().nullable(),
+  "sentAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "stats": zod.object({
+  "sent": zod.number(),
+  "delivered": zod.number(),
+  "opened": zod.number(),
+  "clicked": zod.number(),
+  "bounced": zod.number(),
+  "complained": zod.number()
+})
+})
 
 
 /**

@@ -37,6 +37,11 @@ import type {
   LanguageRequestInput,
   ListAdminOrdersParams,
   ListBooksParams,
+  NewsletterMessage,
+  NewsletterMessageInput,
+  NewsletterMessageUpdateInput,
+  NewsletterSubscription,
+  NewsletterSubscriptionInput,
   NotFoundResponse,
   Order,
   OrderInput,
@@ -494,6 +499,84 @@ export const useCreateLanguageRequest = <TError = BadRequestResponse,
       return useMutation(getCreateLanguageRequestMutationOptions(options));
     }
 
+export const getSubscribeNewsletterUrl = () => {
+
+
+
+
+  return `/api/newsletter/subscribe`
+}
+
+/**
+ * @summary Subscribe an email address to newsletter updates
+ */
+export const subscribeNewsletter = async (newsletterSubscriptionInput: NewsletterSubscriptionInput, options?: RequestInit): Promise<NewsletterSubscription> => {
+
+  const res = await fetch(getSubscribeNewsletterUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(newsletterSubscriptionInput)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: NewsletterSubscription = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getSubscribeNewsletterMutationOptions = <TError = BadRequestResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof subscribeNewsletter>>, TError,{data: NewsletterSubscriptionInput}, TContext>, fetch?: RequestInit}
+): UseMutationOptions<Awaited<ReturnType<typeof subscribeNewsletter>>, TError,{data: NewsletterSubscriptionInput}, TContext> => {
+
+const mutationKey = ['subscribeNewsletter'];
+const {mutation: mutationOptions, fetch: fetchOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, fetch: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof subscribeNewsletter>>, {data: NewsletterSubscriptionInput}> = (props) => {
+          const {data} = props ?? {};
+
+          return  subscribeNewsletter(data,fetchOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubscribeNewsletterMutationResult = NonNullable<Awaited<ReturnType<typeof subscribeNewsletter>>>
+    export type SubscribeNewsletterMutationBody = NewsletterSubscriptionInput
+    export type SubscribeNewsletterMutationError = BadRequestResponse
+
+    /**
+ * @summary Subscribe an email address to newsletter updates
+ */
+export const useSubscribeNewsletter = <TError = BadRequestResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof subscribeNewsletter>>, TError,{data: NewsletterSubscriptionInput}, TContext>, fetch?: RequestInit}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof subscribeNewsletter>>,
+        TError,
+        {data: NewsletterSubscriptionInput},
+        TContext
+      > => {
+      return useMutation(getSubscribeNewsletterMutationOptions(options));
+    }
+
 export const getCreateOrderUrl = () => {
 
 
@@ -895,6 +978,325 @@ export function useListOrderDownloads<TData = Awaited<ReturnType<typeof listOrde
 
 
 
+
+export const getListNewsletterMessagesUrl = () => {
+
+
+
+
+  return `/api/admin/newsletter/messages`
+}
+
+/**
+ * @summary List newsletter messages and engagement statistics
+ */
+export const listNewsletterMessages = async ( options?: RequestInit): Promise<NewsletterMessage[]> => {
+
+  const res = await fetch(getListNewsletterMessagesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: NewsletterMessage[] = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getListNewsletterMessagesQueryKey = () => {
+    return [
+    `/api/admin/newsletter/messages`
+    ] as const;
+    }
+
+
+export const getListNewsletterMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listNewsletterMessages>>, TError = UnauthorizedResponse>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNewsletterMessages>>, TError, TData>, fetch?: RequestInit}
+) => {
+
+const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListNewsletterMessagesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listNewsletterMessages>>> = ({ signal }) => listNewsletterMessages({ signal, ...fetchOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listNewsletterMessages>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListNewsletterMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof listNewsletterMessages>>>
+export type ListNewsletterMessagesQueryError = UnauthorizedResponse
+
+
+/**
+ * @summary List newsletter messages and engagement statistics
+ */
+
+export function useListNewsletterMessages<TData = Awaited<ReturnType<typeof listNewsletterMessages>>, TError = UnauthorizedResponse>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNewsletterMessages>>, TError, TData>, fetch?: RequestInit}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListNewsletterMessagesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateNewsletterMessageUrl = () => {
+
+
+
+
+  return `/api/admin/newsletter/messages`
+}
+
+/**
+ * @summary Create a newsletter draft
+ */
+export const createNewsletterMessage = async (newsletterMessageInput: NewsletterMessageInput, options?: RequestInit): Promise<NewsletterMessage> => {
+
+  const res = await fetch(getCreateNewsletterMessageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(newsletterMessageInput)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: NewsletterMessage = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getCreateNewsletterMessageMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createNewsletterMessage>>, TError,{data: NewsletterMessageInput}, TContext>, fetch?: RequestInit}
+): UseMutationOptions<Awaited<ReturnType<typeof createNewsletterMessage>>, TError,{data: NewsletterMessageInput}, TContext> => {
+
+const mutationKey = ['createNewsletterMessage'];
+const {mutation: mutationOptions, fetch: fetchOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, fetch: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createNewsletterMessage>>, {data: NewsletterMessageInput}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createNewsletterMessage(data,fetchOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateNewsletterMessageMutationResult = NonNullable<Awaited<ReturnType<typeof createNewsletterMessage>>>
+    export type CreateNewsletterMessageMutationBody = NewsletterMessageInput
+    export type CreateNewsletterMessageMutationError = BadRequestResponse | UnauthorizedResponse
+
+    /**
+ * @summary Create a newsletter draft
+ */
+export const useCreateNewsletterMessage = <TError = BadRequestResponse | UnauthorizedResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createNewsletterMessage>>, TError,{data: NewsletterMessageInput}, TContext>, fetch?: RequestInit}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createNewsletterMessage>>,
+        TError,
+        {data: NewsletterMessageInput},
+        TContext
+      > => {
+      return useMutation(getCreateNewsletterMessageMutationOptions(options));
+    }
+
+export const getUpdateNewsletterMessageUrl = (messageId: string,) => {
+
+
+
+
+  return `/api/admin/newsletter/messages/${messageId}`
+}
+
+/**
+ * @summary Update a newsletter draft
+ */
+export const updateNewsletterMessage = async (messageId: string,
+    newsletterMessageUpdateInput: NewsletterMessageUpdateInput, options?: RequestInit): Promise<NewsletterMessage> => {
+
+  const res = await fetch(getUpdateNewsletterMessageUrl(messageId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(newsletterMessageUpdateInput)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: NewsletterMessage = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getUpdateNewsletterMessageMutationOptions = <TError = BadRequestResponse | NotFoundResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNewsletterMessage>>, TError,{messageId: string;data: NewsletterMessageUpdateInput}, TContext>, fetch?: RequestInit}
+): UseMutationOptions<Awaited<ReturnType<typeof updateNewsletterMessage>>, TError,{messageId: string;data: NewsletterMessageUpdateInput}, TContext> => {
+
+const mutationKey = ['updateNewsletterMessage'];
+const {mutation: mutationOptions, fetch: fetchOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, fetch: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateNewsletterMessage>>, {messageId: string;data: NewsletterMessageUpdateInput}> = (props) => {
+          const {messageId,data} = props ?? {};
+
+          return  updateNewsletterMessage(messageId,data,fetchOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateNewsletterMessageMutationResult = NonNullable<Awaited<ReturnType<typeof updateNewsletterMessage>>>
+    export type UpdateNewsletterMessageMutationBody = NewsletterMessageUpdateInput
+    export type UpdateNewsletterMessageMutationError = BadRequestResponse | NotFoundResponse
+
+    /**
+ * @summary Update a newsletter draft
+ */
+export const useUpdateNewsletterMessage = <TError = BadRequestResponse | NotFoundResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNewsletterMessage>>, TError,{messageId: string;data: NewsletterMessageUpdateInput}, TContext>, fetch?: RequestInit}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateNewsletterMessage>>,
+        TError,
+        {messageId: string;data: NewsletterMessageUpdateInput},
+        TContext
+      > => {
+      return useMutation(getUpdateNewsletterMessageMutationOptions(options));
+    }
+
+export const getSendNewsletterMessageUrl = (messageId: string,) => {
+
+
+
+
+  return `/api/admin/newsletter/messages/${messageId}/send`
+}
+
+/**
+ * @summary Send a newsletter immediately
+ */
+export const sendNewsletterMessage = async (messageId: string, options?: RequestInit): Promise<NewsletterMessage> => {
+
+  const res = await fetch(getSendNewsletterMessageUrl(messageId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: NewsletterMessage = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getSendNewsletterMessageMutationOptions = <TError = NotFoundResponse | BadRequestResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendNewsletterMessage>>, TError,{messageId: string}, TContext>, fetch?: RequestInit}
+): UseMutationOptions<Awaited<ReturnType<typeof sendNewsletterMessage>>, TError,{messageId: string}, TContext> => {
+
+const mutationKey = ['sendNewsletterMessage'];
+const {mutation: mutationOptions, fetch: fetchOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, fetch: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendNewsletterMessage>>, {messageId: string}> = (props) => {
+          const {messageId} = props ?? {};
+
+          return  sendNewsletterMessage(messageId,fetchOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendNewsletterMessageMutationResult = NonNullable<Awaited<ReturnType<typeof sendNewsletterMessage>>>
+
+    export type SendNewsletterMessageMutationError = NotFoundResponse | BadRequestResponse
+
+    /**
+ * @summary Send a newsletter immediately
+ */
+export const useSendNewsletterMessage = <TError = NotFoundResponse | BadRequestResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendNewsletterMessage>>, TError,{messageId: string}, TContext>, fetch?: RequestInit}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendNewsletterMessage>>,
+        TError,
+        {messageId: string},
+        TContext
+      > => {
+      return useMutation(getSendNewsletterMessageMutationOptions(options));
+    }
 
 export const getAdminLoginUrl = () => {
 

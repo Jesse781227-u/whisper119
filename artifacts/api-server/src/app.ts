@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import unsubscribeRouter from "./routes/unsubscribe";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -58,6 +59,7 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+app.use(unsubscribeRouter);
 app.use("/api", router);
 
 // Keep malformed/oversized requests JSON-shaped so clients never receive an
