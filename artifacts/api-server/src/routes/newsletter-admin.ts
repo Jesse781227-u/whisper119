@@ -5,6 +5,7 @@ import { db, emailEvents, messages } from "@workspace/db";
 import { CreateNewsletterMessageBody, UpdateNewsletterMessageBody } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/auth";
 import { markdownToHtml } from "../lib/newsletter-content";
+import { sendMessageToAllSubscribers } from "../lib/newsletter-sender";
 
 const router: IRouter = Router();
 router.use("/admin/newsletter", requireAdmin);
@@ -54,6 +55,19 @@ router.patch("/admin/newsletter/messages/:messageId", async (req, res): Promise<
   }).where(and(eq(messages.id, req.params.messageId), eq(messages.status, "draft"))).returning();
   if (!message) { res.status(404).json({ error: "Draft message not found" }); return; }
   res.json((await listMessages()).find((item) => item.id === message.id));
+});
+
+router.post("/admin/newsletter/messages/:messageId/send", async (req, res): Promise<void> => {
+  try {
+    const [message] = await db.select().from(messages).where(eq(messages.id, req.params.messageId));
+    if (!message) { res.status(404).json({ error: "Message not found" }); return; }
+    if (message.status === "sent") { res.status(409).json({ error: "This message has already been sent." }); return; }
+    await sendMessageToAllSubscribers(message.id);
+    res.json((await listMessages()).find((item) => item.id === message.id));
+  } catch (error) {
+    req.log.error({ err: error, messageId: req.params.messageId }, "Newsletter send failed");
+    res.status(502).json({ error: error instanceof Error ? error.message : "Newsletter send failed" });
+  }
 });
 
 export { listMessages };
