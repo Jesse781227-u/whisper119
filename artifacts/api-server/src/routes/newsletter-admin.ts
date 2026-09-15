@@ -42,6 +42,8 @@ router.post("/admin/newsletter/messages", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [message] = await db.insert(messages).values({
     id: randomUUID(), subject: parsed.data.subject.trim(), bodyHtml: markdownToHtml(parsed.data.bodyMarkdown),
+    status: parsed.data.scheduledAt ? "scheduled" : "draft",
+    scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null,
   }).returning();
   res.status(201).json((await listMessages()).find((item) => item.id === message.id));
 });
