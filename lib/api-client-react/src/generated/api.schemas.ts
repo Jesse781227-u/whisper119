@@ -268,6 +268,62 @@ export interface NewsletterSubscription {
   subscribed: boolean;
 }
 
+export interface NewsletterMessageInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  subject: string;
+  /** @minLength 1 */
+  bodyMarkdown: string;
+  /** @nullable */
+  scheduledAt?: string | null;
+}
+
+export interface NewsletterMessageUpdateInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  subject: string;
+  /** @minLength 1 */
+  bodyMarkdown: string;
+  /** @nullable */
+  scheduledAt?: string | null;
+}
+
+export interface NewsletterMessageStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  complained: number;
+}
+
+export type NewsletterMessageStatus = typeof NewsletterMessageStatus[keyof typeof NewsletterMessageStatus];
+
+
+export const NewsletterMessageStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  sent: 'sent',
+} as const;
+
+export interface NewsletterMessage {
+  id: string;
+  subject: string;
+  bodyHtml: string;
+  status: NewsletterMessageStatus;
+  /** @nullable */
+  scheduledAt: string | null;
+  /** @nullable */
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  stats: NewsletterMessageStats;
+}
+
 export type PaymentConfirmationPaymentMethod = typeof PaymentConfirmationPaymentMethod[keyof typeof PaymentConfirmationPaymentMethod];
 
 

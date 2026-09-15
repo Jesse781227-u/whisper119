@@ -7,6 +7,7 @@ import storageRouter from "./storage";
 import analyticsRouter from "./analytics";
 import exchangeRouter from "./exchange";
 import newsletterRouter from "./newsletter";
+import newsletterAdminRouter from "./newsletter-admin";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(storageRouter);
 router.use(analyticsRouter);
 router.use(exchangeRouter);
 router.use(newsletterRouter);
+router.use(newsletterAdminRouter);
 
 export default router;

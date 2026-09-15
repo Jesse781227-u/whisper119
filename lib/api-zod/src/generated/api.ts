@@ -326,6 +326,129 @@ export const ListOrderDownloadsResponse = zod.array(ListOrderDownloadsResponseIt
 
 
 /**
+ * @summary List newsletter messages and engagement statistics
+ */
+export const ListNewsletterMessagesResponseItem = zod.object({
+  "id": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'sent']),
+  "scheduledAt": zod.string().nullable(),
+  "sentAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "stats": zod.object({
+  "sent": zod.number(),
+  "delivered": zod.number(),
+  "opened": zod.number(),
+  "clicked": zod.number(),
+  "bounced": zod.number(),
+  "complained": zod.number()
+})
+})
+export const ListNewsletterMessagesResponse = zod.array(ListNewsletterMessagesResponseItem)
+
+
+/**
+ * @summary Create a newsletter draft
+ */
+export const createNewsletterMessageBodySubjectMax = 200;
+
+
+
+
+export const CreateNewsletterMessageBody = zod.object({
+  "subject": zod.string().min(1).max(createNewsletterMessageBodySubjectMax),
+  "bodyMarkdown": zod.string().min(1),
+  "scheduledAt": zod.string().nullish()
+})
+
+export const CreateNewsletterMessageResponse = zod.object({
+  "id": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'sent']),
+  "scheduledAt": zod.string().nullable(),
+  "sentAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "stats": zod.object({
+  "sent": zod.number(),
+  "delivered": zod.number(),
+  "opened": zod.number(),
+  "clicked": zod.number(),
+  "bounced": zod.number(),
+  "complained": zod.number()
+})
+})
+
+
+/**
+ * @summary Update a newsletter draft
+ */
+export const UpdateNewsletterMessageParams = zod.object({
+  "messageId": zod.coerce.string()
+})
+
+export const updateNewsletterMessageBodySubjectMax = 200;
+
+
+
+
+export const UpdateNewsletterMessageBody = zod.object({
+  "subject": zod.string().min(1).max(updateNewsletterMessageBodySubjectMax),
+  "bodyMarkdown": zod.string().min(1),
+  "scheduledAt": zod.string().nullish()
+})
+
+export const UpdateNewsletterMessageResponse = zod.object({
+  "id": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'sent']),
+  "scheduledAt": zod.string().nullable(),
+  "sentAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "stats": zod.object({
+  "sent": zod.number(),
+  "delivered": zod.number(),
+  "opened": zod.number(),
+  "clicked": zod.number(),
+  "bounced": zod.number(),
+  "complained": zod.number()
+})
+})
+
+
+/**
+ * @summary Send a newsletter immediately
+ */
+export const SendNewsletterMessageParams = zod.object({
+  "messageId": zod.coerce.string()
+})
+
+export const SendNewsletterMessageResponse = zod.object({
+  "id": zod.string(),
+  "subject": zod.string(),
+  "bodyHtml": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'sent']),
+  "scheduledAt": zod.string().nullable(),
+  "sentAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "stats": zod.object({
+  "sent": zod.number(),
+  "delivered": zod.number(),
+  "opened": zod.number(),
+  "clicked": zod.number(),
+  "bounced": zod.number(),
+  "complained": zod.number()
+})
+})
+
+
+/**
  * @summary Sign in to the private admin panel
  */
 export const adminLoginBodyEmailMin = 3;
