@@ -27,7 +27,7 @@ export async function upsertSubscriber(input: {
     await sendEmail({
       to: createdSubscriber.email,
       subject: "Welcome to Whisper 119 📚",
-      html: buildWelcomeEmailHtml({ unsubscribeUrl }),
+      html: buildWelcomeEmailHtml({ subscriberName: createdSubscriber.name, unsubscribeUrl }),
     });
     return createdSubscriber;
   }
