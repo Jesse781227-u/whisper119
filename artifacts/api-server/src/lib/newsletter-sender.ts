@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db, emailEvents, messages, subscribers } from "@workspace/db";
-import { resend } from "./resend";
+import { getMailFromAddress, resend } from "./resend";
 
 const RESEND_BATCH_SIZE = 100;
 const inFlight = new Set<string>();
@@ -29,10 +29,11 @@ export async function sendMessageToAllSubscribers(messageId: string): Promise<vo
     for (let offset = 0; offset < pending.length; offset += RESEND_BATCH_SIZE) {
       const batch = pending.slice(offset, offset + RESEND_BATCH_SIZE);
       const result = await resend.batch.send(batch.map((subscriber) => ({
-        from: process.env.MAIL_FROM_ADDRESS ?? "",
+        from: getMailFromAddress(),
         to: subscriber.email,
         subject: message.subject,
         html: withUnsubscribeFooter(message.bodyHtml, subscriber.unsubscribeToken),
+        tags: [{ name: "newsletter_message_id", value: messageId }],
       })));
       if (result.error) {
         console.error("Resend newsletter batch failed:", result.error);
