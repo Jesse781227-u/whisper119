@@ -15,3 +15,14 @@ export function markdownToHtml(markdown: string): string {
     return /^<h[1-3]>/.test(content) ? content : `<p>${content}</p>`;
   }).join("\n");
 }
+
+export function htmlToMarkdown(html: string): string {
+  return html.replace(/<h[1-3]>(.*?)<\/h[1-3]>/gi, "# $1\n\n")
+    .replace(/<p>(.*?)<\/p>/gi, "$1\n\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<strong>(.*?)<\/strong>/gi, "**$1**")
+    .replace(/<em>(.*?)<\/em>/gi, "*$1*")
+    .replace(/<a href="(https?:\/\/[^\"]+)">(.*?)<\/a>/gi, "[$2]($1)")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+}

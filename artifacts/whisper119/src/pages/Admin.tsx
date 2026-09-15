@@ -42,7 +42,7 @@ function NewsletterPanel() {
   function edit(message: NewsletterMessage | null) {
     setSelected(message)
     setSubject(message?.subject ?? "")
-    setBodyMarkdown(message?.bodyHtml ?? "")
+    setBodyMarkdown(message?.bodyMarkdown ?? "")
     setScheduledAt(message?.scheduledAt ? message.scheduledAt.slice(0, 16) : "")
   }
 

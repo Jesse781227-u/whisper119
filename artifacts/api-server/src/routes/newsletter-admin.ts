@@ -4,7 +4,7 @@ import { and, countDistinct, desc, eq, sql } from "drizzle-orm";
 import { db, emailEvents, messages } from "@workspace/db";
 import { CreateNewsletterMessageBody, UpdateNewsletterMessageBody } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/auth";
-import { markdownToHtml } from "../lib/newsletter-content";
+import { htmlToMarkdown, markdownToHtml } from "../lib/newsletter-content";
 import { sendMessageToAllSubscribers } from "../lib/newsletter-sender";
 
 const router: IRouter = Router();
@@ -25,6 +25,7 @@ async function listMessages() {
   }
   return rows.map((message) => ({
     ...message,
+    bodyMarkdown: htmlToMarkdown(message.bodyHtml),
     scheduledAt: message.scheduledAt?.toISOString() ?? null,
     sentAt: message.sentAt?.toISOString() ?? null,
     createdAt: message.createdAt.toISOString(),

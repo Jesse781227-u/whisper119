@@ -12,6 +12,7 @@ export interface NewsletterMessage {
   id: string;
   subject: string;
   bodyHtml: string;
+  bodyMarkdown: string;
   status: NewsletterMessageStatus;
   /** @nullable */
   scheduledAt: string | null;
