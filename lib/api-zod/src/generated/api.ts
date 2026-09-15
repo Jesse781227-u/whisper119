@@ -184,6 +184,22 @@ export const CreateLanguageRequestResponse = zod.object({
 
 
 /**
+ * @summary Subscribe an email address to newsletter updates
+ */
+export const subscribeNewsletterBodyEmailMin = 3;
+
+
+
+export const SubscribeNewsletterBody = zod.object({
+  "email": zod.string().min(subscribeNewsletterBodyEmailMin)
+})
+
+export const SubscribeNewsletterResponse = zod.object({
+  "subscribed": zod.boolean()
+})
+
+
+/**
  * @summary Create a pending order and initialize payment
  */
 export const createOrderBodyEmailMin = 3;
@@ -217,13 +233,14 @@ export const confirmPaymentBodyEmailMin = 3;
 
 export const confirmPaymentBodyPaymentReferenceMax = 200;
 
-
+export const confirmPaymentBodyNewsletterOptInDefault = true;
 
 export const ConfirmPaymentBody = zod.object({
   "email": zod.string().min(confirmPaymentBodyEmailMin),
   "bookId": zod.string().min(1),
   "paymentMethod": zod.enum(['flutterwave', 'payoneer']),
-  "paymentReference": zod.string().min(1).max(confirmPaymentBodyPaymentReferenceMax)
+  "paymentReference": zod.string().min(1).max(confirmPaymentBodyPaymentReferenceMax),
+  "newsletterOptIn": zod.boolean().default(confirmPaymentBodyNewsletterOptInDefault)
 })
 
 export const confirmPaymentResponseEmailMin = 3;

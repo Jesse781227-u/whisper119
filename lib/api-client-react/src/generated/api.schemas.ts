@@ -256,6 +256,16 @@ export interface PaymentConfirmationInput {
      * @maxLength 200
      */
   paymentReference: string;
+  newsletterOptIn?: boolean;
+}
+
+export interface NewsletterSubscriptionInput {
+  /** @minLength 3 */
+  email: string;
+}
+
+export interface NewsletterSubscription {
+  subscribed: boolean;
 }
 
 export type PaymentConfirmationPaymentMethod = typeof PaymentConfirmationPaymentMethod[keyof typeof PaymentConfirmationPaymentMethod];

@@ -31,6 +31,8 @@ export * from './languageRequestInput';
 export * from './listAdminOrdersParams';
 export * from './listBooksParams';
 export * from './maxPriceQueryParameter';
+export * from './newsletterSubscription';
+export * from './newsletterSubscriptionInput';
 export * from './notFoundResponse';
 export * from './order';
 export * from './orderInput';

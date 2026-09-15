@@ -100,6 +100,26 @@ paths:
                 $ref: "#/components/schemas/LanguageRequest"
         "400":
           $ref: "#/components/responses/BadRequest"
+  /newsletter/subscribe:
+    post:
+      operationId: subscribeNewsletter
+      tags: [storefront]
+      summary: Subscribe an email address to newsletter updates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterSubscriptionInput"
+      responses:
+        "201":
+          description: Newsletter subscription created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterSubscription"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /orders:
     post:
       operationId: createOrder
@@ -751,7 +771,18 @@ components:
         bookId: { type: string, minLength: 1 }
         paymentMethod: { type: string, enum: [flutterwave, payoneer] }
         paymentReference: { type: string, minLength: 1, maxLength: 200 }
+        newsletterOptIn: { type: boolean, default: true }
       required: [email, bookId, paymentMethod, paymentReference]
+    NewsletterSubscriptionInput:
+      type: object
+      properties:
+        email: { type: string, minLength: 3 }
+      required: [email]
+    NewsletterSubscription:
+      type: object
+      properties:
+        subscribed: { type: boolean }
+      required: [subscribed]
     PaymentConfirmation:
       type: object
       properties:

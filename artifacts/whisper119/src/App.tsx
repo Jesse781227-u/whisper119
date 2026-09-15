@@ -22,6 +22,7 @@ import { Terms, Privacy, Refund, Contact } from '@/pages/PublicPages';
 import { Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 import { AuthProvider } from '@/components/auth-provider';
 import { PageViewTracker } from '@/components/page-view-tracker';
+import { NewsletterModal } from '@/components/layout/NewsletterModal';
 
 const queryClient = new QueryClient();
 
@@ -167,6 +168,7 @@ function AppShell() {
       {!isAdmin && <Navbar />}
       <Router />
       {!isAdmin && <Footer />}
+      {!isAdmin && location === "/" && <NewsletterModal />}
     </>
   );
 }

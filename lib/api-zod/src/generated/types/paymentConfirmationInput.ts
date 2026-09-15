@@ -18,4 +18,5 @@ export interface PaymentConfirmationInput {
      * @maxLength 200
      */
   paymentReference: string;
+  newsletterOptIn?: boolean;
 }
