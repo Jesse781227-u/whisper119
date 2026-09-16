@@ -43,7 +43,7 @@ function base64UrlDecode(str: string): string {
   return Buffer.from(base64, "base64").toString("utf8");
 }
 
-async function verifyFirebaseIdToken(idToken: string): Promise<{ email: string; uid: string } | null> {
+export async function verifyFirebaseIdToken(idToken: string): Promise<{ email: string; uid: string } | null> {
   const projectId = getFirebaseProjectId();
   if (!projectId) return null;
 
@@ -81,6 +81,15 @@ async function verifyFirebaseIdToken(idToken: string): Promise<{ email: string; 
   } catch {
     return null;
   }
+}
+
+export async function requireReader(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const idToken = getBearerToken(req);
+  if (!idToken) { res.status(401).json({ error: "Reader authentication required" }); return; }
+  const reader = await verifyFirebaseIdToken(idToken);
+  if (!reader?.email) { res.status(401).json({ error: "Reader authentication required" }); return; }
+  res.locals.reader = reader;
+  next();
 }
 
 function firstEnv(...names: string[]): string | undefined {
