@@ -18,6 +18,7 @@ export async function sendMessageToAllSubscribers(messageId: string): Promise<{ 
   inFlight.add(messageId);
   try {
     if (!resend) throw new Error("RESEND_API_KEY_NOT_CONFIGURED");
+    const from = getMailFromAddress();
     const [message] = await db.select().from(messages).where(eq(messages.id, messageId));
     if (!message) throw new Error("NEWSLETTER_MESSAGE_NOT_FOUND");
     if (message.status === "sent") return { sent: 0, failed: [] };
@@ -36,7 +37,7 @@ export async function sendMessageToAllSubscribers(messageId: string): Promise<{ 
       const batch = pending.slice(offset, offset + RESEND_BATCH_SIZE);
       for (const subscriber of batch) {
         const payload = {
-          from: getMailFromAddress(), to: subscriber.email.trim().toLowerCase(), subject: message.subject,
+          from, to: subscriber.email.trim().toLowerCase(), subject: message.subject,
           html: withUnsubscribeFooter(message.bodyHtml, subscriber.unsubscribeToken),
           text: `${message.bodyText || htmlToText(message.bodyHtml)}\n\nUnsubscribe: https://whisper119.com/unsubscribe/${subscriber.unsubscribeToken}`,
           tags: [{ name: "newsletter_message_id", value: messageId }],
@@ -44,7 +45,11 @@ export async function sendMessageToAllSubscribers(messageId: string): Promise<{ 
         try {
           const result = await resend.emails.send(payload);
           console.info("Resend newsletter send response", { recipient: subscriber.email, result });
-          if (result.error) throw new Error(result.error.message);
+          if (result.error) {
+            const detail = [result.error.name, result.error.message, result.error.statusCode ? `status=${result.error.statusCode}` : ""]
+              .filter(Boolean).join(": ");
+            throw new Error(`RESEND_SEND_FAILED: ${detail || JSON.stringify(result.error)}`);
+          }
           await db.insert(emailEvents).values({ messageId, subscriberId: subscriber.id, eventType: "sent" });
           sent += 1;
         } catch (error) {
