@@ -1,6 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { db, subscribers, type Subscriber } from "@workspace/db";
 import { buildWelcomeEmailHtml, sendEmail } from "./mailer";
+import { htmlToText } from "./newsletter-content";
 
 export type SubscriberSource = "signup_form" | "purchase";
 
@@ -39,10 +40,12 @@ export async function upsertSubscriber(input: {
   if (createdSubscriber) {
     if (input.sendWelcome === false) return createdSubscriber;
     const unsubscribeUrl = `https://whisper119.com/unsubscribe/${createdSubscriber.unsubscribeToken}`;
+    const html = buildWelcomeEmailHtml({ subscriberName: createdSubscriber.name, unsubscribeUrl });
     await sendEmail({
       to: createdSubscriber.email,
       subject: "Welcome to Whisper 119 📚",
-      html: buildWelcomeEmailHtml({ subscriberName: createdSubscriber.name, unsubscribeUrl }),
+      html,
+      text: htmlToText(html),
     });
     return createdSubscriber;
   }
