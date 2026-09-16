@@ -77,6 +77,11 @@
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.2.3",
-    "@hugeicons/react": "^1.1.9"
+    "@hugeicons/react": "^1.1.9",
+    "@tiptap/extension-image": "^3.31.3",
+    "@tiptap/extension-link": "^3.31.3",
+    "@tiptap/extension-underline": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3"
   }
 }

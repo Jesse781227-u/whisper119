@@ -4,7 +4,7 @@ import { and, count, countDistinct, desc, eq, sql } from "drizzle-orm";
 import { db, emailEvents, messages, newsletterTemplates, subscribers } from "@workspace/db";
 import { CreateNewsletterMessageBody, UpdateNewsletterMessageBody } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/auth";
-import { htmlToMarkdown, markdownToHtml } from "../lib/newsletter-content";
+import { htmlToMarkdown, htmlToText, markdownToHtml } from "../lib/newsletter-content";
 import { sendMessageToAllSubscribers } from "../lib/newsletter-sender";
 
 const router: IRouter = Router();
@@ -26,6 +26,7 @@ async function listMessages() {
   return rows.map((message) => ({
     ...message,
     bodyMarkdown: htmlToMarkdown(message.bodyHtml),
+    bodyText: message.bodyText,
     scheduledAt: message.scheduledAt?.toISOString() ?? null,
     sentAt: message.sentAt?.toISOString() ?? null,
     createdAt: message.createdAt.toISOString(),
@@ -83,8 +84,10 @@ router.post("/admin/newsletter/templates", async (req, res): Promise<void> => {
 router.post("/admin/newsletter/messages", async (req, res): Promise<void> => {
   const parsed = CreateNewsletterMessageBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const bodyHtml = typeof req.body?.bodyHtml === "string" ? req.body.bodyHtml : markdownToHtml(parsed.data.bodyMarkdown);
+  const bodyText = typeof req.body?.bodyText === "string" ? req.body.bodyText : htmlToText(bodyHtml);
   const [message] = await db.insert(messages).values({
-    id: randomUUID(), subject: parsed.data.subject.trim(), bodyHtml: markdownToHtml(parsed.data.bodyMarkdown),
+    id: randomUUID(), subject: parsed.data.subject.trim(), bodyHtml, bodyText,
     status: parsed.data.scheduledAt ? "scheduled" : "draft",
     scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null,
   }).returning();
@@ -94,8 +97,10 @@ router.post("/admin/newsletter/messages", async (req, res): Promise<void> => {
 router.patch("/admin/newsletter/messages/:messageId", async (req, res): Promise<void> => {
   const parsed = UpdateNewsletterMessageBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const bodyHtml = typeof req.body?.bodyHtml === "string" ? req.body.bodyHtml : markdownToHtml(parsed.data.bodyMarkdown);
+  const bodyText = typeof req.body?.bodyText === "string" ? req.body.bodyText : htmlToText(bodyHtml);
   const [message] = await db.update(messages).set({
-    subject: parsed.data.subject.trim(), bodyHtml: markdownToHtml(parsed.data.bodyMarkdown), status: parsed.data.scheduledAt ? "scheduled" : "draft",
+    subject: parsed.data.subject.trim(), bodyHtml, bodyText, status: parsed.data.scheduledAt ? "scheduled" : "draft",
     scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null, updatedAt: new Date(),
   }).where(and(eq(messages.id, req.params.messageId), eq(messages.status, "draft"))).returning();
   if (!message) { res.status(404).json({ error: "Draft message not found" }); return; }
@@ -107,8 +112,8 @@ router.post("/admin/newsletter/messages/:messageId/send", async (req, res): Prom
     const [message] = await db.select().from(messages).where(eq(messages.id, req.params.messageId));
     if (!message) { res.status(404).json({ error: "Message not found" }); return; }
     if (message.status === "sent") { res.status(409).json({ error: "This message has already been sent." }); return; }
-    await sendMessageToAllSubscribers(message.id);
-    res.json((await listMessages()).find((item) => item.id === message.id));
+    const result = await sendMessageToAllSubscribers(message.id);
+    res.json({ ...(await listMessages()).find((item) => item.id === message.id), delivery: result });
   } catch (error) {
     req.log.error({ err: error, messageId: req.params.messageId }, "Newsletter send failed");
     res.status(502).json({ error: error instanceof Error ? error.message : "Newsletter send failed" });

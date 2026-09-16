@@ -3,6 +3,14 @@
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
 
+.newsletter-editor .ProseMirror { min-height: 15rem; outline: none; }
+.newsletter-editor .ProseMirror p { margin: .45rem 0; }
+.newsletter-editor .ProseMirror h1 { font-size: 1.6rem; font-weight: 800; line-height: 1.2; margin: .8rem 0 .45rem; }
+.newsletter-editor .ProseMirror h2 { font-size: 1.3rem; font-weight: 800; line-height: 1.25; margin: .75rem 0 .4rem; }
+.newsletter-editor .ProseMirror ul, .newsletter-editor .ProseMirror ol { padding-left: 1.4rem; }
+.newsletter-editor .ProseMirror blockquote { border-left: 3px solid var(--color-primary); padding-left: .8rem; color: var(--color-muted-foreground); }
+.newsletter-editor .ProseMirror img { max-width: 100%; border-radius: .75rem; margin: .75rem 0; }
+
 input[placeholder="Country"] { display: none; }
 
 @custom-variant dark (&:is(.dark *));
