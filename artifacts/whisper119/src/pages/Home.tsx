@@ -4,6 +4,7 @@ import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-rea
 import { BookCard } from "@/components/book-card"
 import { useSiteLanguage } from "@/hooks/use-site-language"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Reveal, Stagger, fadeUpVariants } from "@/lib/motion"
 
 function SectionHeading({ eyebrow, title, href = "/shop" }: { eyebrow?: string; title: string; href?: string }) {
   return (
@@ -87,7 +88,7 @@ export default function Home() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-5 sm:px-6 sm:pt-8">
-      <PromoBanner coverUrl={featured[0]?.coverUrl} />
+      <Reveal><PromoBanner coverUrl={featured[0]?.coverUrl} /></Reveal>
 
       {isLoadingShelf ? (
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -103,34 +104,34 @@ export default function Home() {
         ) : hasBooks ? (
          <>
            {featured.length > 0 && (
-             <section className="mt-8">
+             <Reveal className="mt-8">
                <SectionHeading eyebrow="A few from me" title="My books" />
-               <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">{featured.slice(0, 8).map((book) => <BookCard key={book.id} book={book} />)}</div>
-             </section>
+               <Stagger className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">{featured.slice(0, 8).map((book) => <Reveal key={book.id} variants={fadeUpVariants}><BookCard book={book} /></Reveal>)}</Stagger>
+             </Reveal>
            )}
 
-          <section className="mt-8">
+          <Reveal className="mt-8">
             <ServiceStrip />
-          </section>
+          </Reveal>
 
           {arrivals.length > 0 ? (
-            <section className="mt-9">
+            <Reveal className="mt-9">
               <SectionHeading eyebrow="Just added" title="New arrivals" />
-              <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">{arrivals.slice(0, 8).map((book) => <BookCard key={book.id} book={book} />)}</div>
-            </section>
+              <Stagger className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">{arrivals.slice(0, 8).map((book) => <Reveal key={book.id} variants={fadeUpVariants}><BookCard book={book} /></Reveal>)}</Stagger>
+            </Reveal>
           ) : null}
 
-          <section className="mt-9"><SectionHeading eyebrow="Explore" title="Browse by category" href="/categories" /><div className="flex flex-wrap gap-2">{sections.filter(category => category.featured || category.count > 0).slice(0, 6).map(category => <Link key={category.id} href={`/shop?category=${encodeURIComponent(category.name)}`} className="rounded-full border border-border bg-card px-4 py-2.5 text-xs font-bold transition-colors hover:border-primary hover:text-primary">{category.name}<span className="ml-2 text-muted-foreground">{category.count}</span></Link>)}<Link href="/categories" className="rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground">More</Link></div></section>
+          <Reveal className="mt-9"><SectionHeading eyebrow="Explore" title="Browse by category" href="/categories" /><Stagger className="flex flex-wrap gap-2">{sections.filter(category => category.featured || category.count > 0).slice(0, 6).map(category => <Reveal key={category.id} variants={fadeUpVariants}><Link href={`/shop?category=${encodeURIComponent(category.name)}`} className="inline-block rounded-full border border-border bg-card px-4 py-2.5 text-xs font-bold transition-colors hover:border-primary hover:text-primary">{category.name}<span className="ml-2 text-muted-foreground">{category.count}</span></Link></Reveal>)}<Reveal variants={fadeUpVariants}><Link href="/categories" className="inline-block rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground">More</Link></Reveal></Stagger></Reveal>
 
           {sections.slice(0, 3).map((category) => (
-            <section key={category.name} className="mt-9">
+            <Reveal key={category.name} className="mt-9">
               <SectionHeading title={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} />
-              <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">
+              <Stagger className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4">
                 {catalogue.filter((book) => book.categories.some((bookCategory) => bookCategory === category.name)).slice(0, 4).map((book) => (
-                  <BookCard key={book.id} book={book} />
+                  <Reveal key={book.id} variants={fadeUpVariants}><BookCard book={book} /></Reveal>
                 ))}
-              </div>
-            </section>
+              </Stagger>
+            </Reveal>
           ))}
 
         </>

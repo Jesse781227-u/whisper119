@@ -5,6 +5,7 @@ import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-rea
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSiteLanguage } from "@/hooks/use-site-language"
+import { Reveal, Stagger, fadeUpVariants } from "@/lib/motion"
 
 type FormatFilter = "" | "PDF" | "EPUB"
 
@@ -85,11 +86,11 @@ export default function Shop() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-7 sm:px-6 sm:pt-10">
-      <div className="mb-7">
+      <Reveal className="mb-7">
         <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">My books</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">Have a look around.</h1>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">These are the books I’ve written, chosen, and made available as  PDF and EPUB files.</p>
-      </div>
+      </Reveal>
 
       <div className="relative mb-5 md:hidden">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -197,7 +198,7 @@ export default function Shop() {
               </button>
             </div>
           ) : books.length ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">{books.map((book) => <BookCard key={book.id} book={book} />)}</div>
+            <Stagger className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">{books.map((book) => <Reveal key={book.id} variants={fadeUpVariants}><BookCard book={book} /></Reveal>)}</Stagger>
           ) : (
             <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-20 text-center">
               <p className="text-2xl font-extrabold">Nothing on this shelf yet.</p>
