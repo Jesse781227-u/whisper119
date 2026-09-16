@@ -59,11 +59,13 @@ function NewsletterPanel() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [selected, setSelected] = useState<NewsletterMessage | null>(null)
+  const [composerOpen, setComposerOpen] = useState(false)
   const [subject, setSubject] = useState("")
   const [bodyMarkdown, setBodyMarkdown] = useState("")
   const [scheduledAt, setScheduledAt] = useState("")
 
   function edit(message: NewsletterMessage | null) {
+    setComposerOpen(true)
     setSelected(message)
     setSubject(message?.subject ?? "")
     setBodyMarkdown(message?.bodyMarkdown ?? "")
@@ -71,6 +73,7 @@ function NewsletterPanel() {
   }
 
   function useTemplate(template: NewsletterTemplate) {
+    setComposerOpen(true)
     setSelected(null)
     setSubject(template.subject)
     setBodyMarkdown(template.bodyMarkdown)
@@ -79,20 +82,39 @@ function NewsletterPanel() {
 
   function saveCurrentTemplate() {
     const name = window.prompt("Template name", subject.trim())?.trim()
-    if (!name || !subject.trim() || !bodyMarkdown.trim()) return
-    saveTemplate.mutate({ name, subject: subject.trim(), bodyMarkdown: bodyMarkdown.trim() }, { onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["/api/admin/newsletter/templates"] }); toast({ title: "Template saved" }) } })
+    if (!name) return
+    if (!subject.trim() || !bodyMarkdown.trim()) {
+      toast({ title: "Cannot save template", description: "Add a subject and body before saving a template.", variant: "destructive" })
+      return
+    }
+    saveTemplate.mutate({ name, subject: subject.trim(), bodyMarkdown: bodyMarkdown.trim() }, {
+      onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["/api/admin/newsletter/templates"] }); toast({ title: "Template saved" }) },
+      onError: (error) => toast({ title: "Template could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }),
+    })
   }
 
   function save(schedule = false) {
+    if (!subject.trim() || !bodyMarkdown.trim()) {
+      toast({ title: "Cannot save newsletter", description: "Add a subject and body before saving.", variant: "destructive" })
+      return
+    }
+    if (schedule && !scheduledAt) {
+      toast({ title: "Choose a schedule time", description: "Select when this newsletter should be sent.", variant: "destructive" })
+      return
+    }
     const data = { subject: subject.trim(), bodyMarkdown: bodyMarkdown.trim(), scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
     const onSuccess = () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: schedule ? "Newsletter scheduled" : "Draft saved" }) }
-    if (selected) update.mutate({ messageId: selected.id, data }, { onSuccess })
-    else create.mutate({ data }, { onSuccess: (message) => { edit(message); onSuccess() } })
+    const onError = (error: unknown) => toast({ title: schedule ? "Newsletter could not be scheduled" : "Draft could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" })
+    if (selected) update.mutate({ messageId: selected.id, data }, { onSuccess, onError })
+    else create.mutate({ data }, { onSuccess: (message) => { edit(message); onSuccess() }, onError })
   }
 
   function sendNow() {
     if (!selected || !window.confirm("Send this newsletter to all subscribed readers now?")) return
-    send.mutate({ messageId: selected.id }, { onSuccess: () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: "Newsletter sent" }) } })
+    send.mutate({ messageId: selected.id }, {
+      onSuccess: () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: "Newsletter sent" }) },
+      onError: (error) => toast({ title: "Newsletter could not be sent", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }),
+    })
   }
 
   const messageList = Array.isArray(messages.data) ? messages.data : []
@@ -235,7 +257,7 @@ function NewsletterPanel() {
           </div>
         </div>
 
-        {(selected || subject || bodyMarkdown) && (
+        {composerOpen && (
           <div className={panelCardClass}>
             <div className="mb-5 flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span>
