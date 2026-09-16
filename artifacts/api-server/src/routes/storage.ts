@@ -25,7 +25,7 @@ async function requestUploadUrl(req: Request, res: Response): Promise<void> {
 
   try {
     const { name, size, contentType, language } = parsed.data;
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL(contentType);
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL(contentType, language === "newsletter" ? "newsletter" : undefined);
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
     res.json(RequestUploadUrlResponse.parse({
       uploadURL,
@@ -105,7 +105,8 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
       .from(booksTable)
       .where(eq(booksTable.coverObjectPath, objectPath))
       .limit(1);
-    if (!cover) {
+    const isNewsletterImage = wildcardPath.startsWith("uploads/newsletter/");
+    if (!cover && !isNewsletterImage) {
       res.status(403).json({ error: 'Private ebook files are delivered by email after payment.' });
       return;
     }
