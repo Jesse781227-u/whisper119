@@ -1,3 +1,5 @@
+import { convert } from "html-to-text";
+
 function escapeHtml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
 }
@@ -28,13 +30,11 @@ export function htmlToMarkdown(html: string): string {
 }
 
 export function htmlToText(html: string): string {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>|<\/div>|<\/h[1-6]>|<\/li>|<hr\s*\/?>/gi, "\n")
-    .replace(/<li[^>]*>/gi, "- ")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
-    .replace(/\n{3,}/g, "\n\n").trim();
+  return convert(html, {
+    wordwrap: 80,
+    selectors: [
+      { selector: "img", format: "skip" },
+      { selector: "a", options: { hideLinkHrefIfSameAsText: true } },
+    ],
+  }).trim();
 }

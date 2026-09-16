@@ -1,13 +1,16 @@
 import { getMailFromAddress, resend } from "./resend";
+import { htmlToText } from "./newsletter-content";
 
 export async function sendEmail({
   to,
   subject,
   html,
+  text,
 }: {
   to: string;
   subject: string;
   html: string;
+  text?: string;
 }) {
   if (!resend) throw new Error("RESEND_API_KEY_NOT_CONFIGURED");
 
@@ -16,6 +19,7 @@ export async function sendEmail({
     to,
     subject,
     html,
+    text: text ?? htmlToText(html),
   });
   if (error) {
     console.error("Resend send failed:", error);
