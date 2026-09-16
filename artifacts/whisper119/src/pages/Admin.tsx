@@ -54,6 +54,14 @@ function previewMarkdown(value: string): string {
     .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>').replace(/\n/g, "<br />")
 }
 
+function normalizeRichHtml(value: string): string {
+  if (!value.includes("&lt;")) return value
+  const node = document.createElement("textarea")
+  node.innerHTML = value
+  const decoded = node.value
+  return /<\/?(?:p|h[1-6]|strong|em|u|ul|ol|li|a|blockquote|hr|img|br)\b[^>]*>/i.test(decoded) ? decoded : value
+}
+
 function RichNewsletterEditor({ html, disabled, onChange }: { html: string; disabled?: boolean; onChange: (html: string) => void }) {
   const editor = useEditor({
     extensions: [StarterKit, Underline, TiptapLink.configure({ openOnClick: false }), Image.configure({ inline: false, allowBase64: false })],
@@ -93,7 +101,7 @@ function RichNewsletterEditor({ html, disabled, onChange }: { html: string; disa
 }
 
 function htmlToPlainText(html: string): string {
-  const node = document.createElement("div"); node.innerHTML = html
+  const node = document.createElement("div"); node.innerHTML = normalizeRichHtml(html)
   return (node.textContent || "").replace(/\n{3,}/g, "\n\n").trim()
 }
 
@@ -137,7 +145,7 @@ function NewsletterPanel() {
     setComposerOpen(true)
     setSelected(message)
     setSubject(message?.subject ?? "")
-    setBodyHtml(message?.bodyHtml ?? "")
+    setBodyHtml(normalizeRichHtml(message?.bodyHtml ?? ""))
     setBodyText((message as NewsletterMessage & { bodyText?: string }).bodyText ?? "")
     setScheduledAt(message?.scheduledAt ? message.scheduledAt.slice(0, 16) : "")
   }
@@ -199,7 +207,8 @@ function NewsletterPanel() {
 
   const messageList = Array.isArray(messages.data) ? messages.data : []
   const overviewData = overview.data
-  const bodyHasContent = Boolean(bodyHtml.replace(/<[^>]+>/g, "").trim())
+  const normalizedBodyHtml = normalizeRichHtml(bodyHtml)
+  const bodyHasContent = Boolean(normalizedBodyHtml.replace(/<[^>]+>/g, "").trim())
   const canSave = Boolean(subject.trim() && bodyHasContent)
   return <section className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3">
@@ -357,7 +366,7 @@ function NewsletterPanel() {
                 </label>
                   <label className="mt-4 block">
                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Message content</span>
-                  <RichNewsletterEditor html={bodyHtml} onChange={setBodyHtml} disabled={selected?.status === "sent"} />
+                  <RichNewsletterEditor html={normalizedBodyHtml} onChange={setBodyHtml} disabled={selected?.status === "sent"} />
                   <details className="mt-4 rounded-xl border border-border bg-background/35 p-3">
                     <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">View plain-text version</summary>
                     <textarea value={bodyText} onChange={(event) => setBodyText(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} mt-3 min-h-28 py-3`} placeholder={htmlToPlainText(bodyHtml) || "Generated automatically from the rich content"} />
@@ -370,7 +379,7 @@ function NewsletterPanel() {
                 <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Preview</p>
                 <div className="mt-3 rounded-2xl border border-border bg-card/70 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{subject.trim() || "Subject preview"}</p>
-                  <div className="mt-3 text-sm leading-6 text-foreground" dangerouslySetInnerHTML={{ __html: bodyHtml || "<p>Write a message for your readers.</p>" }} />
+                  <div className="mt-3 text-sm leading-6 text-foreground" dangerouslySetInnerHTML={{ __html: normalizedBodyHtml || "<p>Write a message for your readers.</p>" }} />
                 </div>
                 <p className="mt-4 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-semibold text-muted-foreground">Will be sent to {overviewData?.summary.activeSubscribers ?? 0} active subscribers.</p>
                 <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
