@@ -23,6 +23,8 @@ import { Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 import { AuthProvider } from '@/components/auth-provider';
 import { PageViewTracker } from '@/components/page-view-tracker';
 import { NewsletterModal } from '@/components/layout/NewsletterModal';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useEffect } from 'react';
 
 const queryClient = new QueryClient();
 
@@ -161,12 +163,29 @@ function App() {
 function AppShell() {
   const [location] = useLocation();
   const isAdmin = location.startsWith("/admin");
+  const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [location]);
 
   return (
     <>
       {!isAdmin && <PageViewTracker />}
       {!isAdmin && <Navbar />}
-      <Router />
+      {isAdmin ? <Router /> : (
+        <AnimatePresence initial={false} mode="sync">
+          <motion.div
+            key={location}
+            initial={prefersReducedMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.24, ease: 'easeOut' }}
+          >
+            <Router />
+          </motion.div>
+        </AnimatePresence>
+      )}
       {!isAdmin && <Footer />}
       {!isAdmin && location === "/" && <NewsletterModal />}
     </>
