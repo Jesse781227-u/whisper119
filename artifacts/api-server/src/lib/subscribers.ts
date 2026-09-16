@@ -13,6 +13,19 @@ export async function upsertSubscriber(input: {
   const email = input.email.normalize("NFKC").trim().toLowerCase();
   if (!email) throw new Error("SUBSCRIBER_EMAIL_REQUIRED");
 
+  const [existingSubscriber] = await db.select().from(subscribers)
+    .where(sql`lower(trim(${subscribers.email})) = ${email}`);
+  if (existingSubscriber) {
+    const [subscriber] = await db.update(subscribers)
+      .set({
+        email,
+        source: sql`CASE WHEN ${subscribers.source} = ${input.source} THEN ${subscribers.source} ELSE 'both' END`,
+      })
+      .where(eq(subscribers.id, existingSubscriber.id))
+      .returning();
+    return subscriber ?? existingSubscriber;
+  }
+
   const [createdSubscriber] = await db.insert(subscribers)
     .values({
       email,
@@ -34,15 +47,15 @@ export async function upsertSubscriber(input: {
     return createdSubscriber;
   }
 
-  const [existingSubscriber] = await db.select().from(subscribers).where(eq(subscribers.email, email));
-  if (!existingSubscriber) throw new Error("SUBSCRIBER_UPSERT_FAILED");
+  const [conflictedSubscriber] = await db.select().from(subscribers).where(eq(subscribers.email, email));
+  if (!conflictedSubscriber) throw new Error("SUBSCRIBER_UPSERT_FAILED");
 
   const [subscriber] = await db.update(subscribers)
     .set({
       source: sql`CASE WHEN ${subscribers.source} = ${input.source} THEN ${subscribers.source} ELSE 'both' END`,
     })
-    .where(eq(subscribers.id, existingSubscriber.id))
+    .where(eq(subscribers.id, conflictedSubscriber.id))
     .returning();
 
-  return subscriber ?? existingSubscriber;
+  return subscriber ?? conflictedSubscriber;
 }
