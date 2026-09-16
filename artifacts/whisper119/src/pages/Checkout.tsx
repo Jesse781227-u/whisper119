@@ -14,6 +14,7 @@ export default function Checkout() {
   const [email, setEmail] = useState("")
   const [country, setCountry] = useState("US")
   const [currency, setCurrency] = useState<"NGN" | "USD">("USD")
+  const [newsletterOptIn, setNewsletterOptIn] = useState(true)
   const createOrder = useCreateOrder()
   const { rate: usdToNgnRate, isLoading: isRateLoading } = useUsdToNgn()
 
@@ -29,7 +30,7 @@ export default function Checkout() {
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     createOrder.mutate(
-      { data: { email, country, currency, bookIds: items.map((item) => item.id) } },
+      { data: { email, country, currency, bookIds: items.map((item) => item.id), newsletterOptIn } },
       {
         onSuccess: (response) => {
           clearCart()
@@ -74,6 +75,10 @@ export default function Checkout() {
                 <select id="country" required value={country} onChange={(event) => setCountry(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10">
                   {countries.map((option) => <option key={option.code} value={option.code}>{option.name}</option>)}
                 </select>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-secondary/40 p-4 transition-colors hover:border-primary/60">
+                <input type="checkbox" checked={newsletterOptIn} onChange={(event) => setNewsletterOptIn(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-primary" />
+                <span className="text-sm leading-6 text-muted-foreground">Keep me updated on new releases from Whisper 119.</span>
               </label>
             </div>
           </section>

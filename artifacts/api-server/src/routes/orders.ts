@@ -66,6 +66,7 @@ router.post("/orders", async (req, res): Promise<void> => {
   await db.insert(ordersTable).values({
     id: orderId, reference, email: parsed.data.email, country: parsed.data.country,
     currency, subtotal, status: "pending", paymentStatus: "pending", paymentMethod: paymentProvider(),
+    newsletterOptIn: parsed.data.newsletterOptIn === true,
   });
   await db.insert(orderItemsTable).values(selected.map((book, index) => ({
     id: randomUUID(), orderId, bookId: book.id, title: book.title, author: book.author,
@@ -118,6 +119,7 @@ router.post("/orders/confirm-payment", async (req, res): Promise<void> => {
       paymentStatus: "pending",
       paymentMethod: parsed.data.paymentMethod,
       paymentReference: parsed.data.paymentReference,
+      newsletterOptIn: parsed.data.newsletterOptIn !== false,
       createdAt,
     });
     await tx.insert(orderItemsTable).values({

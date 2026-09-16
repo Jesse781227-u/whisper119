@@ -13,6 +13,7 @@ export const ordersTable = pgTable("orders", {
   paymentStatus: text("payment_status").notNull().default("pending"),
   paymentMethod: text("payment_method").notNull().default("flutterwave"),
   paymentReference: text("payment_reference"),
+  newsletterOptIn: boolean("newsletter_opt_in").notNull().default(false),
   deliveryEmailSent: boolean("delivery_email_sent").notNull().default(false),
   downloaded: boolean("downloaded").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

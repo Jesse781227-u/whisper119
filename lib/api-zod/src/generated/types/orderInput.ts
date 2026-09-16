@@ -18,4 +18,5 @@ export interface OrderInput {
   currency: OrderInputCurrency;
   /** @minItems 1 */
   bookIds: string[];
+  newsletterOptIn?: boolean;
 }

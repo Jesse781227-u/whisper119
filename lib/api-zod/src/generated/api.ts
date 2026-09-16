@@ -208,13 +208,14 @@ export const createOrderBodyCountryMin = 2;
 export const createOrderBodyCountryMax = 2;
 
 
-
+export const createOrderBodyNewsletterOptInDefault = true;
 
 export const CreateOrderBody = zod.object({
   "email": zod.string().min(createOrderBodyEmailMin),
   "country": zod.string().min(createOrderBodyCountryMin).max(createOrderBodyCountryMax),
   "currency": zod.enum(['NGN', 'USD']),
-  "bookIds": zod.array(zod.string()).min(1)
+  "bookIds": zod.array(zod.string()).min(1),
+  "newsletterOptIn": zod.boolean().default(createOrderBodyNewsletterOptInDefault)
 })
 
 export const CreateOrderResponse = zod.object({

@@ -235,6 +235,7 @@ export interface OrderInput {
   currency: OrderInputCurrency;
   /** @minItems 1 */
   bookIds: string[];
+  newsletterOptIn?: boolean;
 }
 
 export type PaymentConfirmationInputPaymentMethod = typeof PaymentConfirmationInputPaymentMethod[keyof typeof PaymentConfirmationInputPaymentMethod];

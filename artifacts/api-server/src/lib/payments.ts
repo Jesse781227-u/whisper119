@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { db, ordersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { deliverOrderEmail } from "./delivery";
+import { upsertSubscriber } from "./subscribers";
 
 type FlutterwaveResponse = {
   status: string;
@@ -58,6 +59,13 @@ export async function confirmFlutterwaveTransaction(transactionId: string, refer
     await db.update(ordersTable)
       .set({ status: "paid", paymentStatus: "success", paidAt: new Date(), paymentReference: transactionId })
       .where(eq(ordersTable.id, order.id));
+  }
+  if (order.newsletterOptIn) {
+    try {
+      await upsertSubscriber({ email: order.email, source: "purchase" });
+    } catch (error) {
+      console.error("Could not capture newsletter consent after payment:", error);
+    }
   }
   // Let the webhook retry if SMTP or ebook storage is temporarily unavailable.
   // The order is already marked paid, so this is safe to run more than once.
