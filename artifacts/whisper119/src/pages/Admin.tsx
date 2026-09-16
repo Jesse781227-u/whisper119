@@ -18,7 +18,9 @@ import { formatDate, formatPrice } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { languages } from "@/hooks/use-site-language"
 
-const fieldClass = "h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+const fieldClass = "h-11 w-full rounded-xl border border-border/80 bg-background/60 px-3 text-sm text-foreground outline-none transition duration-200 placeholder:text-muted-foreground/80 focus:border-primary focus:ring-4 focus:ring-primary/10"
+const panelCardClass = "rounded-2xl border border-white/10 bg-card/75 p-4 shadow-[0_18px_45px_-32px_rgba(15,19,35,0.8)] backdrop-blur-xl sm:p-6"
+const softCardClass = "rounded-2xl border border-white/10 bg-card/70 p-4 shadow-[0_16px_38px_-28px_rgba(15,19,35,0.8)] backdrop-blur-xl"
 
 function previewMarkdown(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -96,10 +98,189 @@ function NewsletterPanel() {
   const messageList = Array.isArray(messages.data) ? messages.data : []
   const overviewData = overview.data
   return <section className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Newsletter</p><h2 className="mt-1 text-2xl font-extrabold">Audience and messages</h2><p className="mt-1 text-sm text-muted-foreground">Review subscribers, engagement, and compose updates for subscribed readers.</p></div><button type="button" onClick={() => edit(null)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> New message</button></div>
-    {overview.isLoading ? <p className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Loading newsletter overview...</p> : overviewData && <><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Total subscribers", overviewData.summary.totalSubscribers], ["Active", overviewData.summary.activeSubscribers], ["Messages sent", overviewData.summary.totalMessagesSent], ["Open rate", `${overviewData.summary.rates.opened}%`]].map(([label, value]) => <div key={String(label)} className="rounded-2xl border border-border bg-card p-4 shadow-sm"><p className="text-xs font-bold text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-extrabold">{value}</p></div>)}</div><div className="grid gap-5 lg:grid-cols-[1fr_1.35fr]"><div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Audience</p><h3 className="mt-1 text-xl font-extrabold">Subscribers</h3></div><Users className="h-5 w-5 text-primary" /></div><div className="mb-5 grid grid-cols-2 gap-3 text-sm"><p>Active <strong className="float-right">{overviewData.byStatus.active}</strong></p><p>Unsubscribed <strong className="float-right">{overviewData.byStatus.unsubscribed}</strong></p><p>Signup form <strong className="float-right">{overviewData.bySource.signup_form}</strong></p><p>Purchase <strong className="float-right">{overviewData.bySource.purchase}</strong></p></div><div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead className="border-b border-border text-muted-foreground"><tr><th className="pb-2 pr-3 font-bold">Email</th><th className="pb-2 pr-3 font-bold">Source</th><th className="pb-2 pr-3 font-bold">Status</th><th className="pb-2 font-bold">Joined</th></tr></thead><tbody className="divide-y divide-border">{overviewData.subscribers.map((subscriber) => <tr key={subscriber.id}><td className="max-w-44 truncate py-3 pr-3 font-semibold">{subscriber.email}</td><td className="py-3 pr-3">{subscriber.source}</td><td className="py-3 pr-3">{subscriber.subscribed ? "Active" : "Unsubscribed"}</td><td className="whitespace-nowrap py-3">{formatDate(subscriber.createdAt)}</td></tr>)}</tbody></table>{overviewData.subscribers.length === 0 && <p className="py-5 text-center text-sm text-muted-foreground">No subscribers captured yet.</p>}</div></div><div className="rounded-2xl border border-border bg-card p-5 shadow-sm"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Engagement</p><h3 className="mt-1 text-xl font-extrabold">All sent messages</h3><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{([["Sent", overviewData.summary.engagement.sent], ["Delivered", overviewData.summary.engagement.delivered], ["Opened", overviewData.summary.engagement.opened], ["Clicked", overviewData.summary.engagement.clicked], ["Bounced", overviewData.summary.engagement.bounced], ["Complained", overviewData.summary.engagement.complained]] as const).map(([label, value]) => <div key={label} className="rounded-xl border border-border bg-background p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-extrabold">{value}</p></div>)}</div><p className="mt-4 text-xs text-muted-foreground">Delivery {overviewData.summary.rates.delivered}% · Open {overviewData.summary.rates.opened}% · Click {overviewData.summary.rates.clicked}% · Bounce {overviewData.summary.rates.bounced}%</p></div></div></>}
-    <div className="grid gap-5 lg:grid-cols-2"><div><p className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-primary">Messages</p><div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{messages.isLoading ? <p className="p-6 text-sm text-muted-foreground">Loading messages...</p> : messageList.length ? messageList.map(message => <button type="button" key={message.id} onClick={() => edit(message)} className="flex w-full flex-wrap items-center gap-3 p-4 text-left transition-colors hover:bg-secondary/50 sm:p-5"><Mail className="h-5 w-5 shrink-0 text-primary" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{message.subject}</span><span className="mt-1 block text-xs text-muted-foreground">{message.status === "scheduled" && message.scheduledAt ? `Scheduled ${formatDate(message.scheduledAt)}` : message.sentAt ? `Sent ${formatDate(message.sentAt)}` : "Draft"}</span></span><span className="rounded-full bg-secondary px-2.5 py-1 text-[0.65rem] font-bold uppercase">{message.status}</span>{message.status === "sent" && <span className="text-right text-xs text-muted-foreground">{message.stats.sent} sent · {message.stats.opened} opened · {message.stats.clicked} clicked</span>}</button>) : <p className="p-8 text-center text-sm text-muted-foreground">No newsletter messages yet.</p>}</div></div><div><div className="mb-3 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Templates</p><span className="text-xs text-muted-foreground">{templates.data?.length ?? 0} saved</span></div><div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{templates.isLoading ? <p className="p-6 text-sm text-muted-foreground">Loading templates...</p> : templates.data?.length ? templates.data.map(template => <div key={template.id} className="flex items-center gap-3 p-4"><span className="min-w-0 flex-1"><span className="block truncate text-sm font-extrabold">{template.name}</span><span className="mt-1 block truncate text-xs text-muted-foreground">{template.subject}</span></span><button type="button" onClick={() => useTemplate(template)} className="rounded-xl border border-primary px-3 py-2 text-xs font-bold text-primary">Use</button></div>) : <p className="p-8 text-center text-sm text-muted-foreground">No saved templates yet.</p>}</div></div></div>
-    {(selected || subject || bodyMarkdown) && <div className="grid gap-5 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6 lg:grid-cols-2"><div><div className="mb-5 flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{selected ? "Edit message" : "Compose"}</p><h3 className="text-xl font-extrabold">Newsletter draft</h3></div></div><label className="block"><span className="mb-2 block text-xs font-bold">Subject</span><input value={subject} onChange={event => setSubject(event.target.value)} disabled={selected?.status === "sent"} className={fieldClass} /></label><label className="mt-4 block"><span className="mb-2 block text-xs font-bold">Body in Markdown</span><textarea value={bodyMarkdown} onChange={event => setBodyMarkdown(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} min-h-64 py-3`} placeholder="# A note from me\n\nWrite your newsletter here..." /></label><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => save()} disabled={Boolean(selected?.status === "sent") || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground"><Pencil className="h-3.5 w-3.5" /> Save draft</button><button type="button" onClick={saveCurrentTemplate} disabled={saveTemplate.isPending || !subject.trim() || !bodyMarkdown.trim()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold">Save as template</button>{selected?.status !== "sent" && <><input type="datetime-local" value={scheduledAt} onChange={event => setScheduledAt(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs" /><button type="button" onClick={() => save(true)} disabled={!scheduledAt || update.isPending || create.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-primary px-4 text-xs font-extrabold text-primary"><CalendarClock className="h-3.5 w-3.5" /> Schedule</button><button type="button" onClick={sendNow} disabled={send.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-foreground px-4 text-xs font-extrabold text-background"><Send className="h-3.5 w-3.5" /> {send.isPending ? "Sending..." : "Send now"}</button></>}</div></div><div className="rounded-xl border border-border bg-background p-5"><p className="mb-4 text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Live preview</p><article className="prose prose-sm max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: previewMarkdown(bodyMarkdown) }} /></div>{selected && <div className="lg:col-span-2"><p className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Engagement</p><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{([['Sent', selected.stats.sent], ['Delivered', selected.stats.delivered], ['Opened', selected.stats.opened], ['Clicked', selected.stats.clicked], ['Bounced', selected.stats.bounced], ['Complained', selected.stats.complained]] as const).map(([label, value]) => <div key={label} className="rounded-xl border border-border bg-background p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-extrabold">{value}</p></div>)}</div></div>}</div>}
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Newsletter</p>
+        <h2 className="mt-1 text-2xl font-extrabold">Audience and messages</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Review subscribers, engagement, and compose updates for subscribed readers.</p>
+      </div>
+      <button type="button" onClick={() => edit(null)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> New message</button>
+    </div>
+
+    {overview.isLoading ? (
+      <div className={panelCardClass}>
+        <p className="text-sm text-muted-foreground">Loading newsletter overview...</p>
+      </div>
+    ) : overviewData ? (
+      <>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[["Total subscribers", overviewData.summary.totalSubscribers], ["Active", overviewData.summary.activeSubscribers], ["Messages sent", overviewData.summary.totalMessagesSent], ["Open rate", `${overviewData.summary.rates.opened}%`]].map(([label, value]) => (
+            <div key={String(label)} className={softCardClass + " flex items-center justify-between gap-3"}>
+              <div>
+                <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+                <p className="mt-2 text-2xl font-extrabold tracking-tight">{value}</p>
+              </div>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.12em] text-primary">Live</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-[1fr_1.35fr]">
+          <div className={panelCardClass}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Audience</p>
+                <h3 className="mt-1 text-xl font-extrabold">Subscribers</h3>
+              </div>
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div className="mb-5 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl border border-border/80 bg-background/40 p-3">
+                <p className="text-muted-foreground">Active</p>
+                <p className="mt-1 text-lg font-extrabold">{overviewData.byStatus.active}</p>
+              </div>
+              <div className="rounded-xl border border-border/80 bg-background/40 p-3">
+                <p className="text-muted-foreground">Unsubscribed</p>
+                <p className="mt-1 text-lg font-extrabold">{overviewData.byStatus.unsubscribed}</p>
+              </div>
+              <div className="rounded-xl border border-border/80 bg-background/40 p-3">
+                <p className="text-muted-foreground">Signup form</p>
+                <p className="mt-1 text-lg font-extrabold">{overviewData.bySource.signup_form}</p>
+              </div>
+              <div className="rounded-xl border border-border/80 bg-background/40 p-3">
+                <p className="text-muted-foreground">Purchase</p>
+                <p className="mt-1 text-lg font-extrabold">{overviewData.bySource.purchase}</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-border text-muted-foreground">
+                  <tr>
+                    <th className="pb-2 pr-3 font-bold">Email</th>
+                    <th className="pb-2 pr-3 font-bold">Source</th>
+                    <th className="pb-2 pr-3 font-bold">Status</th>
+                    <th className="pb-2 font-bold">Joined</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {overviewData.subscribers.map((subscriber) => (
+                    <tr key={subscriber.id}>
+                      <td className="max-w-44 py-2 pr-3 font-medium text-foreground">{subscriber.email}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{subscriber.source === "both" ? "Both" : subscriber.source === "purchase" ? "Purchase" : "Signup form"}</td>
+                      <td className="py-2 pr-3"><span className={`rounded-full px-2 py-1 text-[0.62rem] font-bold uppercase ${subscriber.subscribed ? "bg-emerald-500/10 text-emerald-600" : "bg-secondary text-muted-foreground"}`}>{subscriber.subscribed ? "Active" : "Inactive"}</span></td>
+                      <td className="py-2 text-muted-foreground">{formatDate(subscriber.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <div className={panelCardClass}>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Messages</p>
+                  <h3 className="mt-1 text-xl font-extrabold">Campaign history</h3>
+                </div>
+                <span className="rounded-full border border-border bg-secondary/70 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">{messageList.length} total</span>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-border/80 bg-background/30 divide-y divide-border">
+                {messages.isLoading ? (
+                  <p className="p-6 text-sm text-muted-foreground">Loading messages...</p>
+                ) : messageList.length ? (
+                  messageList.map((message) => (
+                    <button type="button" key={message.id} onClick={() => edit(message)} className="flex w-full flex-wrap items-center gap-3 p-4 text-left transition-colors hover:bg-secondary/60 sm:p-5">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-extrabold">{message.subject}</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">{message.status === "scheduled" && message.scheduledAt ? `Scheduled ${formatDate(message.scheduledAt)}` : message.sentAt ? `Sent ${formatDate(message.sentAt)}` : "Draft"}</span>
+                      </span>
+                      <span className="rounded-full bg-secondary px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">{message.status}</span>
+                      {message.status === "sent" && <span className="text-right text-xs text-muted-foreground">{message.stats.sent} sent · {message.stats.opened} opened · {message.stats.clicked} clicked</span>}
+                    </button>
+                  ))
+                ) : (
+                  <p className="p-8 text-center text-sm text-muted-foreground">No newsletter messages yet.</p>
+                )}
+              </div>
+            </div>
+
+            <div className={panelCardClass}>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Templates</p>
+                  <h3 className="mt-1 text-xl font-extrabold">Saved snippets</h3>
+                </div>
+                <span className="text-xs text-muted-foreground">{templates.data?.length ?? 0} saved</span>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-border/80 bg-background/30 divide-y divide-border">
+                {templates.isLoading ? (
+                  <p className="p-6 text-sm text-muted-foreground">Loading templates...</p>
+                ) : templates.data?.length ? (
+                  templates.data.map((template) => (
+                    <button key={template.id} type="button" onClick={() => useTemplate(template)} className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/60">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-extrabold">{template.name}</p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">{template.subject}</p>
+                      </div>
+                      <span className="rounded-full border border-border bg-secondary/50 px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">Use</span>
+                    </button>
+                  ))
+                ) : (
+                  <p className="p-8 text-center text-sm text-muted-foreground">No saved templates yet.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {(selected || subject || bodyMarkdown) && (
+          <div className={panelCardClass}>
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{selected ? "Edit message" : "Compose"}</p>
+                <h3 className="text-xl font-extrabold">Newsletter draft</h3>
+              </div>
+            </div>
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div>
+                <label className="block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Subject</span>
+                  <input value={subject} onChange={(event) => setSubject(event.target.value)} disabled={selected?.status === "sent"} className={fieldClass} />
+                </label>
+                <label className="mt-4 block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Body in Markdown</span>
+                  <textarea value={bodyMarkdown} onChange={(event) => setBodyMarkdown(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} min-h-64 py-3`} placeholder="# A note from me\n\nWrite your newsletter here..." />
+                </label>
+              </div>
+
+              <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Preview</p>
+                <div className="mt-3 rounded-2xl border border-border bg-card/70 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{subject.trim() || "Subject preview"}</p>
+                  <div className="mt-3 text-sm leading-6 text-foreground" dangerouslySetInnerHTML={{ __html: previewMarkdown(bodyMarkdown || "Write a message for your readers.") }} />
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => save()} disabled={Boolean(selected?.status === "sent") || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground"><Pencil className="h-3.5 w-3.5" /> Save draft</button>
+                  <button type="button" onClick={saveCurrentTemplate} disabled={saveTemplate.isPending || !subject.trim() || !bodyMarkdown.trim()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground">Save as template</button>
+                  {selected?.status !== "sent" && (
+                    <>
+                      <input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="h-10 rounded-xl border border-border bg-background/70 px-3 text-xs text-foreground" />
+                      <button type="button" onClick={() => save(true)} disabled={!scheduledAt || !subject.trim() || !bodyMarkdown.trim() || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground">Schedule</button>
+                    </>
+                  )}
+                  {selected && selected.status !== "sent" && (
+                    <button type="button" onClick={sendNow} disabled={send.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-500 px-4 text-xs font-extrabold text-white"><Send className="h-3.5 w-3.5" /> {send.isPending ? "Sending..." : "Send now"}</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    ) : null}
   </section>
 }
 
@@ -419,13 +600,100 @@ function CategoryManager() {
   const update = useUpdateCategory()
   const remove = useDeleteCategory()
   const [name, setName] = useState("")
+  const [query, setQuery] = useState("")
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
   const categories: Category[] = Array.isArray(data) ? data : []
   const refresh = () => void queryClient.invalidateQueries({ queryKey: getListCategoriesQueryKey() })
+  const filteredCategories = [...categories]
+    .filter((category) => category.name.toLowerCase().includes(query.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
-  return <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-    <div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Taxonomy</p><h2 className="mt-1 text-xl font-extrabold">Manage categories</h2></div>
-    <div className="flex gap-2"><input value={name} onChange={event => setName(event.target.value)} placeholder="New category name" className={fieldClass} /><button type="button" disabled={!name.trim() || create.isPending} onClick={() => create.mutate({ data: { name: name.trim() } }, { onSuccess: () => { setName(""); refresh() } })} className="shrink-0 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground">Add</button></div>
-    <div className="mt-4 divide-y divide-border">{categories.map(category => <div key={category.id} className="flex flex-wrap items-center gap-2 py-3"><input defaultValue={category.name} aria-label={`Name for ${category.name}`} onBlur={event => { const next = event.target.value.trim(); if (next && next !== category.name) update.mutate({ categoryId: category.id, data: { name: next, featured: category.featured } }, { onSuccess: refresh }) }} className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" /><span className="text-xs text-muted-foreground">{category.count} books</span><button type="button" onClick={() => update.mutate({ categoryId: category.id, data: { name: category.name, featured: !category.featured } }, { onSuccess: refresh })} className={`rounded-full px-3 py-1.5 text-xs font-bold ${category.featured ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>{category.featured ? "Featured" : "Feature"}</button><button type="button" disabled={Boolean(category.count) || remove.isPending} onClick={() => remove.mutate({ categoryId: category.id }, { onSuccess: refresh })} className="rounded-full border border-border px-3 py-1.5 text-xs font-bold text-destructive disabled:cursor-not-allowed disabled:opacity-40">Delete</button></div>)}</div>
+  return <section className={panelCardClass}>
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Taxonomy</p>
+        <h2 className="mt-1 text-2xl font-extrabold">Manage categories</h2>
+      </div>
+    </div>
+
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+      <input value={name} onChange={(event) => setName(event.target.value)} placeholder="New category name" className={fieldClass} />
+      <button
+        type="button"
+        disabled={!name.trim() || create.isPending}
+        onClick={() => create.mutate({ data: { name: name.trim() } }, { onSuccess: () => { setName(""); refresh() } })}
+        className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground transition hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        Add
+      </button>
+    </div>
+
+    <label className="mb-4 block">
+      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Filter categories</span>
+      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by category name" className={fieldClass} />
+    </label>
+
+    {filteredCategories.length ? (
+      <div className="space-y-3">
+        {filteredCategories.map((category) => (
+          <div key={category.id} className="rounded-2xl border border-white/10 bg-background/40 p-3 shadow-[0_12px_32px_-24px_rgba(15,19,35,0.8)] backdrop-blur-xl">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                defaultValue={category.name}
+                aria-label={`Name for ${category.name}`}
+                onBlur={(event) => {
+                  const next = event.target.value.trim();
+                  if (next && next !== category.name) {
+                    update.mutate({ categoryId: category.id, data: { name: next, featured: category.featured } }, { onSuccess: refresh })
+                  }
+                }}
+                className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm font-semibold outline-none transition focus:border-primary/40 focus:bg-background/50"
+              />
+              <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                <span className="rounded-full border border-border/80 bg-secondary/60 px-2.5 py-1 text-[0.64rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  {category.count} books
+                </span>
+                <button
+                  type="button"
+                  onClick={() => update.mutate({ categoryId: category.id, data: { name: category.name, featured: !category.featured } }, { onSuccess: refresh })}
+                  className={`rounded-full px-3 py-1.5 text-[0.68rem] font-bold uppercase tracking-[0.08em] transition ${category.featured ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}
+                >
+                  {category.featured ? "Featured" : "Feature"}
+                </button>
+                <button
+                  type="button"
+                  disabled={remove.isPending}
+                  onClick={() => setCategoryToDelete(category)}
+                  className="rounded-full border border-border/80 px-3 py-1.5 text-[0.68rem] font-bold uppercase tracking-[0.08em] text-destructive transition hover:border-destructive/60 hover:bg-destructive/5 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="rounded-2xl border border-dashed border-border/80 bg-background/30 p-8 text-center">
+        <p className="text-base font-extrabold">No matching categories</p>
+        <p className="mt-1 text-sm text-muted-foreground">Try a different search term or create a new category above.</p>
+      </div>
+    )}
+
+    {categoryToDelete && (
+      <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+        <p className="font-extrabold text-foreground">Delete “{categoryToDelete.name}”?</p>
+        <p className="mt-1 text-muted-foreground">
+          {categoryToDelete.count > 0
+            ? `This category is used by ${categoryToDelete.count} book${categoryToDelete.count === 1 ? "" : "s"}. Removing it will detach it from those listings.`
+            : "This will remove the category from the taxonomy."}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" onClick={() => remove.mutate({ categoryId: categoryToDelete.id }, { onSuccess: () => { setCategoryToDelete(null); refresh() } })} className="rounded-xl bg-destructive px-3 py-2 text-xs font-extrabold text-destructive-foreground">Confirm delete</button>
+          <button type="button" onClick={() => setCategoryToDelete(null)} className="rounded-xl border border-border/80 px-3 py-2 text-xs font-extrabold">Keep it</button>
+        </div>
+      </div>
+    )}
   </section>
 }
 
@@ -445,6 +713,7 @@ export default function Admin() {
   const [adminLoading, setAdminLoading] = useState(true)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminSaving, setAdminSaving] = useState(false)
+  const [adminToDelete, setAdminToDelete] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"catalogue" | "orders" | "newsletter">("catalogue")
   const [languageRequests, setLanguageRequests] = useState<LanguageRequest[]>([])
 
@@ -508,7 +777,12 @@ export default function Admin() {
     return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">You must be an admin to access this page.</main>
   }
   const revenueByCurrency = dashboard.data?.revenueByCurrency ?? { USD: 0, NGN: 0 }
-  const stats = [{ label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" }, { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" }, { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" }, { label: "Revenue (USD)", value: formatPrice(revenueByCurrency.USD, "USD"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }, { label: "Revenue (NGN)", value: formatPrice(revenueByCurrency.NGN, "NGN"), icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" }]
+  const stats = [
+    { label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" },
+    { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" },
+    { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" },
+    { label: "Revenue", value: formatPrice(revenueByCurrency.USD, "USD"), secondary: `NGN ${formatPrice(revenueByCurrency.NGN, "NGN")}`, icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" },
+  ]
   const bookList: Book[] = Array.isArray(books.data) ? books.data : []
   const orderList: Order[] = Array.isArray(orders.data) ? orders.data : []
   const orderActionError: string | null = null
@@ -530,22 +804,39 @@ export default function Admin() {
 
   return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><style>{`[data-testid="button-confirm-payment-target"] { display: none !important; }`}</style><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Panel</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Manage your website effectively</h1><p className="mt-1 text-sm text-muted-foreground"></p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
-    <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary"></p><h2 className="mt-1 text-2xl font-extrabold">Overview</h2></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(s => <div key={s.label} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm"><div><p className="text-xs font-bold text-muted-foreground">{s.label}</p><p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-1 text-2xl font-extrabold">{s.value}</p></div><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span></div>)}</div></section>
+    <section>
+      <div className="mb-3">
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Overview</p>
+        <h2 className="mt-1 text-2xl font-extrabold">Performance</h2>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((s) => (
+          <div key={s.label} className="flex items-center justify-between rounded-2xl border border-white/10 bg-card/75 p-4 shadow-[0_18px_45px_-32px_rgba(15,19,35,0.8)] backdrop-blur-xl">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{s.label}</p>
+              <p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-2 text-2xl font-extrabold tracking-tight">{s.value}</p>
+              {s.secondary && <p className="mt-1 text-xs text-muted-foreground">{s.secondary}</p>}
+            </div>
+            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span>
+          </div>
+        ))}
+      </div>
+    </section>
     <nav aria-label="Admin sections" className="flex gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm">
       <button type="button" onClick={() => setActiveTab("catalogue")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "catalogue" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Catalogue</button>
       <button type="button" onClick={() => setActiveTab("orders")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "orders" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Orders{orderList.length > 0 && <span className="ml-2 rounded-full bg-background/30 px-1.5 py-0.5">{orderList.length}</span>}</button>
       <button type="button" onClick={() => setActiveTab("newsletter")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "newsletter" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Newsletter</button>
     </nav>
-    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <section className="rounded-2xl border border-white/10 bg-card/75 p-6 shadow-[0_18px_45px_-32px_rgba(15,19,35,0.8)] backdrop-blur-xl">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Admin team</p>
           <h2 className="mt-1 text-2xl font-extrabold">Manage admin access</h2>
         </div>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <label className="sm:col-span-2">
-          <span className="mb-2 block text-xs font-bold">Admin email</span>
+      <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+        <label>
+          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Admin email</span>
           <input
             value={adminEmail}
             onChange={(e) => setAdminEmail(e.target.value)}
@@ -575,49 +866,65 @@ export default function Admin() {
             }
           }}
           disabled={adminSaving}
-          className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60"
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground transition hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {adminSaving ? "Savingâ€¦" : "Add admin"}
+          {adminSaving ? "Saving…" : "Add admin"}
         </button>
       </div>
       {adminError && <p className="mt-4 text-sm text-destructive">{adminError}</p>}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-background/60">
-        <div className="grid gap-0 text-left text-xs uppercase tracking-[0.16em] text-muted-foreground sm:grid-cols-[1fr_auto]">
-          <div className="px-4 py-3">Admin email</div>
-          <div className="px-4 py-3">Actions</div>
-        </div>
-        <div className="divide-y divide-border">
-          {adminLoading ? (
-            <div className="p-5 text-sm text-muted-foreground">Loading admin listâ€¦</div>
-          ) : adminEmails.length ? (
-            adminEmails.map((email) => (
-              <div key={email} className="grid gap-0 text-sm sm:grid-cols-[1fr_auto]">
-                <div className="px-4 py-4 text-sm text-foreground">{email}</div>
-                <div className="px-4 py-4">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!firebaseDb) return
-                      setAdminError(null)
-                      try {
-                        await deleteDoc(doc(firebaseDb, "admins", email))
-                      } catch (error) {
-                        console.error("Could not remove admin email", error)
-                        setAdminError("Could not remove admin email.")
-                      }
-                    }}
-                    className="rounded-full border border-border px-3 py-2 text-[0.72rem] font-bold text-destructive hover:bg-destructive/10"
-                  >
-                    Remove
-                  </button>
+      <div className="mt-6 space-y-3">
+        {adminLoading ? (
+          <div className="rounded-2xl border border-white/10 bg-background/35 p-5 text-sm text-muted-foreground">Loading admin list…</div>
+        ) : adminEmails.length ? (
+          adminEmails.map((email) => (
+            <div key={email} className="rounded-2xl border border-white/10 bg-background/35 p-3 shadow-[0_12px_32px_-24px_rgba(15,19,35,0.8)] backdrop-blur-xl">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{email}</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setAdminToDelete(email)}
+                  className="inline-flex items-center justify-center rounded-full border border-border/80 px-3 py-2 text-[0.72rem] font-bold text-destructive transition hover:border-destructive/60 hover:bg-destructive/5"
+                >
+                  Remove
+                </button>
               </div>
-            ))
-          ) : (
-            <div className="p-5 text-sm text-muted-foreground">No admin emails configured yet.</div>
-          )}
-        </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-sm text-muted-foreground">
+            No admin emails configured yet.
+          </div>
+        )}
       </div>
+      {adminToDelete && (
+        <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <p className="font-extrabold text-foreground">Remove access for {adminToDelete}?</p>
+          <p className="mt-1 text-muted-foreground">This action immediately revokes admin permissions for that account.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                if (!firebaseDb) return
+                setAdminError(null)
+                try {
+                  await deleteDoc(doc(firebaseDb, "admins", adminToDelete))
+                  setAdminToDelete(null)
+                } catch (error) {
+                  console.error("Could not remove admin email", error)
+                  setAdminError("Could not remove admin email.")
+                  setAdminToDelete(null)
+                }
+              }}
+              className="rounded-xl bg-destructive px-3 py-2 text-xs font-extrabold text-destructive-foreground"
+            >
+              Confirm removal
+            </button>
+            <button type="button" onClick={() => setAdminToDelete(null)} className="rounded-xl border border-border/80 px-3 py-2 text-xs font-extrabold">Cancel</button>
+          </div>
+        </div>
+      )}
     </section>
     {activeTab === "catalogue" && <div className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button type="button" data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} aria-expanded={form === "new"} aria-controls="book-form" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add book"}</button></div>
@@ -652,8 +959,48 @@ export default function Admin() {
     </div>
     </div>}
     {activeTab === "orders" && (
-    <section><div className="mb-3"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p><h2 className="mt-1 text-2xl font-extrabold">Orders</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Flutterwave webhooks verify payments automatically and trigger ebook delivery by email.</p></div>{orderActionError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">{orderActionError}</p>}<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y divide-border">{orderList.map(order => { const needsDelivery = order.status === "pending" || (order.status === "paid" && !order.deliveryEmailSent); const statusLabel = order.status === "fulfilled" ? "Fulfilled" : order.status === "paid" ? "Paid — delivery pending" : order.status; return <div key={order.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-secondary/50 sm:p-5"><Link href={`/order/${order.id}`} className="min-w-0 flex-1"><p className="font-mono text-xs font-bold">{order.reference}</p><p className="mt-1 truncate text-xs text-muted-foreground">{order.email} Â· {formatDate(order.createdAt)}</p></Link><div className="flex flex-wrap items-center justify-end gap-2"><span className={`rounded-full px-2.5 py-1 text-[0.62rem] font-bold ${order.status === "fulfilled" ? "bg-emerald-500/10 text-emerald-600" : order.status === "paid" ? "bg-sky-500/10 text-sky-700" : "bg-secondary text-muted-foreground"}`}>{statusLabel}</span><span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span>{needsDelivery && <button type="button" data-testid="button-confirm-payment-target" onClick={() => handleConfirmOrder(order)} disabled={confirmingOrderId === order.id} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-[0.68rem] font-extrabold text-primary-foreground disabled:cursor-wait disabled:opacity-60">{confirmingOrderId === order.id ? "Sending…" : order.status === "paid" ? "Retry delivery" : "Confirm & Send"}</button>}</div></div> })}{!orders.isLoading && !orderList.length && <div className="p-10 text-center"><Clock3 className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No orders yet.</p></div>}</div></section>
+    <section className="space-y-4">
+      <div className="mb-3">
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p>
+        <h2 className="mt-1 text-2xl font-extrabold">Orders</h2>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Flutterwave webhooks verify payments automatically and trigger ebook delivery by email.</p>
+      </div>
+      {orderActionError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">{orderActionError}</p>}
+      <div className="overflow-hidden rounded-2xl border border-border bg-card/75 shadow-[0_18px_45px_-32px_rgba(15,19,35,0.8)] backdrop-blur-xl divide-y divide-border">
+        {orderList.map((order) => {
+          const needsDelivery = order.status === "pending" || (order.status === "paid" && !order.deliveryEmailSent)
+          const statusLabel = order.status === "fulfilled" ? "Fulfilled" : order.status === "paid" ? "Paid — delivery pending" : order.status
+          const statusClasses = order.status === "fulfilled"
+            ? "bg-emerald-500/10 text-emerald-600"
+            : order.status === "paid"
+              ? "bg-sky-500/10 text-sky-600"
+              : "bg-secondary text-muted-foreground"
+          return (
+            <div key={order.id} className={`flex flex-wrap items-center gap-3 p-4 transition-colors hover:bg-secondary/55 sm:p-5 ${order.status === "fulfilled" ? "bg-emerald-500/[0.02]" : order.status === "paid" ? "bg-sky-500/[0.02]" : ""}`}>
+              <Link href={`/order/${order.id}`} className="min-w-0 flex-1">
+                <p className="font-mono text-xs font-bold text-foreground">{order.reference}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{order.email} · {formatDate(order.createdAt)}</p>
+              </Link>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-[0.62rem] font-bold ${statusClasses}`}>{statusLabel}</span>
+                <span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span>
+                {needsDelivery && (
+                  <button type="button" data-testid="button-confirm-payment-target" onClick={() => handleConfirmOrder(order)} disabled={confirmingOrderId === order.id} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-[0.68rem] font-extrabold text-primary-foreground disabled:cursor-wait disabled:opacity-60">{confirmingOrderId === order.id ? "Checking..." : "Confirm delivery"}</button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+        {!orders.isLoading && !orderList.length && (
+          <div className="p-10 text-center text-sm text-muted-foreground">
+            <Clock3 className="mx-auto h-7 w-7 text-muted-foreground" />
+            <p className="mt-3 font-bold text-foreground">No orders yet.</p>
+            <p className="mt-1">Orders will appear here as soon as readers complete checkout.</p>
+          </div>
+        )}
+      </div>
+    </section>
     )}
-    {activeTab === "newsletter" && <NewsletterPanel />}
+        {activeTab === "newsletter" && <NewsletterPanel />}
   </div></main>
 }
