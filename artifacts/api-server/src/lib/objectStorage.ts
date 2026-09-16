@@ -84,8 +84,11 @@ export class ObjectStorageService {
     return Buffer.from(await (result.Body as any).transformToByteArray());
   }
 
-  async getObjectEntityUploadURL(contentType?: string): Promise<string> {
-    const key = `${this.getUploadPrefix()}/${randomUUID()}`;
+  async getObjectEntityUploadURL(contentType?: string, subdirectory?: string): Promise<string> {
+    const prefix = subdirectory?.trim()
+      ? `${this.getUploadPrefix()}/${subdirectory.trim().replace(/^\/+|\/+$/g, "")}`
+      : this.getUploadPrefix();
+    const key = `${prefix}/${randomUUID()}`;
     return getSignedUrl(objectStorageClient, new PutObjectCommand({
       Bucket: this.getBucketName(),
       Key: key,
