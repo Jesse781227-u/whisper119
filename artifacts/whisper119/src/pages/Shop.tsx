@@ -5,6 +5,8 @@ import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-rea
 import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSiteLanguage } from "@/hooks/use-site-language"
+import { Reveal, Stagger, fadeUpVariants } from "@/lib/motion"
+import { motion, useReducedMotion } from "framer-motion"
 
 type FormatFilter = "" | "PDF" | "EPUB"
 
@@ -27,6 +29,7 @@ export default function Shop() {
   const [maxPrice, setMaxPrice] = useState(initial.maxPrice)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const language = useSiteLanguage()
+  const prefersReducedMotion = useReducedMotion()
   const { data: booksData, isLoading, error, refetch, isRefetching } = useListBooks(
     {
       language,
@@ -85,11 +88,11 @@ export default function Shop() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-7 sm:px-6 sm:pt-10">
-      <div className="mb-7">
+      <Reveal className="mb-7">
         <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">My books</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">Have a look around.</h1>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">These are the books I’ve written, chosen, and made available as  PDF and EPUB files.</p>
-      </div>
+      </Reveal>
 
       <div className="relative mb-5 md:hidden">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -135,14 +138,14 @@ export default function Shop() {
             <div className="mt-6">
               <p className="mb-3 text-xs font-bold text-foreground">Category</p>
               <div className="grid gap-1">
-                <button type="button" onClick={() => selectCategory("")} className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${!category ? "bg-primary/10 font-bold text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
+                <motion.button type="button" onClick={() => selectCategory("")} animate={{ backgroundColor: !category ? "hsl(var(--primary) / 0.1)" : "transparent", color: !category ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }} transition={{ duration: prefersReducedMotion ? 0 : 0.2 }} className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-secondary hover:text-foreground">
                   All books
                   {categories.reduce((total, item) => total + item.count, 0) ? <span className="text-[0.65rem]">{categories.reduce((total, item) => total + item.count, 0)}</span> : null}
-                </button>
+                </motion.button>
                 {categories.map((item) => (
-                  <button key={item.name} type="button" onClick={() => selectCategory(item.name)} className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${category === item.name ? "bg-primary/10 font-bold text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
+                  <motion.button key={item.name} type="button" onClick={() => selectCategory(item.name)} animate={{ backgroundColor: category === item.name ? "hsl(var(--primary) / 0.1)" : "transparent", color: category === item.name ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }} transition={{ duration: prefersReducedMotion ? 0 : 0.2 }} className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-secondary hover:text-foreground">
                     {item.name}<span className="text-[0.65rem]">{item.count}</span>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -151,9 +154,9 @@ export default function Shop() {
               <p className="mb-3 text-xs font-bold text-foreground">Format</p>
               <div className="flex flex-wrap gap-2">
                 {(["", "PDF", "EPUB"] as FormatFilter[]).map((value) => (
-                  <button key={value || "all"} type="button" onClick={() => { setFormat(value); updateUrl({ format: value }) }} className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${format === value ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary"}`}>
+                  <motion.button key={value || "all"} type="button" onClick={() => { setFormat(value); updateUrl({ format: value }) }} animate={{ backgroundColor: format === value ? "hsl(var(--primary))" : "hsl(var(--secondary))", color: format === value ? "hsl(var(--primary-foreground))" : "hsl(var(--secondary-foreground))" }} transition={{ duration: prefersReducedMotion ? 0 : 0.2 }} whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }} className="rounded-full px-3 py-1.5 text-xs font-bold hover:bg-primary/10 hover:text-primary">
                     {value || "All"}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -197,7 +200,7 @@ export default function Shop() {
               </button>
             </div>
           ) : books.length ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">{books.map((book) => <BookCard key={book.id} book={book} />)}</div>
+            <Stagger className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">{books.map((book) => <Reveal key={book.id} variants={fadeUpVariants}><BookCard book={book} /></Reveal>)}</Stagger>
           ) : (
             <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-20 text-center">
               <p className="text-2xl font-extrabold">Nothing on this shelf yet.</p>

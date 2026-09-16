@@ -47,8 +47,8 @@ export function NewsletterModal() {
         <motion.div
           initial={prefersReducedMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.35 }}
+          exit={prefersReducedMotion ? undefined : { opacity: 0 }}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.35 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(20,18,16,0.48)] p-6 backdrop-blur-[4px] max-[600px]:items-end max-[600px]:p-0"
           role="dialog"
           aria-modal="true"
@@ -58,8 +58,8 @@ export function NewsletterModal() {
           <motion.div
             initial={prefersReducedMotion ? false : { opacity: 0, y: 20, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.4, ease: [0.2, 0.8, 0.2, 1] }}
             className="relative w-full max-w-[560px] overflow-hidden rounded-none bg-[#fffdf8] shadow-[0_30px_80px_rgba(0,0,0,0.2)] max-[600px]:max-h-[92vh] max-[600px]:overflow-y-auto max-[600px]:rounded-t-[18px]"
             onClick={(event) => event.stopPropagation()}
           >
