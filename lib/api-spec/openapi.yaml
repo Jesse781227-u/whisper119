@@ -867,14 +867,18 @@ components:
       type: object
       properties:
         subject: { type: string, minLength: 1, maxLength: 200 }
-        bodyMarkdown: { type: string, minLength: 1 }
+        bodyMarkdown: { type: string, minLength: 1, description: Legacy plain-text/template field }
+        bodyHtml: { type: string }
+        bodyText: { type: string }
         scheduledAt: { type: [string, "null"] }
       required: [subject, bodyMarkdown]
     NewsletterMessageUpdateInput:
       type: object
       properties:
         subject: { type: string, minLength: 1, maxLength: 200 }
-        bodyMarkdown: { type: string, minLength: 1 }
+        bodyMarkdown: { type: string, minLength: 1, description: Legacy plain-text/template field }
+        bodyHtml: { type: string }
+        bodyText: { type: string }
         scheduledAt: { type: [string, "null"] }
       required: [subject, bodyMarkdown]
     NewsletterMessageStats:
@@ -894,13 +898,14 @@ components:
         subject: { type: string }
         bodyHtml: { type: string }
         bodyMarkdown: { type: string }
+        bodyText: { type: string }
         status: { type: string, enum: [draft, scheduled, sent] }
         scheduledAt: { type: [string, "null"] }
         sentAt: { type: [string, "null"] }
         createdAt: { type: string }
         updatedAt: { type: string }
         stats: { $ref: "#/components/schemas/NewsletterMessageStats" }
-      required: [id, subject, bodyHtml, bodyMarkdown, status, scheduledAt, sentAt, createdAt, updatedAt, stats]
+      required: [id, subject, bodyHtml, bodyMarkdown, bodyText, status, scheduledAt, sentAt, createdAt, updatedAt, stats]
     PaymentConfirmation:
       type: object
       properties:

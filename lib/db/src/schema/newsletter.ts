@@ -17,6 +17,7 @@ export const messages = pgTable("messages", {
   id: uuid("id").primaryKey().defaultRandom(),
   subject: text("subject").notNull(),
   bodyHtml: text("body_html").notNull(),
+  bodyText: text("body_text").notNull().default(""),
   status: text("status", { enum: ["draft", "scheduled", "sent"] }).notNull().default("draft"),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),

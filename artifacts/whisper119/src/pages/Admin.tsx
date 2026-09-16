@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react"
+import { EditorContent, useEditor } from "@tiptap/react"
+import StarterKit from "@tiptap/starter-kit"
+import TiptapLink from "@tiptap/extension-link"
+import Image from "@tiptap/extension-image"
+import Underline from "@tiptap/extension-underline"
 import { Link, useLocation } from "wouter"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Eye, WalletCards, Mail, CalendarClock, Send } from "lucide-react"
@@ -27,6 +32,49 @@ function previewMarkdown(value: string): string {
     .replace(/^### (.+)$/gm, "<h3>$1</h3>").replace(/^## (.+)$/gm, "<h2>$1</h2>").replace(/^# (.+)$/gm, "<h1>$1</h1>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>")
     .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>').replace(/\n/g, "<br />")
+}
+
+function RichNewsletterEditor({ html, disabled, onChange }: { html: string; disabled?: boolean; onChange: (html: string) => void }) {
+  const editor = useEditor({
+    extensions: [StarterKit, Underline, TiptapLink.configure({ openOnClick: false }), Image.configure({ inline: false, allowBase64: false })],
+    content: html,
+    editable: !disabled,
+    onUpdate: ({ editor: nextEditor }) => onChange(nextEditor.getHTML()),
+  })
+  useEffect(() => {
+    if (editor && html !== editor.getHTML() && !editor.isFocused) editor.commands.setContent(html || "<p></p>")
+  }, [editor, html])
+  async function insertImage() {
+    const input = document.createElement("input")
+    input.type = "file"; input.accept = "image/*"
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file || !editor) return
+      try {
+        const upload = await requestUploadUrlApi({ name: file.name, size: file.size, contentType: file.type, language: "newsletter" })
+        const response = await fetch(upload.uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file })
+        if (!response.ok) throw new Error("Image upload failed")
+        editor.chain().focus().setImage({ src: `/api/storage${upload.objectPath}`, alt: file.name }).run()
+      } catch (error) { window.alert(error instanceof Error ? error.message : "Image upload failed") }
+    }
+    input.click()
+  }
+  if (!editor) return <div className="min-h-64 rounded-xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">Loading editor…</div>
+  const button = (label: string, action: () => void, active = false) => <button type="button" disabled={disabled} onClick={action} className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold ${active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{label}</button>
+  return <div className="overflow-hidden rounded-xl border border-border bg-background/60">
+    <div className="flex flex-wrap gap-1 border-b border-border p-2">
+      {button("B", () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}{button("I", () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"))}{button("U", () => editor.chain().focus().toggleUnderline().run(), editor.isActive("underline"))}
+      {button("H1", () => editor.chain().focus().toggleHeading({ level: 1 }).run(), editor.isActive("heading", { level: 1 }))}{button("H2", () => editor.chain().focus().toggleHeading({ level: 2 }).run(), editor.isActive("heading", { level: 2 }))}
+      {button("• List", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}{button("1. List", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}{button("Quote", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}{button("Divider", () => editor.chain().focus().setHorizontalRule().run())}
+      {button("Link", () => { const href = window.prompt("Link URL"); if (href) editor.chain().focus().setLink({ href }).run() })}{button("Image", () => void insertImage())}
+    </div>
+    <EditorContent editor={editor} className="newsletter-editor min-h-64 p-4 text-sm leading-6" />
+  </div>
+}
+
+function htmlToPlainText(html: string): string {
+  const node = document.createElement("div"); node.innerHTML = html
+  return (node.textContent || "").replace(/\n{3,}/g, "\n\n").trim()
 }
 
 function NewsletterPanel() {
@@ -61,14 +109,16 @@ function NewsletterPanel() {
   const [selected, setSelected] = useState<NewsletterMessage | null>(null)
   const [composerOpen, setComposerOpen] = useState(false)
   const [subject, setSubject] = useState("")
-  const [bodyMarkdown, setBodyMarkdown] = useState("")
+  const [bodyHtml, setBodyHtml] = useState("")
+  const [bodyText, setBodyText] = useState("")
   const [scheduledAt, setScheduledAt] = useState("")
 
   function edit(message: NewsletterMessage | null) {
     setComposerOpen(true)
     setSelected(message)
     setSubject(message?.subject ?? "")
-    setBodyMarkdown(message?.bodyMarkdown ?? "")
+    setBodyHtml(message?.bodyHtml ?? "")
+    setBodyText((message as NewsletterMessage & { bodyText?: string }).bodyText ?? "")
     setScheduledAt(message?.scheduledAt ? message.scheduledAt.slice(0, 16) : "")
   }
 
@@ -76,25 +126,26 @@ function NewsletterPanel() {
     setComposerOpen(true)
     setSelected(null)
     setSubject(template.subject)
-    setBodyMarkdown(template.bodyMarkdown)
+    setBodyHtml(previewMarkdown(template.bodyMarkdown))
+    setBodyText("")
     setScheduledAt("")
   }
 
   function saveCurrentTemplate() {
     const name = window.prompt("Template name", subject.trim())?.trim()
     if (!name) return
-    if (!subject.trim() || !bodyMarkdown.trim()) {
+    if (!subject.trim() || !bodyHtml.replace(/<[^>]+>/g, "").trim()) {
       toast({ title: "Cannot save template", description: "Add a subject and body before saving a template.", variant: "destructive" })
       return
     }
-    saveTemplate.mutate({ name, subject: subject.trim(), bodyMarkdown: bodyMarkdown.trim() }, {
+    saveTemplate.mutate({ name, subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml) }, {
       onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["/api/admin/newsletter/templates"] }); toast({ title: "Template saved" }) },
       onError: (error) => toast({ title: "Template could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }),
     })
   }
 
   function save(schedule = false) {
-    if (!subject.trim() || !bodyMarkdown.trim()) {
+    if (!subject.trim() || !bodyHtml.replace(/<[^>]+>/g, "").trim()) {
       toast({ title: "Cannot save newsletter", description: "Add a subject and body before saving.", variant: "destructive" })
       return
     }
@@ -102,7 +153,7 @@ function NewsletterPanel() {
       toast({ title: "Choose a schedule time", description: "Select when this newsletter should be sent.", variant: "destructive" })
       return
     }
-    const data = { subject: subject.trim(), bodyMarkdown: bodyMarkdown.trim(), scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
+    const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyText.trim() || htmlToPlainText(bodyHtml), scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
     const onSuccess = () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: schedule ? "Newsletter scheduled" : "Draft saved" }) }
     const onError = (error: unknown) => toast({ title: schedule ? "Newsletter could not be scheduled" : "Draft could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" })
     if (selected) update.mutate({ messageId: selected.id, data }, { onSuccess, onError })
@@ -273,8 +324,9 @@ function NewsletterPanel() {
                   <input value={subject} onChange={(event) => setSubject(event.target.value)} disabled={selected?.status === "sent"} className={fieldClass} />
                 </label>
                 <label className="mt-4 block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Body in Markdown</span>
-                  <textarea value={bodyMarkdown} onChange={(event) => setBodyMarkdown(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} min-h-64 py-3`} placeholder="# A note from me\n\nWrite your newsletter here..." />
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Message content</span>
+                  <RichNewsletterEditor html={bodyHtml} onChange={setBodyHtml} disabled={selected?.status === "sent"} />
+                  <label className="mt-4 block"><span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Plain-text fallback (optional override)</span><textarea value={bodyText} onChange={(event) => setBodyText(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} min-h-28 py-3`} placeholder="Generated automatically from the rich content" /></label>
                 </label>
               </div>
 
@@ -282,15 +334,15 @@ function NewsletterPanel() {
                 <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Preview</p>
                 <div className="mt-3 rounded-2xl border border-border bg-card/70 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{subject.trim() || "Subject preview"}</p>
-                  <div className="mt-3 text-sm leading-6 text-foreground" dangerouslySetInnerHTML={{ __html: previewMarkdown(bodyMarkdown || "Write a message for your readers.") }} />
+                  <div className="mt-3 text-sm leading-6 text-foreground" dangerouslySetInnerHTML={{ __html: bodyHtml || "<p>Write a message for your readers.</p>" }} />
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   <button type="button" onClick={() => save()} disabled={Boolean(selected?.status === "sent") || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground"><Pencil className="h-3.5 w-3.5" /> Save draft</button>
-                  <button type="button" onClick={saveCurrentTemplate} disabled={saveTemplate.isPending || !subject.trim() || !bodyMarkdown.trim()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground">Save as template</button>
+                  <button type="button" onClick={saveCurrentTemplate} disabled={saveTemplate.isPending || !subject.trim() || !bodyHtml.trim()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground">Save as template</button>
                   {selected?.status !== "sent" && (
                     <>
                       <input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="h-10 rounded-xl border border-border bg-background/70 px-3 text-xs text-foreground" />
-                      <button type="button" onClick={() => save(true)} disabled={!scheduledAt || !subject.trim() || !bodyMarkdown.trim() || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground">Schedule</button>
+                      <button type="button" onClick={() => save(true)} disabled={!scheduledAt || !subject.trim() || !bodyHtml.trim() || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground">Schedule</button>
                     </>
                   )}
                   {selected && selected.status !== "sent" && (

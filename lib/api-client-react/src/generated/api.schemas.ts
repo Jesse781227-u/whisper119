@@ -277,6 +277,8 @@ export interface NewsletterMessageInput {
   subject: string;
   /** @minLength 1 */
   bodyMarkdown: string;
+  bodyHtml?: string;
+  bodyText?: string;
   /** @nullable */
   scheduledAt?: string | null;
 }
@@ -289,6 +291,8 @@ export interface NewsletterMessageUpdateInput {
   subject: string;
   /** @minLength 1 */
   bodyMarkdown: string;
+  bodyHtml?: string;
+  bodyText?: string;
   /** @nullable */
   scheduledAt?: string | null;
 }
@@ -316,6 +320,7 @@ export interface NewsletterMessage {
   subject: string;
   bodyHtml: string;
   bodyMarkdown: string;
+  bodyText: string;
   status: NewsletterMessageStatus;
   /** @nullable */
   scheduledAt: string | null;
@@ -531,4 +536,3 @@ language?: LanguageQueryParameter;
 export type ListAdminOrdersParams = {
 status?: StatusQueryParameter;
 };
-

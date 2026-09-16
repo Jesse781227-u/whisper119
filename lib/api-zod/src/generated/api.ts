@@ -362,6 +362,8 @@ export const createNewsletterMessageBodySubjectMax = 200;
 export const CreateNewsletterMessageBody = zod.object({
   "subject": zod.string().min(1).max(createNewsletterMessageBodySubjectMax),
   "bodyMarkdown": zod.string().min(1),
+  "bodyHtml": zod.string().optional(),
+  "bodyText": zod.string().optional(),
   "scheduledAt": zod.string().nullish()
 })
 
@@ -401,6 +403,8 @@ export const updateNewsletterMessageBodySubjectMax = 200;
 export const UpdateNewsletterMessageBody = zod.object({
   "subject": zod.string().min(1).max(updateNewsletterMessageBodySubjectMax),
   "bodyMarkdown": zod.string().min(1),
+  "bodyHtml": zod.string().optional(),
+  "bodyText": zod.string().optional(),
   "scheduledAt": zod.string().nullish()
 })
 
@@ -926,5 +930,4 @@ export const RequestUploadUrlResponse = zod.object({
   "uploadURL": zod.string(),
   "objectPath": zod.string()
 })
-
 

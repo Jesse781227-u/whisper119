@@ -14,6 +14,8 @@ export interface NewsletterMessageUpdateInput {
   subject: string;
   /** @minLength 1 */
   bodyMarkdown: string;
+  bodyHtml?: string;
+  bodyText?: string;
   /** @nullable */
   scheduledAt?: string | null;
 }
