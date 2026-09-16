@@ -1,17 +1,30 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   ConfirmPaymentBody, ConfirmPaymentResponse, CreateOrderBody, CreateOrderResponse, GetOrderParams, GetOrderResponse, ListOrderDownloadsParams, ListOrderDownloadsResponse,
   RetryOrderPaymentParams, RetryOrderPaymentResponse,
 } from "@workspace/api-zod";
 import { booksTable, db, orderItemsTable, ordersTable } from "@workspace/db";
 import { getOrderById, orderResponse } from "../lib/bookstore";
+import { requireReader } from "../lib/auth";
 import { confirmFlutterwaveTransaction, initializeFlutterwave, paymentProvider, validFlutterwaveSignature } from "../lib/payments";
 import { getExchangeRates } from "../lib/exchange-rates";
 import { upsertSubscriber } from "../lib/subscribers";
 
 const router: IRouter = Router();
+
+router.get("/orders/history", requireReader, async (req, res): Promise<void> => {
+  const reader = res.locals.reader as { email: string };
+  const orders = await db.select().from(ordersTable)
+    .where(sql`lower(trim(${ordersTable.email})) = ${reader.email.trim().toLowerCase()}`)
+    .orderBy(desc(ordersTable.createdAt));
+  const response = await Promise.all(orders.map(async (order) => {
+    const result = await getOrderById(order.id);
+    return result ? orderResponse(result.order, result.items) : null;
+  }));
+  res.json(response.filter((order): order is NonNullable<typeof order> => Boolean(order)));
+});
 
 async function paymentSession(orderId: string) {
   const result = await getOrderById(orderId);

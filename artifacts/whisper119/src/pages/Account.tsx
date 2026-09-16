@@ -1,10 +1,9 @@
-import { collection, onSnapshot, query, where } from "firebase/firestore"
+import { firebaseAuth } from "@/lib/firebase"
 import { sendEmailVerification } from "firebase/auth"
 import { AlertCircle, ArrowLeft, BookOpen, Check, CheckCircle2, ChevronRight, Eye, KeyRound, LogOut, Mail, RefreshCw, ShieldCheck, UserRound } from "lucide-react"
 import { useEffect, useState, type FormEvent } from "react"
 import { Link } from "wouter"
 import { useAuth } from "@/components/auth-provider"
-import { firebaseDb } from "@/lib/firebase"
 
 type ReaderOrder = {
   id: string
@@ -46,28 +45,23 @@ function ReaderOrders({ userId }: { userId: string }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!firebaseDb) {
-      setLoading(false)
-      setError("Order history is not connected.")
-      return
+    let cancelled = false
+    async function loadOrders() {
+      try {
+        const token = await firebaseAuth?.currentUser?.getIdToken()
+        if (!token) throw new Error("Please sign in again to view your order history.")
+        const response = await fetch("/api/orders/history", { headers: { Authorization: `Bearer ${token}` } })
+        if (!response.ok) throw new Error(response.status === 401 ? "Please sign in again to view your order history." : "Your order history could not be loaded right now.")
+        const nextOrders = await response.json() as ReaderOrder[]
+        if (!cancelled) { setOrders(nextOrders); setError(null) }
+      } catch (cause) {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "Your order history could not be loaded right now.")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
-
-    const ordersQuery = query(collection(firebaseDb, "orders"), where("userId", "==", userId))
-    return onSnapshot(ordersQuery, (snapshot) => {
-      const nextOrders = snapshot.docs
-        .map((item) => ({ id: item.id, ...item.data() }) as ReaderOrder)
-        .sort((left, right) => {
-          const leftDate = dateValue(left.createdAt)?.valueOf() ?? 0
-          const rightDate = dateValue(right.createdAt)?.valueOf() ?? 0
-          return rightDate - leftDate
-        })
-      setOrders(nextOrders)
-      setLoading(false)
-      setError(null)
-    }, () => {
-      setLoading(false)
-      setError("Your order history could not be loaded right now.")
-    })
+    void loadOrders()
+    return () => { cancelled = true }
   }, [userId])
 
   if (loading) return (
