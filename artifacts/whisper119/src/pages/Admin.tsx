@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { EditorContent, useEditor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import TiptapLink from "@tiptap/extension-link"
@@ -6,7 +6,7 @@ import Image from "@tiptap/extension-image"
 import Underline from "@tiptap/extension-underline"
 import { Link, useLocation } from "wouter"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Eye, WalletCards, Mail, CalendarClock, Send } from "lucide-react"
+import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Eye, WalletCards, Mail, CalendarClock, Send, X } from "lucide-react"
 import {
   getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey, getListCategoriesQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
@@ -26,6 +26,26 @@ import { languages } from "@/hooks/use-site-language"
 const fieldClass = "h-11 w-full rounded-xl border border-border/80 bg-background/60 px-3 text-sm text-foreground outline-none transition duration-200 placeholder:text-muted-foreground/80 focus:border-primary focus:ring-4 focus:ring-primary/10"
 const panelCardClass = "rounded-2xl border border-white/10 bg-card/75 p-4 shadow-[0_18px_45px_-32px_rgba(15,19,35,0.8)] backdrop-blur-xl sm:p-6"
 const softCardClass = "rounded-2xl border border-white/10 bg-card/70 p-4 shadow-[0_16px_38px_-28px_rgba(15,19,35,0.8)] backdrop-blur-xl"
+
+function AdminModal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose() }
+    document.body.style.overflow = "hidden"
+    window.addEventListener("keydown", onKeyDown)
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKeyDown) }
+  }, [onClose])
+
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-0 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-card shadow-2xl sm:h-auto sm:max-h-[calc(100vh-3rem)] sm:max-w-5xl sm:rounded-2xl">
+      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:px-6">
+        <h2 className="text-lg font-extrabold">{title}</h2>
+        <button type="button" onClick={onClose} aria-label="Close dialog" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+    </div>
+  </div>
+}
 
 function previewMarkdown(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -160,16 +180,27 @@ function NewsletterPanel() {
     else create.mutate({ data }, { onSuccess: (message) => { edit(message); onSuccess() }, onError })
   }
 
-  function sendNow() {
-    if (!selected || !window.confirm("Send this newsletter to all subscribed readers now?")) return
-    send.mutate({ messageId: selected.id }, {
-      onSuccess: () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: "Newsletter sent" }) },
-      onError: (error) => toast({ title: "Newsletter could not be sent", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }),
-    })
+  async function sendNow() {
+    const activeCount = overview.data?.summary.activeSubscribers ?? 0
+    if (!window.confirm(`Send to ${activeCount} subscriber${activeCount === 1 ? "" : "s"} now?`)) return
+    try {
+      const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyText.trim() || htmlToPlainText(bodyHtml), scheduledAt: null }
+      const message = selected
+        ? await update.mutateAsync({ messageId: selected.id, data })
+        : await create.mutateAsync({ data })
+      await send.mutateAsync({ messageId: message.id })
+      setComposerOpen(false)
+      void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() })
+      toast({ title: "Newsletter sent" })
+    } catch (error) {
+      toast({ title: "Newsletter could not be sent", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" })
+    }
   }
 
   const messageList = Array.isArray(messages.data) ? messages.data : []
   const overviewData = overview.data
+  const bodyHasContent = Boolean(bodyHtml.replace(/<[^>]+>/g, "").trim())
+  const canSave = Boolean(subject.trim() && bodyHasContent)
   return <section className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
@@ -309,12 +340,13 @@ function NewsletterPanel() {
         </div>
 
         {composerOpen && (
-          <div className={panelCardClass}>
+          <AdminModal title={selected ? "Edit message" : "New message"} onClose={() => setComposerOpen(false)}>
+          <div className="p-4 sm:p-6">
             <div className="mb-5 flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span>
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{selected ? "Edit message" : "Compose"}</p>
-                <h3 className="text-xl font-extrabold">Newsletter draft</h3>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Message composer</p>
+                <h3 className="text-xl font-extrabold">{selected ? "Edit message" : "New message"}</h3>
               </div>
             </div>
             <div className="grid gap-5 lg:grid-cols-2">
@@ -323,10 +355,14 @@ function NewsletterPanel() {
                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Subject</span>
                   <input value={subject} onChange={(event) => setSubject(event.target.value)} disabled={selected?.status === "sent"} className={fieldClass} />
                 </label>
-                <label className="mt-4 block">
+                  <label className="mt-4 block">
                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Message content</span>
                   <RichNewsletterEditor html={bodyHtml} onChange={setBodyHtml} disabled={selected?.status === "sent"} />
-                  <label className="mt-4 block"><span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Plain-text fallback (optional override)</span><textarea value={bodyText} onChange={(event) => setBodyText(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} min-h-28 py-3`} placeholder="Generated automatically from the rich content" /></label>
+                  <details className="mt-4 rounded-xl border border-border bg-background/35 p-3">
+                    <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">View plain-text version</summary>
+                    <textarea value={bodyText} onChange={(event) => setBodyText(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} mt-3 min-h-28 py-3`} placeholder={htmlToPlainText(bodyHtml) || "Generated automatically from the rich content"} />
+                    <p className="mt-2 text-xs text-muted-foreground">Leave this blank to generate text automatically from the rich message.</p>
+                  </details>
                 </label>
               </div>
 
@@ -336,22 +372,24 @@ function NewsletterPanel() {
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{subject.trim() || "Subject preview"}</p>
                   <div className="mt-3 text-sm leading-6 text-foreground" dangerouslySetInnerHTML={{ __html: bodyHtml || "<p>Write a message for your readers.</p>" }} />
                 </div>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <button type="button" onClick={() => save()} disabled={Boolean(selected?.status === "sent") || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground"><Pencil className="h-3.5 w-3.5" /> Save draft</button>
-                  <button type="button" onClick={saveCurrentTemplate} disabled={saveTemplate.isPending || !subject.trim() || !bodyHtml.trim()} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground">Save as template</button>
+                <p className="mt-4 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-semibold text-muted-foreground">Will be sent to {overviewData?.summary.activeSubscribers ?? 0} active subscribers.</p>
+                <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
+                  <button type="button" onClick={() => save()} disabled={!canSave || Boolean(selected?.status === "sent") || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><Pencil className="h-3.5 w-3.5" /> Save as draft</button>
+                  <button type="button" onClick={saveCurrentTemplate} disabled={!canSave || saveTemplate.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground disabled:cursor-not-allowed disabled:opacity-50">Save as template</button>
                   {selected?.status !== "sent" && (
                     <>
                       <input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="h-10 rounded-xl border border-border bg-background/70 px-3 text-xs text-foreground" />
-                      <button type="button" onClick={() => save(true)} disabled={!scheduledAt || !subject.trim() || !bodyHtml.trim() || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground">Schedule</button>
+                      <button type="button" onClick={() => save(true)} disabled={!canSave || !scheduledAt || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground disabled:cursor-not-allowed disabled:opacity-50">Schedule</button>
                     </>
                   )}
-                  {selected && selected.status !== "sent" && (
-                    <button type="button" onClick={sendNow} disabled={send.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-500 px-4 text-xs font-extrabold text-white"><Send className="h-3.5 w-3.5" /> {send.isPending ? "Sending..." : "Send now"}</button>
+                  {selected?.status !== "sent" && (
+                    <button type="button" onClick={() => void sendNow()} disabled={!canSave || send.isPending || create.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-500 px-4 text-xs font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"><Send className="h-3.5 w-3.5" /> {send.isPending ? "Sending..." : "Send now"}</button>
                   )}
                 </div>
               </div>
             </div>
           </div>
+          </AdminModal>
         )}
       </>
     ) : null}
@@ -788,7 +826,7 @@ export default function Admin() {
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminSaving, setAdminSaving] = useState(false)
   const [adminToDelete, setAdminToDelete] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"catalogue" | "orders" | "newsletter">("catalogue")
+  const [activeTab, setActiveTab] = useState<"catalogue" | "orders" | "newsletter">("orders")
   const [languageRequests, setLanguageRequests] = useState<LanguageRequest[]>([])
 
   useEffect(() => {
@@ -1004,7 +1042,7 @@ export default function Admin() {
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button type="button" data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} aria-expanded={form === "new"} aria-controls="book-form" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add book"}</button></div>
     <CategoryManager />
     <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Reader demand</p><h2 className="mt-1 text-xl font-extrabold">Language requests</h2></div>{languageRequests.length ? <div className="divide-y divide-border">{languageRequests.map((request) => <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"><div><p className="font-bold">{request.language} for {request.bookTitle}</p><p className="mt-1 text-xs text-muted-foreground">{request.name} · {request.country}</p></div><span className="text-xs text-muted-foreground">{formatDate(request.createdAt)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">No language requests yet.</p>}</section>
-    {form === "new" && <BookForm onDone={() => setForm(null)} />}{form && form !== "new" && <BookForm book={form} onDone={() => setForm(null)} />}
+    {form && <AdminModal title={form === "new" ? "Add book" : `Edit ${form.title}`} onClose={() => setForm(null)}><BookForm book={form === "new" ? undefined : form} onDone={() => setForm(null)} /></AdminModal>}
      <div>
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <div className="divide-y divide-border">
