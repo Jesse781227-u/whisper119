@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { and, countDistinct, desc, eq, sql } from "drizzle-orm";
-import { db, emailEvents, messages } from "@workspace/db";
+import { and, count, countDistinct, desc, eq, sql } from "drizzle-orm";
+import { db, emailEvents, messages, subscribers } from "@workspace/db";
 import { CreateNewsletterMessageBody, UpdateNewsletterMessageBody } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/auth";
 import { htmlToMarkdown, markdownToHtml } from "../lib/newsletter-content";
@@ -36,6 +36,34 @@ async function listMessages() {
 
 router.get("/admin/newsletter/messages", async (_req, res): Promise<void> => {
   res.json(await listMessages());
+});
+
+router.get("/admin/newsletter/overview", async (_req, res): Promise<void> => {
+  const [subscriberRows, sentMessageRows, eventRows] = await Promise.all([
+    db.select().from(subscribers).orderBy(desc(subscribers.createdAt)),
+    db.select({ count: count() }).from(messages).where(eq(messages.status, "sent")),
+    db.select({ eventType: emailEvents.eventType, subscribers: countDistinct(emailEvents.subscriberId) })
+      .from(emailEvents).groupBy(emailEvents.eventType),
+  ]);
+  const engagement = { sent: 0, delivered: 0, opened: 0, clicked: 0, bounced: 0, complained: 0 };
+  for (const row of eventRows) engagement[row.eventType] = Number(row.subscribers);
+  const totalSubscribers = subscriberRows.length;
+  const activeSubscribers = subscriberRows.filter((subscriber) => subscriber.subscribed).length;
+  const bySource = { signup_form: 0, purchase: 0, both: 0 };
+  for (const subscriber of subscriberRows) bySource[subscriber.source] += 1;
+  const byStatus = { active: activeSubscribers, unsubscribed: totalSubscribers - activeSubscribers };
+  const rate = (value: number) => engagement.sent ? Math.round((value / engagement.sent) * 1000) / 10 : 0;
+  res.json({
+    subscribers: subscriberRows.map((subscriber) => ({
+      id: subscriber.id, email: subscriber.email, name: subscriber.name, source: subscriber.source,
+      subscribed: subscriber.subscribed, createdAt: subscriber.createdAt.toISOString(),
+    })),
+    summary: {
+      totalSubscribers, activeSubscribers, totalMessagesSent: Number(sentMessageRows[0]?.count ?? 0),
+      engagement, rates: { delivered: rate(engagement.delivered), opened: rate(engagement.opened), clicked: rate(engagement.clicked), bounced: rate(engagement.bounced) },
+    },
+    bySource, byStatus,
+  });
 });
 
 router.post("/admin/newsletter/messages", async (req, res): Promise<void> => {
