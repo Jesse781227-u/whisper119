@@ -824,7 +824,7 @@ export default function Admin() {
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminSaving, setAdminSaving] = useState(false)
   const [adminToDelete, setAdminToDelete] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"catalogue" | "orders" | "newsletter">("catalogue")
+  const [activeTab, setActiveTab] = useState<"catalogue" | "orders" | "newsletter">("orders")
   const [languageRequests, setLanguageRequests] = useState<LanguageRequest[]>([])
 
   useEffect(() => {
