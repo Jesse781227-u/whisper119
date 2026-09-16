@@ -185,7 +185,9 @@ function NewsletterPanel() {
     if (!window.confirm(`Send to ${activeCount} subscriber${activeCount === 1 ? "" : "s"} now?`)) return
     try {
       const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyText.trim() || htmlToPlainText(bodyHtml), scheduledAt: null }
-      const message = selected ?? await create.mutateAsync({ data })
+      const message = selected
+        ? await update.mutateAsync({ messageId: selected.id, data })
+        : await create.mutateAsync({ data })
       await send.mutateAsync({ messageId: message.id })
       setComposerOpen(false)
       void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() })
