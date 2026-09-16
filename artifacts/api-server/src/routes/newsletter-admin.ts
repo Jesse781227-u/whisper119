@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { and, count, countDistinct, desc, eq, sql } from "drizzle-orm";
-import { db, emailEvents, messages, subscribers } from "@workspace/db";
+import { db, emailEvents, messages, newsletterTemplates, subscribers } from "@workspace/db";
 import { CreateNewsletterMessageBody, UpdateNewsletterMessageBody } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/auth";
 import { htmlToMarkdown, markdownToHtml } from "../lib/newsletter-content";
@@ -64,6 +64,20 @@ router.get("/admin/newsletter/overview", async (_req, res): Promise<void> => {
     },
     bySource, byStatus,
   });
+});
+
+router.get("/admin/newsletter/templates", async (_req, res): Promise<void> => {
+  const rows = await db.select().from(newsletterTemplates).orderBy(desc(newsletterTemplates.updatedAt));
+  res.json(rows.map((template) => ({ ...template, bodyMarkdown: htmlToMarkdown(template.bodyHtml), createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString() })));
+});
+
+router.post("/admin/newsletter/templates", async (req, res): Promise<void> => {
+  const subject = typeof req.body?.subject === "string" ? req.body.subject.trim() : "";
+  const bodyMarkdown = typeof req.body?.bodyMarkdown === "string" ? req.body.bodyMarkdown.trim() : "";
+  const name = typeof req.body?.name === "string" ? req.body.name.trim() : subject;
+  if (!name || !subject || !bodyMarkdown) { res.status(400).json({ error: "Template name, subject, and body are required." }); return; }
+  const [template] = await db.insert(newsletterTemplates).values({ id: randomUUID(), name, subject, bodyHtml: markdownToHtml(bodyMarkdown) }).returning();
+  res.status(201).json({ ...template, bodyMarkdown, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString() });
 });
 
 router.post("/admin/newsletter/messages", async (req, res): Promise<void> => {

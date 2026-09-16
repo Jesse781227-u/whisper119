@@ -24,6 +24,15 @@ export const messages = pgTable("messages", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const newsletterTemplates = pgTable("newsletter_templates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  bodyHtml: text("body_html").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const emailEvents = pgTable("email_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   messageId: uuid("message_id").references(() => messages.id),
@@ -42,4 +51,5 @@ export const insertSubscriberSchema = createInsertSchema(subscribers).omit({
 export type InsertSubscriber = z.infer<typeof insertSubscriberSchema>;
 export type Subscriber = typeof subscribers.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type NewsletterTemplate = typeof newsletterTemplates.$inferSelect;
 export type EmailEvent = typeof emailEvents.$inferSelect;
