@@ -85,6 +85,13 @@ router.post("/orders", async (req, res): Promise<void> => {
     id: randomUUID(), orderId, bookId: book.id, title: book.title, author: book.author,
     price: selectedPrices[index], format: book.format,
   })));
+  if (parsed.data.newsletterOptIn === true) {
+    try {
+      await upsertSubscriber({ email: parsed.data.email, source: "purchase", sendWelcome: false });
+    } catch (error) {
+      req.log.error({ err: error, orderId }, "Could not capture newsletter consent");
+    }
+  }
   try {
     res.status(201).json(CreateOrderResponse.parse(await paymentSession(orderId)));
   } catch (error) {
