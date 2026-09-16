@@ -8,8 +8,9 @@ export async function upsertSubscriber(input: {
   email: string;
   name?: string | null;
   source: SubscriberSource;
+  sendWelcome?: boolean;
 }): Promise<Subscriber> {
-  const email = input.email.trim().toLowerCase();
+  const email = input.email.normalize("NFKC").trim().toLowerCase();
   if (!email) throw new Error("SUBSCRIBER_EMAIL_REQUIRED");
 
   const [createdSubscriber] = await db.insert(subscribers)
@@ -23,6 +24,7 @@ export async function upsertSubscriber(input: {
     .returning();
 
   if (createdSubscriber) {
+    if (input.sendWelcome === false) return createdSubscriber;
     const unsubscribeUrl = `https://whisper119.com/unsubscribe/${createdSubscriber.unsubscribeToken}`;
     await sendEmail({
       to: createdSubscriber.email,
