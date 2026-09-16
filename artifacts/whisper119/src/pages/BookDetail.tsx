@@ -10,12 +10,16 @@ import { useCart } from "@/components/cart-provider"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDate } from "@/lib/utils"
 import { countries } from "@/data/countries"
+import { motion, useReducedMotion } from "framer-motion"
+import { Reveal, Stagger, fadeUpVariants } from "@/lib/motion"
+import { useToast } from "@/hooks/use-toast"
 
 function ShareButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
+  const prefersReducedMotion = useReducedMotion()
   return (
-    <button type="button" aria-label={label} onClick={onClick} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
+    <motion.button type="button" aria-label={label} onClick={onClick} whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
       {children}
-    </button>
+    </motion.button>
   )
 }
 
@@ -38,6 +42,8 @@ export default function BookDetail() {
     },
   })
   const { items, addItem } = useCart()
+  const { toast } = useToast()
+  const prefersReducedMotion = useReducedMotion()
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   const [requestName, setRequestName] = useState("")
@@ -142,7 +148,10 @@ export default function BookDetail() {
   const languageEditions = catalogue.filter((item) => item.titleGroupId === book.titleGroupId)
 
   function addAndNavigate(path: string) {
-    if (!inCart && book) addItem(book)
+    if (!inCart && book) {
+      addItem(book)
+      toast({ title: "Added to cart", description: book.title })
+    }
     setLocation(path)
   }
 
@@ -215,7 +224,7 @@ export default function BookDetail() {
           </div>
         </section>
 
-        <section className="mt-8">
+        <Reveal className="mt-8">
           <button type="button" onClick={() => setExpanded((value) => !value)} className="flex w-full items-center justify-between text-left">
             <div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">About this book</p><h2 className="mt-1 text-xl font-extrabold">Synopsis</h2></div>
             {expanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
@@ -231,9 +240,9 @@ export default function BookDetail() {
             </button>
             <Link href="/cart" className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-card px-4 text-xs font-extrabold uppercase tracking-wide text-foreground transition-colors hover:border-primary hover:text-primary">View cart</Link>
           </div>
-        </section>
+        </Reveal>
 
-        <section className="mt-8 border-y border-border py-6">
+        <Reveal className="mt-8 border-y border-border py-6">
           <p className="text-sm font-extrabold">Share this book</p>
           <div className="mt-3 flex items-center gap-2">
             <ShareLink label="Share on WhatsApp" href={whatsappUrl}><HugeiconsIcon icon={WhatsappIcon} size={18} /></ShareLink>
@@ -242,9 +251,9 @@ export default function BookDetail() {
             <ShareButton label="Copy link" onClick={() => void copyShareUrl()}>{copied ? <Check className="h-4 w-4 text-primary" /> : <HugeiconsIcon icon={CopyLinkIcon} size={18} />}</ShareButton>
             {copied && <span className="ml-2 text-xs font-bold text-primary">Link copied</span>}
           </div>
-        </section>
+        </Reveal>
 
-        <section className="mt-8 rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <Reveal className="mt-8 rounded-2xl border border-border bg-card p-5 shadow-sm">
           <p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">Available languages</p>
           <h2 className="mt-1 text-xl font-extrabold">Choose your reading language</h2>
           <div className="mt-4 flex flex-wrap gap-2">{languageEditions.map((edition) => <Link key={edition.id} href={`/book/${edition.id}`} className={`rounded-full px-3 py-2 text-xs font-extrabold ${edition.id === book.id ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-primary/10 hover:text-primary"}`}>{edition.language.toUpperCase()}</Link>)}</div>
@@ -252,20 +261,20 @@ export default function BookDetail() {
             <p className="text-sm font-extrabold">Can’t find your language?</p>
             {requestSent ? <p className="mt-2 text-sm text-primary">Thanks — we’ve recorded your request.</p> : <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={(event) => { event.preventDefault(); languageRequest.mutate({ data: { bookId: book.id, name: requestName.trim(), country: requestCountry.trim(), language: requestLanguage.trim() } }, { onSuccess: () => setRequestSent(true) }) }}><input required value={requestName} onChange={(event) => setRequestName(event.target.value)} placeholder="Your name" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><select required aria-label="Country" value={requestCountry} onChange={(event) => setRequestCountry(event.target.value)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm"><option value="">Country</option>{countries.map(({ code, name }) => <option key={code} value={code}>{name}</option>)}</select><input required value={requestLanguage} onChange={(event) => setRequestLanguage(event.target.value)} placeholder="Requested language" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><button disabled={languageRequest.isPending} className="h-11 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{languageRequest.isPending ? "Sending…" : "Request language"}</button></form>}
           </div>
-        </section>
+        </Reveal>
 
         {related.length > 0 && (
-          <section className="mt-8">
+          <Reveal className="mt-8">
             <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">Same world</p><h2 className="mt-1 text-xl font-extrabold">Related books</h2></div><Link href={`/shop?category=${encodeURIComponent(book.categories[0] ?? "")}`} className="text-xs font-bold text-primary">More →</Link></div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{related.map((item) => <BookCard key={item.id} book={item} />)}</div>
-          </section>
+            <Stagger className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{related.map((item) => <Reveal key={item.id} variants={fadeUpVariants}><BookCard book={item} /></Reveal>)}</Stagger>
+          </Reveal>
         )}
 
         {suggestions.length > 0 && (
-          <section className="mt-9">
+          <Reveal className="mt-9">
             <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">A few more from me</p><h2 className="mt-1 text-xl font-extrabold">You might also like</h2></div><Link href="/shop" className="text-xs font-bold text-primary">Browse all →</Link></div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{suggestions.map((item) => <BookCard key={item.id} book={item} />)}</div>
-          </section>
+            <Stagger className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{suggestions.map((item) => <Reveal key={item.id} variants={fadeUpVariants}><BookCard book={item} /></Reveal>)}</Stagger>
+          </Reveal>
         )}
 
         <section className="mt-8 rounded-2xl bg-secondary/70 p-5">
@@ -273,24 +282,25 @@ export default function BookDetail() {
         </section>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 shadow-[0_-8px_24px_hsl(224_30%_22%_/_0.12)] backdrop-blur-xl">
+      <motion.div initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: prefersReducedMotion ? 0 : 0.28, ease: "easeOut" }} className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 shadow-[0_-8px_24px_hsl(224_30%_22%_/_0.12)] backdrop-blur-xl">
         <div className="mx-auto grid max-w-3xl gap-2 sm:grid-cols-2">
-          <button type="button" onClick={() => addAndNavigate("/cart")} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card text-[0.68rem] font-extrabold uppercase tracking-wide text-foreground transition-colors hover:border-primary hover:text-primary">
+          <motion.button type="button" onClick={() => addAndNavigate("/cart")} whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card text-[0.68rem] font-extrabold uppercase tracking-wide text-foreground transition-colors hover:border-primary hover:text-primary">
             {inCart ? <Check className="h-4 w-4 text-primary" /> : <ShoppingCart className="h-4 w-4" />} {inCart ? "In cart" : "Add to cart"}
-          </button>
-          <button type="button" onClick={() => addAndNavigate("/checkout")} className="flex h-12 flex-1 items-center justify-center rounded-xl bg-primary px-3 text-center text-[0.68rem] font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:-translate-y-0.5">
+          </motion.button>
+          <motion.button type="button" onClick={() => addAndNavigate("/checkout")} whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }} className="flex h-12 flex-1 items-center justify-center rounded-xl bg-primary px-3 text-center text-[0.68rem] font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:-translate-y-0.5">
             Buy now
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
     </main>
   )
 }
 
 function ShareLink({ label, href, children }: { label: string; href: string; children: React.ReactNode }) {
+  const prefersReducedMotion = useReducedMotion()
   return (
-    <a href={href} target="_blank" rel="noreferrer" aria-label={label} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
+    <motion.a href={href} target="_blank" rel="noreferrer" aria-label={label} whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
       {children}
-    </a>
+    </motion.a>
   )
 }

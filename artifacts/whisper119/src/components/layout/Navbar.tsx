@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useGetStorefrontSummary } from "@workspace/api-client-react"
 import { useCart } from "@/components/cart-provider"
 import { LanguageRegionSelector } from "@/components/language-region-selector"
+import { motion, useReducedMotion } from "framer-motion"
 
 export function Navbar() {
   const { items } = useCart()
@@ -12,6 +13,7 @@ export function Navbar() {
   const [menuVisible, setMenuVisible] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [location] = useLocation()
+  const prefersReducedMotion = useReducedMotion()
   const categories = Array.isArray(summary?.categories) ? summary.categories : []
 
   useEffect(() => {
@@ -61,12 +63,12 @@ export function Navbar() {
             <input aria-label="Search books" placeholder="Search what you want" className="h-10 w-full rounded-full border border-transparent bg-secondary/80 pl-9 pr-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/10" />
           </label>
           <Link href="/cart" className={`relative hidden items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold transition-colors hover:bg-secondary sm:flex ${location === "/cart" ? "text-primary" : "text-muted-foreground"}`}>
-            <ShoppingBag className="h-4 w-4" />
+            <motion.span key={`desktop-cart-${items.length}`} animate={prefersReducedMotion ? undefined : { scale: [1, 1.14, 1] }} transition={{ duration: 0.32 }}><ShoppingBag className="h-4 w-4" /></motion.span>
             Cart
             {items.length > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.58rem] text-primary-foreground">{items.length}</span>}
           </Link>
           <Link href="/cart" className="relative rounded-full p-2 text-muted-foreground hover:bg-secondary sm:hidden" aria-label={`Cart, ${items.length} items`}>
-            <ShoppingBag className="h-5 w-5" />
+            <motion.span key={`mobile-cart-${items.length}`} animate={prefersReducedMotion ? undefined : { scale: [1, 1.16, 1] }} transition={{ duration: 0.32 }}><ShoppingBag className="h-5 w-5" /></motion.span>
             {items.length > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.58rem] text-primary-foreground">{items.length}</span>}
           </Link>
           <Link href="/account" aria-label="Reader account" className="hidden rounded-full p-2 text-muted-foreground hover:bg-secondary sm:block"><UserRound className="h-4 w-4" /></Link>

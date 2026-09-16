@@ -6,6 +6,7 @@ import { BookCard } from "@/components/book-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSiteLanguage } from "@/hooks/use-site-language"
 import { Reveal, Stagger, fadeUpVariants } from "@/lib/motion"
+import { motion, useReducedMotion } from "framer-motion"
 
 type FormatFilter = "" | "PDF" | "EPUB"
 
@@ -28,6 +29,7 @@ export default function Shop() {
   const [maxPrice, setMaxPrice] = useState(initial.maxPrice)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const language = useSiteLanguage()
+  const prefersReducedMotion = useReducedMotion()
   const { data: booksData, isLoading, error, refetch, isRefetching } = useListBooks(
     {
       language,
@@ -136,14 +138,14 @@ export default function Shop() {
             <div className="mt-6">
               <p className="mb-3 text-xs font-bold text-foreground">Category</p>
               <div className="grid gap-1">
-                <button type="button" onClick={() => selectCategory("")} className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${!category ? "bg-primary/10 font-bold text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
+                <motion.button type="button" onClick={() => selectCategory("")} animate={{ backgroundColor: !category ? "hsl(var(--primary) / 0.1)" : "transparent", color: !category ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }} transition={{ duration: prefersReducedMotion ? 0 : 0.2 }} className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-secondary hover:text-foreground">
                   All books
                   {categories.reduce((total, item) => total + item.count, 0) ? <span className="text-[0.65rem]">{categories.reduce((total, item) => total + item.count, 0)}</span> : null}
-                </button>
+                </motion.button>
                 {categories.map((item) => (
-                  <button key={item.name} type="button" onClick={() => selectCategory(item.name)} className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${category === item.name ? "bg-primary/10 font-bold text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
+                  <motion.button key={item.name} type="button" onClick={() => selectCategory(item.name)} animate={{ backgroundColor: category === item.name ? "hsl(var(--primary) / 0.1)" : "transparent", color: category === item.name ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }} transition={{ duration: prefersReducedMotion ? 0 : 0.2 }} className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-secondary hover:text-foreground">
                     {item.name}<span className="text-[0.65rem]">{item.count}</span>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -152,9 +154,9 @@ export default function Shop() {
               <p className="mb-3 text-xs font-bold text-foreground">Format</p>
               <div className="flex flex-wrap gap-2">
                 {(["", "PDF", "EPUB"] as FormatFilter[]).map((value) => (
-                  <button key={value || "all"} type="button" onClick={() => { setFormat(value); updateUrl({ format: value }) }} className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${format === value ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary"}`}>
+                  <motion.button key={value || "all"} type="button" onClick={() => { setFormat(value); updateUrl({ format: value }) }} animate={{ backgroundColor: format === value ? "hsl(var(--primary))" : "hsl(var(--secondary))", color: format === value ? "hsl(var(--primary-foreground))" : "hsl(var(--secondary-foreground))" }} transition={{ duration: prefersReducedMotion ? 0 : 0.2 }} whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }} className="rounded-full px-3 py-1.5 text-xs font-bold hover:bg-primary/10 hover:text-primary">
                     {value || "All"}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
