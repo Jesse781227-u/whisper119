@@ -64,45 +64,136 @@ function normalizeRichHtml(value: string): string {
 
 function RichNewsletterEditor({ html, disabled, onChange }: { html: string; disabled?: boolean; onChange: (html: string) => void }) {
   const editor = useEditor({
-    extensions: [StarterKit, Underline, TiptapLink.configure({ openOnClick: false }), Image.configure({ inline: false, allowBase64: false })],
+    extensions: [StarterKit, Underline, TiptapLink.configure({ openOnClick: false }), Image.configure({ inline: true, allowBase64: false })],
     content: html,
     editable: !disabled,
     onUpdate: ({ editor: nextEditor }) => onChange(nextEditor.getHTML()),
   })
+  const [linkEditorOpen, setLinkEditorOpen] = useState(false)
+  const [linkUrl, setLinkUrl] = useState("")
+  const [imageUploading, setImageUploading] = useState(false)
   useEffect(() => {
     if (editor && html !== editor.getHTML() && !editor.isFocused) editor.commands.setContent(html || "<p></p>")
   }, [editor, html])
+  useEffect(() => {
+    if (disabled) {
+      setLinkEditorOpen(false)
+      setLinkUrl("")
+    }
+  }, [disabled])
+
+  function openLinkEditor() {
+    if (!editor) return
+    setLinkUrl(editor.getAttributes("link").href ?? "")
+    setLinkEditorOpen(true)
+  }
+
+  function saveLink() {
+    if (!editor) return
+    const href = linkUrl.trim()
+    if (!href) {
+      editor.chain().focus().unsetLink().run()
+    } else {
+      try {
+        const parsed = new URL(href, window.location.origin)
+        if (!["http:", "https:", "mailto:"].includes(parsed.protocol)) throw new Error("Unsupported URL protocol")
+        editor.chain().focus().setLink({ href: parsed.toString() }).run()
+      } catch {
+        window.alert("Enter a valid http, https, or mailto link.")
+        return
+      }
+    }
+    setLinkEditorOpen(false)
+  }
+
   async function insertImage() {
     const input = document.createElement("input")
     input.type = "file"; input.accept = "image/*"
     input.onchange = async () => {
       const file = input.files?.[0]
       if (!file || !editor) return
+      const insertPosition = editor.state.selection.from
+      setImageUploading(true)
       try {
-        const upload = await requestUploadUrlApi({ name: file.name, size: file.size, contentType: file.type, language: "newsletter" })
-        const response = await fetch(upload.uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file })
+        const contentType = file.type || "application/octet-stream"
+        const upload = await requestUploadUrlApi({ name: file.name, size: file.size, contentType, language: "newsletter" })
+        const response = await fetch(upload.uploadURL, { method: "PUT", headers: { "Content-Type": contentType }, body: file })
         if (!response.ok) throw new Error("Image upload failed")
-        editor.chain().focus().setImage({ src: `/api/storage${upload.objectPath}`, alt: file.name }).run()
+        editor.chain().focus().insertContentAt(insertPosition, {
+          type: "image",
+          attrs: { src: `/api/storage${upload.objectPath}`, alt: file.name },
+        }).run()
       } catch (error) { window.alert(error instanceof Error ? error.message : "Image upload failed") }
+      finally { setImageUploading(false) }
     }
     input.click()
   }
   if (!editor) return <div className="min-h-64 rounded-xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">Loading editor…</div>
-  const button = (label: string, action: () => void, active = false) => <button type="button" disabled={disabled} onClick={action} className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold ${active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{label}</button>
+  const button = (label: string, action: () => void, active = false, buttonDisabled = false) => (
+    <button
+      type="button"
+      disabled={disabled || buttonDisabled}
+      aria-label={label}
+      aria-pressed={active}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={action}
+      className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"} disabled:cursor-not-allowed disabled:opacity-50`}
+    >
+      {label}
+    </button>
+  )
   return <div className="overflow-hidden rounded-xl border border-border bg-background/60">
-    <div className="flex flex-wrap gap-1 border-b border-border p-2">
+    <div role="toolbar" aria-label="Formatting toolbar" className="flex flex-wrap gap-1 border-b border-border p-2">
       {button("B", () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}{button("I", () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"))}{button("U", () => editor.chain().focus().toggleUnderline().run(), editor.isActive("underline"))}
       {button("H1", () => editor.chain().focus().toggleHeading({ level: 1 }).run(), editor.isActive("heading", { level: 1 }))}{button("H2", () => editor.chain().focus().toggleHeading({ level: 2 }).run(), editor.isActive("heading", { level: 2 }))}{button("H3", () => editor.chain().focus().toggleHeading({ level: 3 }).run(), editor.isActive("heading", { level: 3 }))}
-      {button("• List", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}{button("1. List", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}{button("Quote", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}{button("Divider", () => editor.chain().focus().setHorizontalRule().run())}
-      {button("Link", () => { const href = window.prompt("Link URL"); if (href) editor.chain().focus().setLink({ href }).run() })}{button("Image", () => void insertImage())}
+      {button("• List", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}{button("1. List", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}{button("Quote", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}{button("Divider", () => editor.chain().focus().setHorizontalRule().run(), editor.isActive("horizontalRule"))}
+      {button("Link", openLinkEditor, editor.isActive("link"))}{button("Image", () => void insertImage(), editor.isActive("image"), imageUploading)}
     </div>
+    {linkEditorOpen && (
+      <form
+        className="flex flex-wrap items-center gap-2 border-b border-border bg-secondary/30 p-2"
+        onSubmit={(event) => { event.preventDefault(); saveLink() }}
+      >
+        <label htmlFor="newsletter-link-url" className="sr-only">Link URL</label>
+        <input
+          id="newsletter-link-url"
+          value={linkUrl}
+          onChange={(event) => setLinkUrl(event.target.value)}
+          placeholder="https://example.com"
+          autoFocus
+          className="h-8 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 text-xs text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:min-w-64"
+        />
+        <button type="submit" className="h-8 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground">Apply</button>
+        <button type="button" onClick={() => setLinkEditorOpen(false)} className="h-8 rounded-lg border border-border px-3 text-xs font-bold text-muted-foreground">Cancel</button>
+      </form>
+    )}
     <EditorContent editor={editor} className="newsletter-editor min-h-64 p-4 text-sm leading-6" />
   </div>
 }
 
 function htmlToPlainText(html: string): string {
-  const node = document.createElement("div"); node.innerHTML = normalizeRichHtml(html)
-  return (node.textContent || "").replace(/\n{3,}/g, "\n\n").trim()
+  const node = document.createElement("div")
+  node.innerHTML = normalizeRichHtml(html)
+  node.querySelectorAll("img").forEach((image) => image.remove())
+  node.querySelectorAll("br").forEach((breakNode) => breakNode.replaceWith("\n"))
+  node.querySelectorAll("a").forEach((anchor) => {
+    const label = anchor.textContent?.trim() ?? ""
+    const href = anchor.getAttribute("href")?.trim() ?? ""
+    if (href && href !== label) anchor.textContent = label ? `${label} (${href})` : href
+  })
+  node.querySelectorAll("li").forEach((item) => {
+    const marker = item.parentElement?.tagName === "OL" ? "1. " : "• "
+    item.insertAdjacentText("afterbegin", marker)
+    item.insertAdjacentText("beforeend", "\n")
+  })
+  node.querySelectorAll("p,h1,h2,h3,blockquote,hr").forEach((block) => {
+    if (block.tagName === "HR") block.replaceWith("\n—\n")
+    else {
+      block.insertAdjacentText("afterbegin", "\n")
+      block.insertAdjacentText("beforeend", "\n")
+    }
+  })
+  return (node.textContent || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim()
 }
 
 function NewsletterPanel() {
@@ -139,6 +230,7 @@ function NewsletterPanel() {
   const [subject, setSubject] = useState("")
   const [bodyHtml, setBodyHtml] = useState("")
   const [bodyText, setBodyText] = useState("")
+  const [bodyTextEdited, setBodyTextEdited] = useState(false)
   const [scheduledAt, setScheduledAt] = useState("")
 
   function edit(message: NewsletterMessage | null) {
@@ -147,6 +239,7 @@ function NewsletterPanel() {
     setSubject(message?.subject ?? "")
     setBodyHtml(normalizeRichHtml(message?.bodyHtml ?? ""))
     setBodyText((message as NewsletterMessage & { bodyText?: string }).bodyText ?? "")
+    setBodyTextEdited(false)
     setScheduledAt(message?.scheduledAt ? message.scheduledAt.slice(0, 16) : "")
   }
 
@@ -156,6 +249,7 @@ function NewsletterPanel() {
     setSubject(template.subject)
     setBodyHtml(previewMarkdown(template.bodyMarkdown))
     setBodyText("")
+    setBodyTextEdited(false)
     setScheduledAt("")
   }
 
@@ -181,7 +275,7 @@ function NewsletterPanel() {
       toast({ title: "Choose a schedule time", description: "Select when this newsletter should be sent.", variant: "destructive" })
       return
     }
-    const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyText.trim() || htmlToPlainText(bodyHtml), scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
+    const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyTextEdited ? bodyText.trim() : "", scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
     const onSuccess = () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: schedule ? "Newsletter scheduled" : "Draft saved" }) }
     const onError = (error: unknown) => toast({ title: schedule ? "Newsletter could not be scheduled" : "Draft could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" })
     if (selected) update.mutate({ messageId: selected.id, data }, { onSuccess, onError })
@@ -192,7 +286,7 @@ function NewsletterPanel() {
     const activeCount = overview.data?.summary.activeSubscribers ?? 0
     if (!window.confirm(`Send to ${activeCount} subscriber${activeCount === 1 ? "" : "s"} now?`)) return
     try {
-      const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyText.trim() || htmlToPlainText(bodyHtml), scheduledAt: null }
+      const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyTextEdited ? bodyText.trim() : "", scheduledAt: null }
       const message = selected
         ? await update.mutateAsync({ messageId: selected.id, data })
         : await create.mutateAsync({ data })
@@ -369,7 +463,7 @@ function NewsletterPanel() {
                   <RichNewsletterEditor html={normalizedBodyHtml} onChange={setBodyHtml} disabled={selected?.status === "sent"} />
                   <details className="mt-4 rounded-xl border border-border bg-background/35 p-3">
                     <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">View plain-text version</summary>
-                    <textarea value={bodyText} onChange={(event) => setBodyText(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} mt-3 min-h-28 py-3`} placeholder={htmlToPlainText(bodyHtml) || "Generated automatically from the rich content"} />
+                    <textarea value={bodyText} onChange={(event) => { setBodyTextEdited(true); setBodyText(event.target.value) }} disabled={selected?.status === "sent"} className={`${fieldClass} mt-3 min-h-28 py-3`} placeholder={htmlToPlainText(bodyHtml) || "Generated automatically from the rich content"} />
                     <p className="mt-2 text-xs text-muted-foreground">Leave this blank to generate text automatically from the rich message.</p>
                   </details>
                 </label>

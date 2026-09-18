@@ -35,6 +35,13 @@ export function htmlToText(html: string): string {
     selectors: [
       { selector: "img", format: "skip" },
       { selector: "a", options: { hideLinkHrefIfSameAsText: true } },
+      { selector: "h1", options: { uppercase: false } },
+      { selector: "h2", options: { uppercase: false } },
+      { selector: "h3", options: { uppercase: false } },
+      { selector: "h4", options: { uppercase: false } },
+      { selector: "h5", options: { uppercase: false } },
+      { selector: "h6", options: { uppercase: false } },
+      { selector: "ul", options: { itemPrefix: " - " } },
     ],
   }).trim();
 }
