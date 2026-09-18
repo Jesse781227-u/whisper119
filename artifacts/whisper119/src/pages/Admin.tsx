@@ -62,7 +62,11 @@ function normalizeRichHtml(value: string): string {
   return /<\/?(?:p|h[1-6]|strong|em|u|ul|ol|li|a|blockquote|hr|img|br)\b[^>]*>/i.test(decoded) ? decoded : value
 }
 
-function RichNewsletterEditor({ html, disabled, onChange }: { html: string; disabled?: boolean; onChange: (html: string) => void }) {
+function isFullEmailHtml(value: string): boolean {
+  return /<!doctype\s+html\b|<html\b|<head\b|<body\b/i.test(value)
+}
+
+function RichNewsletterEditor({ html, disabled, onChange, onFullHtmlPaste }: { html: string; disabled?: boolean; onChange: (html: string) => void; onFullHtmlPaste: (html: string) => void }) {
   const editor = useEditor({
     extensions: [StarterKit, Underline, TiptapLink.configure({ openOnClick: false }), Image.configure({ inline: true, allowBase64: false })],
     content: html,
@@ -81,6 +85,20 @@ function RichNewsletterEditor({ html, disabled, onChange }: { html: string; disa
       setLinkUrl("")
     }
   }, [disabled])
+  useEffect(() => {
+    if (!editor) return
+    const editorElement = editor.view.dom
+    const onPaste = (event: ClipboardEvent) => {
+      const clipboardHtml = event.clipboardData?.getData("text/html") ?? ""
+      const clipboardText = event.clipboardData?.getData("text/plain") ?? ""
+      const fullHtml = isFullEmailHtml(clipboardHtml) ? clipboardHtml : isFullEmailHtml(clipboardText) ? clipboardText : ""
+      if (!fullHtml) return
+      event.preventDefault()
+      onFullHtmlPaste(fullHtml)
+    }
+    editorElement.addEventListener("paste", onPaste)
+    return () => editorElement.removeEventListener("paste", onPaste)
+  }, [editor, onFullHtmlPaste])
 
   function openLinkEditor() {
     if (!editor) return
@@ -171,6 +189,14 @@ function RichNewsletterEditor({ html, disabled, onChange }: { html: string; disa
   </div>
 }
 
+function NewsletterPreview({ html }: { html: string }) {
+  if (!html) return <p className="text-sm text-muted-foreground">Write a message for your readers.</p>
+  if (isFullEmailHtml(html)) {
+    return <iframe title="Email preview" srcDoc={html} sandbox="" className="h-[48rem] w-full rounded-xl border border-border bg-white" />
+  }
+  return <div className="text-sm leading-6 text-foreground" dangerouslySetInnerHTML={{ __html: html }} />
+}
+
 function htmlToPlainText(html: string): string {
   const node = document.createElement("div")
   node.innerHTML = normalizeRichHtml(html)
@@ -229,6 +255,7 @@ function NewsletterPanel() {
   const [composerOpen, setComposerOpen] = useState(false)
   const [subject, setSubject] = useState("")
   const [bodyHtml, setBodyHtml] = useState("")
+  const [htmlSourceMode, setHtmlSourceMode] = useState(false)
   const [bodyText, setBodyText] = useState("")
   const [bodyTextEdited, setBodyTextEdited] = useState(false)
   const [scheduledAt, setScheduledAt] = useState("")
@@ -237,7 +264,9 @@ function NewsletterPanel() {
     setComposerOpen(true)
     setSelected(message)
     setSubject(message?.subject ?? "")
-    setBodyHtml(normalizeRichHtml(message?.bodyHtml ?? ""))
+    const nextBodyHtml = normalizeRichHtml(message?.bodyHtml ?? "")
+    setBodyHtml(nextBodyHtml)
+    setHtmlSourceMode(isFullEmailHtml(nextBodyHtml))
     setBodyText((message as NewsletterMessage & { bodyText?: string }).bodyText ?? "")
     setBodyTextEdited(false)
     setScheduledAt(message?.scheduledAt ? message.scheduledAt.slice(0, 16) : "")
@@ -248,6 +277,7 @@ function NewsletterPanel() {
     setSelected(null)
     setSubject(template.subject)
     setBodyHtml(previewMarkdown(template.bodyMarkdown))
+    setHtmlSourceMode(false)
     setBodyText("")
     setBodyTextEdited(false)
     setScheduledAt("")
@@ -264,6 +294,21 @@ function NewsletterPanel() {
       onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["/api/admin/newsletter/templates"] }); toast({ title: "Template saved" }) },
       onError: (error) => toast({ title: "Template could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }),
     })
+  }
+
+  function toggleHtmlSourceMode() {
+    if (htmlSourceMode && isFullEmailHtml(bodyHtml)) {
+      toast({ title: "Full HTML template stays in source mode", description: "This document uses email tables and inline styles that the visual editor cannot preserve." })
+      return
+    }
+    setHtmlSourceMode((current) => !current)
+  }
+
+  function handleFullHtmlPaste(html: string) {
+    const nextBodyHtml = normalizeRichHtml(html)
+    setBodyHtml(nextBodyHtml)
+    setHtmlSourceMode(true)
+    toast({ title: "Full HTML detected", description: "Kept the email document intact and switched the editor to HTML source mode." })
   }
 
   function save(schedule = false) {
@@ -458,22 +503,35 @@ function NewsletterPanel() {
                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Subject</span>
                   <input value={subject} onChange={(event) => setSubject(event.target.value)} disabled={selected?.status === "sent"} className={fieldClass} />
                 </label>
-                  <label className="mt-4 block">
+                  <div className="mt-4">
                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Message content</span>
-                  <RichNewsletterEditor html={normalizedBodyHtml} onChange={setBodyHtml} disabled={selected?.status === "sent"} />
+                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                     <p className="text-xs text-muted-foreground">{htmlSourceMode ? "Paste a complete email document and preserve its tables and inline styles." : "Use the visual editor for normal newsletter content."}</p>
+                     <button type="button" onClick={toggleHtmlSourceMode} disabled={selected?.status === "sent" || (htmlSourceMode && isFullEmailHtml(bodyHtml))} className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50">
+                       {htmlSourceMode ? "HTML source" : "Edit HTML"}
+                     </button>
+                   </div>
+                   {htmlSourceMode ? (
+                     <>
+                       <textarea aria-label="Email HTML source" value={bodyHtml} onChange={(event) => setBodyHtml(event.target.value)} disabled={selected?.status === "sent"} className="min-h-[24rem] w-full rounded-xl border border-border bg-background/60 p-3 font-mono text-xs leading-5 text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="<!doctype html>..." spellCheck={false} />
+                       <p className="mt-2 text-xs text-muted-foreground">The preview is sandboxed. Merge placeholders such as <code>{"{{bookTitle}}"}</code> remain literal unless another delivery flow replaces them.</p>
+                     </>
+                   ) : (
+                     <RichNewsletterEditor html={normalizedBodyHtml} onChange={setBodyHtml} onFullHtmlPaste={handleFullHtmlPaste} disabled={selected?.status === "sent"} />
+                   )}
                   <details className="mt-4 rounded-xl border border-border bg-background/35 p-3">
                     <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">View plain-text version</summary>
                     <textarea value={bodyText} onChange={(event) => { setBodyTextEdited(true); setBodyText(event.target.value) }} disabled={selected?.status === "sent"} className={`${fieldClass} mt-3 min-h-28 py-3`} placeholder={htmlToPlainText(bodyHtml) || "Generated automatically from the rich content"} />
                     <p className="mt-2 text-xs text-muted-foreground">Leave this blank to generate text automatically from the rich message.</p>
                   </details>
-                </label>
+                  </div>
               </div>
 
               <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Preview</p>
                 <div className="mt-3 rounded-2xl border border-border bg-card/70 p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{subject.trim() || "Subject preview"}</p>
-                  <div className="mt-3 text-sm leading-6 text-foreground" dangerouslySetInnerHTML={{ __html: normalizedBodyHtml || "<p>Write a message for your readers.</p>" }} />
+                   <div className="mt-3"><NewsletterPreview html={normalizedBodyHtml} /></div>
                 </div>
                 <p className="mt-4 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-semibold text-muted-foreground">Will be sent to {overviewData?.summary.activeSubscribers ?? 0} active subscribers.</p>
                 <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
