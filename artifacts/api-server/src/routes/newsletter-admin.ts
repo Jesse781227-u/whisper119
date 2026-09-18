@@ -85,7 +85,8 @@ router.post("/admin/newsletter/messages", async (req, res): Promise<void> => {
   const parsed = CreateNewsletterMessageBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const bodyHtml = typeof req.body?.bodyHtml === "string" ? req.body.bodyHtml : markdownToHtml(parsed.data.bodyMarkdown);
-  const bodyText = typeof req.body?.bodyText === "string" ? req.body.bodyText : htmlToText(bodyHtml);
+  const requestedBodyText = typeof req.body?.bodyText === "string" ? req.body.bodyText.trim() : "";
+  const bodyText = requestedBodyText || htmlToText(bodyHtml);
   const [message] = await db.insert(messages).values({
     id: randomUUID(), subject: parsed.data.subject.trim(), bodyHtml, bodyText,
     status: parsed.data.scheduledAt ? "scheduled" : "draft",
@@ -98,7 +99,8 @@ router.patch("/admin/newsletter/messages/:messageId", async (req, res): Promise<
   const parsed = UpdateNewsletterMessageBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const bodyHtml = typeof req.body?.bodyHtml === "string" ? req.body.bodyHtml : markdownToHtml(parsed.data.bodyMarkdown);
-  const bodyText = typeof req.body?.bodyText === "string" ? req.body.bodyText : htmlToText(bodyHtml);
+  const requestedBodyText = typeof req.body?.bodyText === "string" ? req.body.bodyText.trim() : "";
+  const bodyText = requestedBodyText || htmlToText(bodyHtml);
   const [message] = await db.update(messages).set({
     subject: parsed.data.subject.trim(), bodyHtml, bodyText, status: parsed.data.scheduledAt ? "scheduled" : "draft",
     scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null, updatedAt: new Date(),

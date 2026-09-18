@@ -172,8 +172,28 @@ function RichNewsletterEditor({ html, disabled, onChange }: { html: string; disa
 }
 
 function htmlToPlainText(html: string): string {
-  const node = document.createElement("div"); node.innerHTML = normalizeRichHtml(html)
-  return (node.textContent || "").replace(/\n{3,}/g, "\n\n").trim()
+  const node = document.createElement("div")
+  node.innerHTML = normalizeRichHtml(html)
+  node.querySelectorAll("img").forEach((image) => image.remove())
+  node.querySelectorAll("br").forEach((breakNode) => breakNode.replaceWith("\n"))
+  node.querySelectorAll("a").forEach((anchor) => {
+    const label = anchor.textContent?.trim() ?? ""
+    const href = anchor.getAttribute("href")?.trim() ?? ""
+    if (href && href !== label) anchor.textContent = label ? `${label} (${href})` : href
+  })
+  node.querySelectorAll("li").forEach((item) => {
+    const marker = item.parentElement?.tagName === "OL" ? "1. " : "• "
+    item.insertAdjacentText("afterbegin", marker)
+    item.insertAdjacentText("beforeend", "\n")
+  })
+  node.querySelectorAll("p,h1,h2,h3,blockquote,hr").forEach((block) => {
+    if (block.tagName === "HR") block.replaceWith("\n—\n")
+    else {
+      block.insertAdjacentText("afterbegin", "\n")
+      block.insertAdjacentText("beforeend", "\n")
+    }
+  })
+  return (node.textContent || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim()
 }
 
 function NewsletterPanel() {
@@ -210,6 +230,7 @@ function NewsletterPanel() {
   const [subject, setSubject] = useState("")
   const [bodyHtml, setBodyHtml] = useState("")
   const [bodyText, setBodyText] = useState("")
+  const [bodyTextEdited, setBodyTextEdited] = useState(false)
   const [scheduledAt, setScheduledAt] = useState("")
 
   function edit(message: NewsletterMessage | null) {
@@ -218,6 +239,7 @@ function NewsletterPanel() {
     setSubject(message?.subject ?? "")
     setBodyHtml(normalizeRichHtml(message?.bodyHtml ?? ""))
     setBodyText((message as NewsletterMessage & { bodyText?: string }).bodyText ?? "")
+    setBodyTextEdited(false)
     setScheduledAt(message?.scheduledAt ? message.scheduledAt.slice(0, 16) : "")
   }
 
@@ -227,6 +249,7 @@ function NewsletterPanel() {
     setSubject(template.subject)
     setBodyHtml(previewMarkdown(template.bodyMarkdown))
     setBodyText("")
+    setBodyTextEdited(false)
     setScheduledAt("")
   }
 
@@ -252,7 +275,7 @@ function NewsletterPanel() {
       toast({ title: "Choose a schedule time", description: "Select when this newsletter should be sent.", variant: "destructive" })
       return
     }
-    const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyText.trim() || htmlToPlainText(bodyHtml), scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
+    const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyTextEdited ? bodyText.trim() : "", scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
     const onSuccess = () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: schedule ? "Newsletter scheduled" : "Draft saved" }) }
     const onError = (error: unknown) => toast({ title: schedule ? "Newsletter could not be scheduled" : "Draft could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" })
     if (selected) update.mutate({ messageId: selected.id, data }, { onSuccess, onError })
@@ -263,7 +286,7 @@ function NewsletterPanel() {
     const activeCount = overview.data?.summary.activeSubscribers ?? 0
     if (!window.confirm(`Send to ${activeCount} subscriber${activeCount === 1 ? "" : "s"} now?`)) return
     try {
-      const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyText.trim() || htmlToPlainText(bodyHtml), scheduledAt: null }
+      const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyTextEdited ? bodyText.trim() : "", scheduledAt: null }
       const message = selected
         ? await update.mutateAsync({ messageId: selected.id, data })
         : await create.mutateAsync({ data })
@@ -440,7 +463,7 @@ function NewsletterPanel() {
                   <RichNewsletterEditor html={normalizedBodyHtml} onChange={setBodyHtml} disabled={selected?.status === "sent"} />
                   <details className="mt-4 rounded-xl border border-border bg-background/35 p-3">
                     <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">View plain-text version</summary>
-                    <textarea value={bodyText} onChange={(event) => setBodyText(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} mt-3 min-h-28 py-3`} placeholder={htmlToPlainText(bodyHtml) || "Generated automatically from the rich content"} />
+                    <textarea value={bodyText} onChange={(event) => { setBodyTextEdited(true); setBodyText(event.target.value) }} disabled={selected?.status === "sent"} className={`${fieldClass} mt-3 min-h-28 py-3`} placeholder={htmlToPlainText(bodyHtml) || "Generated automatically from the rich content"} />
                     <p className="mt-2 text-xs text-muted-foreground">Leave this blank to generate text automatically from the rich message.</p>
                   </details>
                 </label>
