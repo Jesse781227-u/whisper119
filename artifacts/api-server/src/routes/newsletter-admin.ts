@@ -4,6 +4,7 @@ import { and, count, countDistinct, desc, eq, sql } from "drizzle-orm";
 import { db, emailEvents, messages, newsletterTemplates, subscribers } from "@workspace/db";
 import { CreateNewsletterMessageBody, UpdateNewsletterMessageBody } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/auth";
+import { getNewsletterAudienceCounts } from "../lib/newsletter-audience";
 import { htmlToMarkdown, htmlToText, markdownToHtml } from "../lib/newsletter-content";
 import { sendMessageToAllSubscribers } from "../lib/newsletter-sender";
 
@@ -50,6 +51,7 @@ router.get("/admin/newsletter/overview", async (_req, res): Promise<void> => {
   for (const row of eventRows) engagement[row.eventType] = Number(row.subscribers);
   const totalSubscribers = subscriberRows.length;
   const activeSubscribers = subscriberRows.filter((subscriber) => subscriber.subscribed).length;
+  const audienceCounts = await getNewsletterAudienceCounts(subscriberRows.filter((subscriber) => subscriber.subscribed));
   const bySource = { signup_form: 0, purchase: 0, both: 0 };
   for (const subscriber of subscriberRows) bySource[subscriber.source] += 1;
   const byStatus = { active: activeSubscribers, unsubscribed: totalSubscribers - activeSubscribers };
@@ -61,6 +63,7 @@ router.get("/admin/newsletter/overview", async (_req, res): Promise<void> => {
     })),
     summary: {
       totalSubscribers, activeSubscribers, totalMessagesSent: Number(sentMessageRows[0]?.count ?? 0),
+      audienceCounts,
       engagement, rates: { delivered: rate(engagement.delivered), opened: rate(engagement.opened), clicked: rate(engagement.clicked), bounced: rate(engagement.bounced) },
     },
     bySource, byStatus,
@@ -89,6 +92,7 @@ router.post("/admin/newsletter/messages", async (req, res): Promise<void> => {
   const bodyText = requestedBodyText || htmlToText(bodyHtml);
   const [message] = await db.insert(messages).values({
     id: randomUUID(), subject: parsed.data.subject.trim(), bodyHtml, bodyText,
+    audience: parsed.data.audience ?? "all_subscribers",
     status: parsed.data.scheduledAt ? "scheduled" : "draft",
     scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null,
   }).returning();
@@ -102,7 +106,7 @@ router.patch("/admin/newsletter/messages/:messageId", async (req, res): Promise<
   const requestedBodyText = typeof req.body?.bodyText === "string" ? req.body.bodyText.trim() : "";
   const bodyText = requestedBodyText || htmlToText(bodyHtml);
   const [message] = await db.update(messages).set({
-    subject: parsed.data.subject.trim(), bodyHtml, bodyText, status: parsed.data.scheduledAt ? "scheduled" : "draft",
+    subject: parsed.data.subject.trim(), bodyHtml, bodyText, audience: parsed.data.audience ?? "all_subscribers", status: parsed.data.scheduledAt ? "scheduled" : "draft",
     scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null, updatedAt: new Date(),
   }).where(and(eq(messages.id, req.params.messageId), eq(messages.status, "draft"))).returning();
   if (!message) { res.status(404).json({ error: "Draft message not found" }); return; }

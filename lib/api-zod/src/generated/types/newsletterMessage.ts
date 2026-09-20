@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { NewsletterMessageAudience } from './newsletterMessageAudience';
 import type { NewsletterMessageStats } from './newsletterMessageStats';
 import type { NewsletterMessageStatus } from './newsletterMessageStatus';
 
@@ -14,6 +15,7 @@ export interface NewsletterMessage {
   bodyHtml: string;
   bodyMarkdown: string;
   bodyText: string;
+  audience: NewsletterMessageAudience;
   status: NewsletterMessageStatus;
   /** @nullable */
   scheduledAt: string | null;

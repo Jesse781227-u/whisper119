@@ -269,19 +269,41 @@ export interface NewsletterSubscription {
   subscribed: boolean;
 }
 
+export type NewsletterMessageInputAudience = typeof NewsletterMessageInputAudience[keyof typeof NewsletterMessageInputAudience];
+
+
+export const NewsletterMessageInputAudience = {
+  all_subscribers: 'all_subscribers',
+  verified_purchasers: 'verified_purchasers',
+  new_subscribers: 'new_subscribers',
+} as const;
+
 export interface NewsletterMessageInput {
   /**
      * @minLength 1
      * @maxLength 200
      */
   subject: string;
-  /** @minLength 1 */
+  /**
+     * Legacy plain-text/template field
+     * @minLength 1
+     */
   bodyMarkdown: string;
   bodyHtml?: string;
   bodyText?: string;
+  audience?: NewsletterMessageInputAudience;
   /** @nullable */
   scheduledAt?: string | null;
 }
+
+export type NewsletterMessageUpdateInputAudience = typeof NewsletterMessageUpdateInputAudience[keyof typeof NewsletterMessageUpdateInputAudience];
+
+
+export const NewsletterMessageUpdateInputAudience = {
+  all_subscribers: 'all_subscribers',
+  verified_purchasers: 'verified_purchasers',
+  new_subscribers: 'new_subscribers',
+} as const;
 
 export interface NewsletterMessageUpdateInput {
   /**
@@ -289,10 +311,14 @@ export interface NewsletterMessageUpdateInput {
      * @maxLength 200
      */
   subject: string;
-  /** @minLength 1 */
+  /**
+     * Legacy plain-text/template field
+     * @minLength 1
+     */
   bodyMarkdown: string;
   bodyHtml?: string;
   bodyText?: string;
+  audience?: NewsletterMessageUpdateInputAudience;
   /** @nullable */
   scheduledAt?: string | null;
 }
@@ -305,6 +331,15 @@ export interface NewsletterMessageStats {
   bounced: number;
   complained: number;
 }
+
+export type NewsletterMessageAudience = typeof NewsletterMessageAudience[keyof typeof NewsletterMessageAudience];
+
+
+export const NewsletterMessageAudience = {
+  all_subscribers: 'all_subscribers',
+  verified_purchasers: 'verified_purchasers',
+  new_subscribers: 'new_subscribers',
+} as const;
 
 export type NewsletterMessageStatus = typeof NewsletterMessageStatus[keyof typeof NewsletterMessageStatus];
 
@@ -321,6 +356,7 @@ export interface NewsletterMessage {
   bodyHtml: string;
   bodyMarkdown: string;
   bodyText: string;
+  audience: NewsletterMessageAudience;
   status: NewsletterMessageStatus;
   /** @nullable */
   scheduledAt: string | null;
@@ -426,7 +462,6 @@ export type PaystackWebhookData = {
   reference: string;
   status?: string;
 };
-
 export interface PaystackWebhook {
   event: string;
   data: PaystackWebhookData;

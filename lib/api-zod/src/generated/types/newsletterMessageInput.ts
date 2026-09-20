@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { NewsletterMessageInputAudience } from './newsletterMessageInputAudience';
 
 export interface NewsletterMessageInput {
   /**
@@ -12,10 +13,14 @@ export interface NewsletterMessageInput {
      * @maxLength 200
      */
   subject: string;
-  /** @minLength 1 */
+  /**
+     * Legacy plain-text/template field
+     * @minLength 1
+     */
   bodyMarkdown: string;
   bodyHtml?: string;
   bodyText?: string;
+  audience?: NewsletterMessageInputAudience;
   /** @nullable */
   scheduledAt?: string | null;
 }
