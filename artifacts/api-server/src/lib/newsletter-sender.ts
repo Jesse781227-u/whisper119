@@ -50,7 +50,12 @@ export async function sendMessageToAllSubscribers(messageId: string): Promise<{ 
               .filter(Boolean).join(": ");
             throw new Error(`RESEND_SEND_FAILED: ${detail || JSON.stringify(result.error)}`);
           }
-          await db.insert(emailEvents).values({ messageId, subscriberId: subscriber.id, eventType: "sent" });
+          await db.insert(emailEvents).values({
+            messageId,
+            subscriberId: subscriber.id,
+            providerEmailId: result.data?.id ?? null,
+            eventType: "sent",
+          });
           sent += 1;
         } catch (error) {
           console.error("Resend newsletter send failed", { recipient: subscriber.email, error });

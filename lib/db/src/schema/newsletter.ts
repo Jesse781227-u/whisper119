@@ -38,6 +38,7 @@ export const emailEvents = pgTable("email_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   messageId: uuid("message_id").references(() => messages.id),
   subscriberId: uuid("subscriber_id").notNull().references(() => subscribers.id),
+  providerEmailId: text("provider_email_id"),
   eventType: text("event_type", {
     enum: ["sent", "delivered", "opened", "clicked", "bounced", "complained"],
   }).notNull(),
