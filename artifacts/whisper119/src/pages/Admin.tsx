@@ -251,9 +251,15 @@ function htmlToPlainText(html: string): string {
 }
 
 function NewsletterPanel() {
+  type NewsletterAudience = "all_subscribers" | "verified_purchasers" | "new_subscribers"
+  const audienceLabels: Record<NewsletterAudience, string> = {
+    all_subscribers: "All active subscribers",
+    verified_purchasers: "Verified purchasers",
+    new_subscribers: "New subscribers (last 30 days)",
+  }
   type NewsletterOverview = {
     subscribers: Array<{ id: string; email: string; name: string | null; source: "signup_form" | "purchase" | "both"; subscribed: boolean; createdAt: string }>
-    summary: { totalSubscribers: number; activeSubscribers: number; totalMessagesSent: number; engagement: Record<"sent" | "delivered" | "opened" | "clicked" | "bounced" | "complained", number>; rates: Record<"delivered" | "opened" | "clicked" | "bounced", number> }
+    summary: { totalSubscribers: number; activeSubscribers: number; totalMessagesSent: number; audienceCounts: Record<NewsletterAudience, number>; engagement: Record<"sent" | "delivered" | "bounced" | "complained", number>; rates: Record<"delivered", number> }
     bySource: Record<"signup_form" | "purchase" | "both", number>
     byStatus: Record<"active" | "unsubscribed", number>
   }
@@ -287,6 +293,7 @@ function NewsletterPanel() {
   const [bodyText, setBodyText] = useState("")
   const [bodyTextEdited, setBodyTextEdited] = useState(false)
   const [scheduledAt, setScheduledAt] = useState("")
+  const [audience, setAudience] = useState<NewsletterAudience>("all_subscribers")
 
   function edit(message: NewsletterMessage | null) {
     setComposerOpen(true)
@@ -298,6 +305,7 @@ function NewsletterPanel() {
     setBodyText((message as NewsletterMessage & { bodyText?: string }).bodyText ?? "")
     setBodyTextEdited(false)
     setScheduledAt(message?.scheduledAt ? message.scheduledAt.slice(0, 16) : "")
+    setAudience(message?.audience ?? "all_subscribers")
   }
 
   function useTemplate(template: NewsletterTemplate) {
@@ -309,6 +317,7 @@ function NewsletterPanel() {
     setBodyText("")
     setBodyTextEdited(false)
     setScheduledAt("")
+    setAudience("all_subscribers")
   }
 
   function saveCurrentTemplate() {
@@ -348,7 +357,7 @@ function NewsletterPanel() {
       toast({ title: "Choose a schedule time", description: "Select when this newsletter should be sent.", variant: "destructive" })
       return
     }
-    const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyTextEdited ? bodyText.trim() : "", scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
+    const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyTextEdited ? bodyText.trim() : "", audience, scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
     const onSuccess = () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: schedule ? "Newsletter scheduled" : "Draft saved" }) }
     const onError = (error: unknown) => toast({ title: schedule ? "Newsletter could not be scheduled" : "Draft could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" })
     if (selected) update.mutate({ messageId: selected.id, data }, { onSuccess, onError })
@@ -356,10 +365,10 @@ function NewsletterPanel() {
   }
 
   async function sendNow() {
-    const activeCount = overview.data?.summary.activeSubscribers ?? 0
-    if (!window.confirm(`Send to ${activeCount} subscriber${activeCount === 1 ? "" : "s"} now?`)) return
+    const audienceCount = overview.data?.summary.audienceCounts?.[audience] ?? 0
+    if (!window.confirm(`Send to ${audienceCount} ${audienceLabels[audience].toLowerCase()} now?`)) return
     try {
-      const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyTextEdited ? bodyText.trim() : "", scheduledAt: null }
+      const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyTextEdited ? bodyText.trim() : "", audience, scheduledAt: null }
       const message = selected
         ? await update.mutateAsync({ messageId: selected.id, data })
         : await create.mutateAsync({ data })
@@ -382,7 +391,7 @@ function NewsletterPanel() {
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Newsletter</p>
         <h2 className="mt-1 text-2xl font-extrabold">Audience and messages</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Review subscribers, engagement, and compose updates for subscribed readers.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Review subscribers, delivery health, and compose updates for subscribed readers.</p>
       </div>
       <button type="button" onClick={() => edit(null)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> New message</button>
     </div>
@@ -394,7 +403,7 @@ function NewsletterPanel() {
     ) : overviewData ? (
       <>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[["Total subscribers", overviewData.summary.totalSubscribers], ["Active", overviewData.summary.activeSubscribers], ["Messages sent", overviewData.summary.totalMessagesSent], ["Open rate", `${overviewData.summary.rates.opened}%`]].map(([label, value]) => (
+          {[["Total subscribers", overviewData.summary.totalSubscribers], ["Active", overviewData.summary.activeSubscribers], ["Messages sent", overviewData.summary.totalMessagesSent], ["Delivery rate", `${overviewData.summary.rates.delivered}%`]].map(([label, value]) => (
             <div key={String(label)} className={softCardClass + " flex items-center justify-between gap-3"}>
               <div>
                 <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
@@ -474,10 +483,10 @@ function NewsletterPanel() {
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-extrabold">{message.subject}</span>
-                        <span className="mt-1 block text-xs text-muted-foreground">{message.status === "scheduled" && message.scheduledAt ? `Scheduled ${formatDate(message.scheduledAt)}` : message.sentAt ? `Sent ${formatDate(message.sentAt)}` : "Draft"}</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">{message.status === "scheduled" && message.scheduledAt ? `Scheduled ${formatDate(message.scheduledAt)}` : message.sentAt ? `Sent ${formatDate(message.sentAt)}` : "Draft"} · {audienceLabels[message.audience]}</span>
                       </span>
                       <span className="rounded-full bg-secondary px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">{message.status}</span>
-                      {message.status === "sent" && <span className="text-right text-xs text-muted-foreground">{message.stats.sent} sent · {message.stats.opened} opened · {message.stats.clicked} clicked</span>}
+                      {message.status === "sent" && <span className="text-right text-xs text-muted-foreground">{message.stats.sent} sent · {message.stats.delivered} delivered · {message.stats.bounced} failed</span>}
                     </button>
                   ))
                 ) : (
@@ -531,6 +540,13 @@ function NewsletterPanel() {
                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Subject</span>
                   <input value={subject} onChange={(event) => setSubject(event.target.value)} disabled={selected?.status === "sent"} className={fieldClass} />
                 </label>
+                <label className="mt-4 block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Audience</span>
+                  <select value={audience} onChange={(event) => setAudience(event.target.value as NewsletterAudience)} disabled={selected?.status === "sent"} className={fieldClass}>
+                    {(Object.keys(audienceLabels) as NewsletterAudience[]).map((value) => <option key={value} value={value}>{audienceLabels[value]}</option>)}
+                  </select>
+                  <span className="mt-2 block text-xs text-muted-foreground">{overviewData?.summary.audienceCounts?.[audience] ?? 0} active recipient{(overviewData?.summary.audienceCounts?.[audience] ?? 0) === 1 ? "" : "s"} match this audience.</span>
+                </label>
                   <div className="mt-4">
                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Message content</span>
                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -562,7 +578,7 @@ function NewsletterPanel() {
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{subject.trim() || "Subject preview"}</p>
                    <div className="mt-3"><NewsletterPreview html={normalizedBodyHtml} /></div>
                 </div>
-                <p className="mt-4 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-semibold text-muted-foreground">Will be sent to {overviewData?.summary.activeSubscribers ?? 0} active subscribers.</p>
+                <p className="mt-4 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-semibold text-muted-foreground">Will be sent to {overviewData?.summary.audienceCounts?.[audience] ?? 0} {audienceLabels[audience].toLowerCase()}.</p>
                 <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
                   <button type="button" onClick={() => save()} disabled={!canSave || Boolean(selected?.status === "sent") || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><Pencil className="h-3.5 w-3.5" /> Save as draft</button>
                   <button type="button" onClick={saveCurrentTemplate} disabled={!canSave || saveTemplate.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground disabled:cursor-not-allowed disabled:opacity-50">Save as template</button>

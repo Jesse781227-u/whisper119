@@ -870,6 +870,7 @@ components:
         bodyMarkdown: { type: string, minLength: 1, description: Legacy plain-text/template field }
         bodyHtml: { type: string }
         bodyText: { type: string }
+        audience: { type: string, enum: [all_subscribers, verified_purchasers, new_subscribers], default: all_subscribers }
         scheduledAt: { type: [string, "null"] }
       required: [subject, bodyMarkdown]
     NewsletterMessageUpdateInput:
@@ -879,6 +880,7 @@ components:
         bodyMarkdown: { type: string, minLength: 1, description: Legacy plain-text/template field }
         bodyHtml: { type: string }
         bodyText: { type: string }
+        audience: { type: string, enum: [all_subscribers, verified_purchasers, new_subscribers], default: all_subscribers }
         scheduledAt: { type: [string, "null"] }
       required: [subject, bodyMarkdown]
     NewsletterMessageStats:
@@ -899,13 +901,14 @@ components:
         bodyHtml: { type: string }
         bodyMarkdown: { type: string }
         bodyText: { type: string }
+        audience: { type: string, enum: [all_subscribers, verified_purchasers, new_subscribers] }
         status: { type: string, enum: [draft, scheduled, sent] }
         scheduledAt: { type: [string, "null"] }
         sentAt: { type: [string, "null"] }
         createdAt: { type: string }
         updatedAt: { type: string }
         stats: { $ref: "#/components/schemas/NewsletterMessageStats" }
-      required: [id, subject, bodyHtml, bodyMarkdown, bodyText, status, scheduledAt, sentAt, createdAt, updatedAt, stats]
+      required: [id, subject, bodyHtml, bodyMarkdown, bodyText, audience, status, scheduledAt, sentAt, createdAt, updatedAt, stats]
     PaymentConfirmation:
       type: object
       properties:

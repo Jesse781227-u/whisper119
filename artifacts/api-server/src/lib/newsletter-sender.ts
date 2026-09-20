@@ -1,6 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db, emailEvents, messages, subscribers } from "@workspace/db";
 import { getMailFromAddress, resend } from "./resend";
+import { filterSubscribersByAudience, getVerifiedPurchaserEmails } from "./newsletter-audience";
 import { htmlToText } from "./newsletter-content";
 
 const RESEND_BATCH_SIZE = 100;
@@ -23,13 +24,15 @@ export async function sendMessageToAllSubscribers(messageId: string): Promise<{ 
     if (!message) throw new Error("NEWSLETTER_MESSAGE_NOT_FOUND");
     if (message.status === "sent") return { sent: 0, failed: [] };
 
-    const [activeSubscribers, existingEvents] = await Promise.all([
+    const [activeSubscribers, existingEvents, verifiedPurchaserEmails] = await Promise.all([
       db.select().from(subscribers).where(eq(subscribers.subscribed, true)),
       db.select({ subscriberId: emailEvents.subscriberId }).from(emailEvents).where(and(eq(emailEvents.messageId, messageId), eq(emailEvents.eventType, "sent"))),
+      message.audience === "verified_purchasers" ? getVerifiedPurchaserEmails() : Promise.resolve(undefined),
     ]);
+    const audienceSubscribers = await filterSubscribersByAudience(activeSubscribers, message.audience, verifiedPurchaserEmails);
     const alreadySent = new Set(existingEvents.map((event) => event.subscriberId));
-    const invalid = activeSubscribers.filter((subscriber) => !emailPattern.test(subscriber.email.trim().toLowerCase()));
-    const pending = activeSubscribers.filter((subscriber) => emailPattern.test(subscriber.email.trim().toLowerCase()) && !alreadySent.has(subscriber.id));
+    const invalid = audienceSubscribers.filter((subscriber) => !emailPattern.test(subscriber.email.trim().toLowerCase()));
+    const pending = audienceSubscribers.filter((subscriber) => emailPattern.test(subscriber.email.trim().toLowerCase()) && !alreadySent.has(subscriber.id));
     const failed: string[] = invalid.map((subscriber) => subscriber.email);
     let sent = 0;
 
@@ -50,7 +53,12 @@ export async function sendMessageToAllSubscribers(messageId: string): Promise<{ 
               .filter(Boolean).join(": ");
             throw new Error(`RESEND_SEND_FAILED: ${detail || JSON.stringify(result.error)}`);
           }
-          await db.insert(emailEvents).values({ messageId, subscriberId: subscriber.id, eventType: "sent" });
+          await db.insert(emailEvents).values({
+            messageId,
+            subscriberId: subscriber.id,
+            providerEmailId: result.data?.id ?? null,
+            eventType: "sent",
+          });
           sent += 1;
         } catch (error) {
           console.error("Resend newsletter send failed", { recipient: subscriber.email, error });
