@@ -253,7 +253,7 @@ function htmlToPlainText(html: string): string {
 function NewsletterPanel() {
   type NewsletterOverview = {
     subscribers: Array<{ id: string; email: string; name: string | null; source: "signup_form" | "purchase" | "both"; subscribed: boolean; createdAt: string }>
-    summary: { totalSubscribers: number; activeSubscribers: number; totalMessagesSent: number; engagement: Record<"sent" | "delivered" | "opened" | "clicked" | "bounced" | "complained", number>; rates: Record<"delivered" | "opened" | "clicked" | "bounced", number> }
+    summary: { totalSubscribers: number; activeSubscribers: number; totalMessagesSent: number; engagement: Record<"sent" | "delivered" | "bounced" | "complained", number>; rates: Record<"delivered", number> }
     bySource: Record<"signup_form" | "purchase" | "both", number>
     byStatus: Record<"active" | "unsubscribed", number>
   }
@@ -382,7 +382,7 @@ function NewsletterPanel() {
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Newsletter</p>
         <h2 className="mt-1 text-2xl font-extrabold">Audience and messages</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Review subscribers, engagement, and compose updates for subscribed readers.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Review subscribers, delivery health, and compose updates for subscribed readers.</p>
       </div>
       <button type="button" onClick={() => edit(null)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> New message</button>
     </div>
@@ -394,7 +394,7 @@ function NewsletterPanel() {
     ) : overviewData ? (
       <>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[["Total subscribers", overviewData.summary.totalSubscribers], ["Active", overviewData.summary.activeSubscribers], ["Messages sent", overviewData.summary.totalMessagesSent], ["Open rate", `${overviewData.summary.rates.opened}%`]].map(([label, value]) => (
+          {[["Total subscribers", overviewData.summary.totalSubscribers], ["Active", overviewData.summary.activeSubscribers], ["Messages sent", overviewData.summary.totalMessagesSent], ["Delivery rate", `${overviewData.summary.rates.delivered}%`]].map(([label, value]) => (
             <div key={String(label)} className={softCardClass + " flex items-center justify-between gap-3"}>
               <div>
                 <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
@@ -477,7 +477,7 @@ function NewsletterPanel() {
                         <span className="mt-1 block text-xs text-muted-foreground">{message.status === "scheduled" && message.scheduledAt ? `Scheduled ${formatDate(message.scheduledAt)}` : message.sentAt ? `Sent ${formatDate(message.sentAt)}` : "Draft"}</span>
                       </span>
                       <span className="rounded-full bg-secondary px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">{message.status}</span>
-                      {message.status === "sent" && <span className="text-right text-xs text-muted-foreground">{message.stats.sent} sent · {message.stats.opened} opened · {message.stats.clicked} clicked</span>}
+                      {message.status === "sent" && <span className="text-right text-xs text-muted-foreground">{message.stats.sent} sent · {message.stats.delivered} delivered · {message.stats.bounced} failed</span>}
                     </button>
                   ))
                 ) : (
