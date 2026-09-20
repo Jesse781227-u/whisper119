@@ -54,16 +54,36 @@ function previewMarkdown(value: string): string {
     .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>').replace(/\n/g, "<br />")
 }
 
-function normalizeRichHtml(value: string): string {
-  if (!value.includes("&lt;")) return value
-  const node = document.createElement("textarea")
-  node.innerHTML = value
-  const decoded = node.value
-  return /<\/?(?:p|h[1-6]|strong|em|u|ul|ol|li|a|blockquote|hr|img|br)\b[^>]*>/i.test(decoded) ? decoded : value
-}
-
 function isFullEmailHtml(value: string): boolean {
   return /<!doctype\s+html\b|<html\b|<head\b|<body\b/i.test(value)
+}
+
+function normalizeEmailSource(value: string): string {
+  const trimmed = value.trim().replace(/^```(?:html)?\s*/i, "").replace(/\s*```$/, "").trim()
+  if (!trimmed.includes("&lt;")) return trimmed
+  const node = document.createElement("textarea")
+  node.innerHTML = trimmed
+  const decoded = node.value.trim()
+  return isFullEmailHtml(decoded) || /<\/?(?:table|tbody|thead|tfoot|tr|td|th|p|h[1-6]|strong|em|u|ul|ol|li|a|blockquote|hr|img|br)\b[^>]*>/i.test(decoded) ? decoded : trimmed
+}
+
+function looksLikeFlattenedEmailHtml(value: string): boolean {
+  if (isFullEmailHtml(value)) return false
+  const markers = [
+    /\b(?:src|href|style|width|height|cellpadding|cellspacing|valign|align)\s*=/i,
+    /\{\{(?:book|order|purchase|amount|pdf|epub|support)/i,
+    /\b(?:YOUR READING COPY|YOUR BOOK|ORDER DETAILS|DOWNLOAD PDF|DOWNLOAD EPUB)\b/i,
+    /<\/?(?:table|tbody|thead|tfoot|tr|td|th)\b/i,
+  ]
+  return markers.filter((marker) => marker.test(value)).length >= 2
+}
+
+function isEmailTemplateHtml(value: string): boolean {
+  return isFullEmailHtml(value) || looksLikeFlattenedEmailHtml(value)
+}
+
+function normalizeRichHtml(value: string): string {
+  return normalizeEmailSource(value)
 }
 
 function RichNewsletterEditor({ html, disabled, onChange, onFullHtmlPaste }: { html: string; disabled?: boolean; onChange: (html: string) => void; onFullHtmlPaste: (html: string) => void }) {
@@ -91,8 +111,10 @@ function RichNewsletterEditor({ html, disabled, onChange, onFullHtmlPaste }: { h
     const onPaste = (event: ClipboardEvent) => {
       const clipboardHtml = event.clipboardData?.getData("text/html") ?? ""
       const clipboardText = event.clipboardData?.getData("text/plain") ?? ""
-      const fullHtml = isFullEmailHtml(clipboardHtml) ? clipboardHtml : isFullEmailHtml(clipboardText) ? clipboardText : ""
-      if (!fullHtml) return
+      const htmlCandidate = normalizeEmailSource(clipboardHtml)
+      const textCandidate = normalizeEmailSource(clipboardText)
+      const fullHtml = isEmailTemplateHtml(htmlCandidate) ? htmlCandidate : isEmailTemplateHtml(textCandidate) ? textCandidate : ""
+      if (!fullHtml || !isFullEmailHtml(fullHtml)) return
       event.preventDefault()
       onFullHtmlPaste(fullHtml)
     }
@@ -191,6 +213,12 @@ function RichNewsletterEditor({ html, disabled, onChange, onFullHtmlPaste }: { h
 
 function NewsletterPreview({ html }: { html: string }) {
   if (!html) return <p className="text-sm text-muted-foreground">Write a message for your readers.</p>
+  if (looksLikeFlattenedEmailHtml(html)) {
+    return <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm leading-6 text-amber-100">
+      <p className="font-bold">This email was flattened by the visual editor.</p>
+      <p className="mt-1">Switch to HTML source mode and replace the contents with the original complete HTML document. The preview cannot reconstruct missing tags and attributes automatically.</p>
+    </div>
+  }
   if (isFullEmailHtml(html)) {
     return <iframe title="Email preview" srcDoc={html} sandbox="" className="h-[48rem] w-full rounded-xl border border-border bg-white" />
   }
@@ -266,7 +294,7 @@ function NewsletterPanel() {
     setSubject(message?.subject ?? "")
     const nextBodyHtml = normalizeRichHtml(message?.bodyHtml ?? "")
     setBodyHtml(nextBodyHtml)
-    setHtmlSourceMode(isFullEmailHtml(nextBodyHtml))
+    setHtmlSourceMode(isEmailTemplateHtml(nextBodyHtml))
     setBodyText((message as NewsletterMessage & { bodyText?: string }).bodyText ?? "")
     setBodyTextEdited(false)
     setScheduledAt(message?.scheduledAt ? message.scheduledAt.slice(0, 16) : "")
@@ -297,7 +325,7 @@ function NewsletterPanel() {
   }
 
   function toggleHtmlSourceMode() {
-    if (htmlSourceMode && isFullEmailHtml(bodyHtml)) {
+    if (htmlSourceMode && isEmailTemplateHtml(bodyHtml)) {
       toast({ title: "Full HTML template stays in source mode", description: "This document uses email tables and inline styles that the visual editor cannot preserve." })
       return
     }
@@ -305,7 +333,7 @@ function NewsletterPanel() {
   }
 
   function handleFullHtmlPaste(html: string) {
-    const nextBodyHtml = normalizeRichHtml(html)
+    const nextBodyHtml = normalizeEmailSource(html)
     setBodyHtml(nextBodyHtml)
     setHtmlSourceMode(true)
     toast({ title: "Full HTML detected", description: "Kept the email document intact and switched the editor to HTML source mode." })
@@ -507,12 +535,13 @@ function NewsletterPanel() {
                   <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Message content</span>
                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                      <p className="text-xs text-muted-foreground">{htmlSourceMode ? "Paste a complete email document and preserve its tables and inline styles." : "Use the visual editor for normal newsletter content."}</p>
-                     <button type="button" onClick={toggleHtmlSourceMode} disabled={selected?.status === "sent" || (htmlSourceMode && isFullEmailHtml(bodyHtml))} className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50">
+                     <button type="button" onClick={toggleHtmlSourceMode} disabled={selected?.status === "sent" || (htmlSourceMode && isEmailTemplateHtml(bodyHtml))} className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:border-primary/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50">
                        {htmlSourceMode ? "HTML source" : "Edit HTML"}
                      </button>
                    </div>
                    {htmlSourceMode ? (
                      <>
+                       {looksLikeFlattenedEmailHtml(bodyHtml) && <p className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">This draft was previously flattened by the visual editor. Select all, then paste the original complete HTML document to restore the designed email.</p>}
                        <textarea aria-label="Email HTML source" value={bodyHtml} onChange={(event) => setBodyHtml(event.target.value)} disabled={selected?.status === "sent"} className="min-h-[24rem] w-full rounded-xl border border-border bg-background/60 p-3 font-mono text-xs leading-5 text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="<!doctype html>..." spellCheck={false} />
                        <p className="mt-2 text-xs text-muted-foreground">The preview is sandboxed. Merge placeholders such as <code>{"{{bookTitle}}"}</code> remain literal unless another delivery flow replaces them.</p>
                      </>
