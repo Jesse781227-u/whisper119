@@ -1,9 +1,8 @@
-import { ArrowRight, BookOpen, ChevronRight, Mail } from "lucide-react"
+import { ArrowRight, BookOpen, ChevronRight, LoaderCircle, Mail } from "lucide-react"
 import { Link } from "wouter"
 import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
 import { useSiteLanguage } from "@/hooks/use-site-language"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Reveal, Stagger, fadeUpVariants } from "@/lib/motion"
 
 function SectionHeading({ eyebrow, title, href = "/shop" }: { eyebrow?: string; title: string; href?: string }) {
@@ -58,20 +57,37 @@ function ServiceStrip() {
   )
 }
 
+function StorefrontLoadingScreen() {
+  return (
+    <div role="status" aria-live="polite" aria-label="Loading the Whisper 119 bookstore" className="fixed inset-0 z-[100] flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
+      <div className="flex max-w-sm flex-col items-center text-center">
+        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+          <BookOpen className="h-8 w-8" aria-hidden="true" />
+        </div>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Whisper 119</p>
+        <h1 className="mt-3 text-2xl font-extrabold tracking-tight">Opening the bookstore</h1>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">Waking up the book shelves and loading the latest titles…</p>
+        <LoaderCircle className="mt-7 h-6 w-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+        <span className="sr-only">Please wait while the storefront loads.</span>
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const language = useSiteLanguage()
   const { data: summary, isLoading, error, refetch, isRefetching } = useGetStorefrontSummary({
     query: {
       queryKey: ["/api/storefront/summary"],
-      retry: 3,
-      retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
+      retry: true,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15000),
     },
   })
   const { data: catalogueData, isLoading: isCatalogueLoading, error: catalogueError, refetch: refetchCatalogue } = useListBooks({ language }, {
     query: {
       queryKey: ["/api/books", { language }],
-      retry: 3,
-      retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3000),
+      retry: true,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 15000),
     },
   })
   const catalogue = (Array.isArray(catalogueData) ? catalogueData : []).slice().sort((left, right) => left.language.localeCompare(right.language))
@@ -86,15 +102,13 @@ export default function Home() {
     void Promise.all([refetch(), refetchCatalogue()])
   }
 
+  if (isLoadingShelf) return <StorefrontLoadingScreen />
+
   return (
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-5 sm:px-6 sm:pt-8">
       <Reveal><PromoBanner coverUrl={featured[0]?.coverUrl} /></Reveal>
 
-      {isLoadingShelf ? (
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[1, 2, 3, 4].map((item) => <div key={item}><Skeleton className="aspect-[0.69] w-full rounded-xl" /><Skeleton className="mt-3 h-4 w-4/5" /><Skeleton className="mt-2 h-3 w-2/5" /></div>)}
-        </div>
-       ) : shelfError && !hasBooks ? (
+      {shelfError && !hasBooks ? (
         <div className="mt-8 rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center text-sm text-destructive">
           <p>The shelf could not load. Please try again shortly.</p>
           <button type="button" onClick={retryShelf} disabled={isRefetching} className="mt-4 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-opacity disabled:opacity-60">
