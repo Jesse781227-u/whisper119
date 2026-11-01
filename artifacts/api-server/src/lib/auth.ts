@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
-import { GoogleAuth, OAuth2Client } from "google-auth-library";
+import { GoogleAuth } from "google-auth-library";
+import { createVerify } from "node:crypto";
 
 function getFirebaseProjectId(): string | null {
   return process.env.FIREBASE_PROJECT_ID?.trim() || process.env.VITE_FIREBASE_PROJECT_ID?.trim() || null;
@@ -12,16 +13,65 @@ function getBearerToken(req: Request): string | null {
   return scheme.toLowerCase() === "bearer" ? token : null;
 }
 
-const firebaseTokenVerifier = new OAuth2Client();
+let cachedFirebaseCerts: { certs: Record<string, string>; expiresAt: number } | null = null;
+
+async function getFirebasePublicKeys(forceRefresh = false): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (!forceRefresh && cachedFirebaseCerts && cachedFirebaseCerts.expiresAt > now) {
+    return cachedFirebaseCerts.certs;
+  }
+
+  try {
+    const response = await fetch("https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com");
+    if (!response.ok) throw new Error("Could not fetch Firebase token signing certificates.");
+    const certs = await response.json() as Record<string, string>;
+    const maxAge = Number(response.headers.get("cache-control")?.match(/max-age=(\d+)/)?.[1] ?? 3600);
+    cachedFirebaseCerts = { certs, expiresAt: now + maxAge * 1000 };
+    return certs;
+  } catch (error) {
+    if (cachedFirebaseCerts) return cachedFirebaseCerts.certs;
+    throw error;
+  }
+}
+
+function decodeBase64UrlJson(segment: string): Record<string, unknown> {
+  const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
+  return JSON.parse(Buffer.from(normalized, "base64").toString("utf8")) as Record<string, unknown>;
+}
 
 export async function verifyFirebaseIdToken(idToken: string): Promise<{ email: string; uid: string } | null> {
   const projectId = getFirebaseProjectId();
   if (!projectId) return null;
 
   try {
-    const ticket = await firebaseTokenVerifier.verifyIdToken(idToken, projectId);
-    const payload = ticket.getPayload();
-    if (!payload?.email || !payload.sub) return null;
+    const parts = idToken.split(".");
+    if (parts.length !== 3) return null;
+
+    const [headerPart, payloadPart, signaturePart] = parts;
+    const header = decodeBase64UrlJson(headerPart);
+    const payload = decodeBase64UrlJson(payloadPart);
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    if (header.alg !== "RS256" || typeof header.kid !== "string") return null;
+    if (payload.aud !== projectId || payload.iss !== `https://securetoken.google.com/${projectId}`) return null;
+    if (typeof payload.exp !== "number" || payload.exp <= nowSeconds) return null;
+    if (typeof payload.iat !== "number" || payload.iat > nowSeconds) return null;
+    if (typeof payload.auth_time !== "number" || payload.auth_time > nowSeconds) return null;
+    if (typeof payload.sub !== "string" || !payload.sub || payload.sub.length > 128) return null;
+    if (typeof payload.email !== "string" || !payload.email.trim()) return null;
+
+    let certs = await getFirebasePublicKeys();
+    let cert = certs[header.kid];
+    if (!cert) {
+      certs = await getFirebasePublicKeys(true);
+      cert = certs[header.kid];
+    }
+    if (!cert) return null;
+
+    const verifier = createVerify("RSA-SHA256");
+    verifier.update(`${headerPart}.${payloadPart}`);
+    verifier.end();
+    if (!verifier.verify(cert, Buffer.from(signaturePart, "base64url"))) return null;
 
     return {
       email: payload.email.trim().toLowerCase(),
