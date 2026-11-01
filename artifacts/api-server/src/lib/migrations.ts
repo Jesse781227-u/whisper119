@@ -12,6 +12,16 @@ export async function applyRuntimeMigrations(): Promise<void> {
     await client.query("ALTER TABLE books ADD COLUMN IF NOT EXISTS title_group_id text");
     await client.query("ALTER TABLE books ADD COLUMN IF NOT EXISTS language text NOT NULL DEFAULT 'en'");
     await client.query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS body_text text NOT NULL DEFAULT ''");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS newsletter_templates (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL,
+        subject text NOT NULL,
+        body_html text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
     await client.query("UPDATE subscribers SET email = lower(trim(email)) WHERE email <> lower(trim(email)) AND NOT EXISTS (SELECT 1 FROM subscribers duplicate WHERE duplicate.id <> subscribers.id AND lower(trim(duplicate.email)) = lower(trim(subscribers.email)))");
     await client.query("UPDATE books SET title_group_id = id WHERE title_group_id IS NULL");
     await client.query("ALTER TABLE books ALTER COLUMN title_group_id SET NOT NULL");
