@@ -6,10 +6,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (
+      return isSignedIn() && request.auth.token.email != null && (
         // Admins can be managed either via an `admins` collection keyed by email,
         // or by a `users/{uid}` document that carries `isAdmin: true`.
-        exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
       );
@@ -36,7 +36,11 @@ service cloud.firestore {
     // Documents in `admins` should be keyed by the admin email (example: "alice@example.com").
     // Only admins may manage this list.
     match /admins/{adminEmail} {
-      allow read: if isAdmin();
+      // Let a signed-in user check only their own normalized admin entry.
+      // Admins can still list the collection to manage access.
+      allow get: if isSignedIn() && request.auth.token.email != null &&
+        adminEmail == request.auth.token.email.lower();
+      allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
