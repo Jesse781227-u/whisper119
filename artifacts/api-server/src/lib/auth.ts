@@ -1,9 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
-import { GoogleAuth } from "google-auth-library";
-import { createVerify } from "node:crypto";
+import { GoogleAuth, OAuth2Client } from "google-auth-library";
 
 function getFirebaseProjectId(): string | null {
-  return process.env.FIREBASE_PROJECT_ID ?? process.env.VITE_FIREBASE_PROJECT_ID ?? null;
+  return process.env.FIREBASE_PROJECT_ID?.trim() || process.env.VITE_FIREBASE_PROJECT_ID?.trim() || null;
 }
 
 function getBearerToken(req: Request): string | null {
@@ -13,69 +12,19 @@ function getBearerToken(req: Request): string | null {
   return scheme.toLowerCase() === "bearer" ? token : null;
 }
 
-let cachedCerts: { certs: Record<string, string>; expiresAt: number } | null = null;
-
-async function getFirebasePublicKeys(): Promise<Record<string, string>> {
-  const now = Date.now();
-  if (cachedCerts && cachedCerts.expiresAt > now) {
-    return cachedCerts.certs;
-  }
-  try {
-    const res = await fetch("https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com");
-    if (!res.ok) throw new Error("Failed to fetch Google public keys for Firebase tokens.");
-    const certs = (await res.json()) as Record<string, string>;
-    const cacheControl = res.headers.get("cache-control");
-    let maxAge = 3600;
-    if (cacheControl) {
-      const match = cacheControl.match(/max-age=(\d+)/);
-      if (match) maxAge = parseInt(match[1], 10);
-    }
-    cachedCerts = { certs, expiresAt: now + maxAge * 1000 };
-    return certs;
-  } catch (err) {
-    if (cachedCerts) return cachedCerts.certs;
-    throw err;
-  }
-}
-
-function base64UrlDecode(str: string): string {
-  const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  return Buffer.from(base64, "base64").toString("utf8");
-}
+const firebaseTokenVerifier = new OAuth2Client();
 
 export async function verifyFirebaseIdToken(idToken: string): Promise<{ email: string; uid: string } | null> {
   const projectId = getFirebaseProjectId();
   if (!projectId) return null;
 
   try {
-    const parts = idToken.split(".");
-    if (parts.length !== 3) return null;
-
-    const [headerB64, payloadB64, signatureB64] = parts;
-    const header = JSON.parse(base64UrlDecode(headerB64));
-    const payload = JSON.parse(base64UrlDecode(payloadB64));
-
-    const nowSec = Math.floor(Date.now() / 1000);
-
-    if (header.alg !== "RS256") return null;
-    if (payload.aud !== projectId) return null;
-    if (payload.iss !== `https://securetoken.google.com/${projectId}`) return null;
-    if (typeof payload.exp !== "number" || payload.exp < nowSec) return null;
-    if (typeof payload.sub !== "string" || !payload.sub) return null;
-
-    const certs = await getFirebasePublicKeys();
-    const cert = certs[header.kid];
-    if (!cert) return null;
-
-    const verifier = createVerify("RSA-SHA256");
-    verifier.update(`${headerB64}.${payloadB64}`);
-    const signature = Buffer.from(signatureB64, "base64url");
-    const isValid = verifier.verify(cert, signature);
-
-    if (!isValid) return null;
+    const ticket = await firebaseTokenVerifier.verifyIdToken(idToken, projectId);
+    const payload = ticket.getPayload();
+    if (!payload?.email || !payload.sub) return null;
 
     return {
-      email: (payload.email ?? "").toLowerCase(),
+      email: payload.email.trim().toLowerCase(),
       uid: payload.sub,
     };
   } catch {
