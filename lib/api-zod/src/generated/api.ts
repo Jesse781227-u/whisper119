@@ -549,6 +549,7 @@ export const ListNewsletterMessagesResponseItem = zod.object({
   "bodyHtml": zod.string(),
   "bodyMarkdown": zod.string(),
   "bodyText": zod.string(),
+  "audience": zod.enum(['all_subscribers', 'verified_purchasers', 'new_subscribers']),
   "status": zod.enum(['draft', 'scheduled', 'sent']),
   "scheduledAt": zod.string().nullable(),
   "sentAt": zod.string().nullable(),
@@ -572,13 +573,14 @@ export const ListNewsletterMessagesResponse = zod.array(ListNewsletterMessagesRe
 export const createNewsletterMessageBodySubjectMax = 200;
 
 
-
+export const createNewsletterMessageBodyAudienceDefault = `all_subscribers`;
 
 export const CreateNewsletterMessageBody = zod.object({
   "subject": zod.string().min(1).max(createNewsletterMessageBodySubjectMax),
   "bodyMarkdown": zod.string().min(1).describe('Legacy plain-text\/template field'),
   "bodyHtml": zod.string().optional(),
   "bodyText": zod.string().optional(),
+  "audience": zod.enum(['all_subscribers', 'verified_purchasers', 'new_subscribers']).default(createNewsletterMessageBodyAudienceDefault),
   "scheduledAt": zod.string().nullish()
 })
 
@@ -588,6 +590,7 @@ export const CreateNewsletterMessageResponse = zod.object({
   "bodyHtml": zod.string(),
   "bodyMarkdown": zod.string(),
   "bodyText": zod.string(),
+  "audience": zod.enum(['all_subscribers', 'verified_purchasers', 'new_subscribers']),
   "status": zod.enum(['draft', 'scheduled', 'sent']),
   "scheduledAt": zod.string().nullable(),
   "sentAt": zod.string().nullable(),
@@ -614,13 +617,14 @@ export const UpdateNewsletterMessageParams = zod.object({
 export const updateNewsletterMessageBodySubjectMax = 200;
 
 
-
+export const updateNewsletterMessageBodyAudienceDefault = `all_subscribers`;
 
 export const UpdateNewsletterMessageBody = zod.object({
   "subject": zod.string().min(1).max(updateNewsletterMessageBodySubjectMax),
   "bodyMarkdown": zod.string().min(1).describe('Legacy plain-text\/template field'),
   "bodyHtml": zod.string().optional(),
   "bodyText": zod.string().optional(),
+  "audience": zod.enum(['all_subscribers', 'verified_purchasers', 'new_subscribers']).default(updateNewsletterMessageBodyAudienceDefault),
   "scheduledAt": zod.string().nullish()
 })
 
@@ -630,6 +634,7 @@ export const UpdateNewsletterMessageResponse = zod.object({
   "bodyHtml": zod.string(),
   "bodyMarkdown": zod.string(),
   "bodyText": zod.string(),
+  "audience": zod.enum(['all_subscribers', 'verified_purchasers', 'new_subscribers']),
   "status": zod.enum(['draft', 'scheduled', 'sent']),
   "scheduledAt": zod.string().nullable(),
   "sentAt": zod.string().nullable(),
@@ -659,6 +664,7 @@ export const SendNewsletterMessageResponse = zod.object({
   "bodyHtml": zod.string(),
   "bodyMarkdown": zod.string(),
   "bodyText": zod.string(),
+  "audience": zod.enum(['all_subscribers', 'verified_purchasers', 'new_subscribers']),
   "status": zod.enum(['draft', 'scheduled', 'sent']),
   "scheduledAt": zod.string().nullable(),
   "sentAt": zod.string().nullable(),

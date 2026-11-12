@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { NewsletterMessageInputAudience } from './newsletterMessageInputAudience';
 
 export interface NewsletterMessageInput {
   /**
@@ -19,6 +20,7 @@ export interface NewsletterMessageInput {
   bodyMarkdown: string;
   bodyHtml?: string;
   bodyText?: string;
+  audience?: NewsletterMessageInputAudience;
   /** @nullable */
   scheduledAt?: string | null;
 }

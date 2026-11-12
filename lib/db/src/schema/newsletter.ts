@@ -2,6 +2,9 @@ import { createInsertSchema } from "drizzle-zod";
 import { boolean, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
+export const newsletterAudienceValues = ["all_subscribers", "verified_purchasers", "new_subscribers"] as const;
+export type NewsletterAudience = typeof newsletterAudienceValues[number];
+
 export const subscribers = pgTable("subscribers", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
@@ -18,6 +21,7 @@ export const messages = pgTable("messages", {
   subject: text("subject").notNull(),
   bodyHtml: text("body_html").notNull(),
   bodyText: text("body_text").notNull().default(""),
+  audience: text("audience", { enum: newsletterAudienceValues }).notNull().default("all_subscribers"),
   status: text("status", { enum: ["draft", "scheduled", "sent"] }).notNull().default("draft"),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),
@@ -38,6 +42,7 @@ export const emailEvents = pgTable("email_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   messageId: uuid("message_id").references(() => messages.id),
   subscriberId: uuid("subscriber_id").notNull().references(() => subscribers.id),
+  providerEmailId: text("provider_email_id"),
   eventType: text("event_type", {
     enum: ["sent", "delivered", "opened", "clicked", "bounced", "complained"],
   }).notNull(),

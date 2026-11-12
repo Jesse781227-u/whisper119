@@ -9,6 +9,13 @@ const SCHEMA_STATEMENTS = [
   "ALTER TABLE books ADD COLUMN IF NOT EXISTS title_group_id text",
   "ALTER TABLE books ADD COLUMN IF NOT EXISTS language text NOT NULL DEFAULT 'en'",
   "ALTER TABLE messages ADD COLUMN IF NOT EXISTS body_text text NOT NULL DEFAULT ''",
+  // From main: order opt-in, newsletter audience, Resend provider ids.
+  "ALTER TABLE orders ADD COLUMN IF NOT EXISTS newsletter_opt_in boolean NOT NULL DEFAULT false",
+  "ALTER TABLE messages ADD COLUMN IF NOT EXISTS audience text NOT NULL DEFAULT 'all_subscribers'",
+  "ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_audience_check",
+  "ALTER TABLE messages ADD CONSTRAINT messages_audience_check CHECK (audience IN ('all_subscribers', 'verified_purchasers', 'new_subscribers'))",
+  "ALTER TABLE email_events ADD COLUMN IF NOT EXISTS provider_email_id text",
+  "CREATE INDEX IF NOT EXISTS email_events_provider_email_id_idx ON email_events(provider_email_id)",
   `CREATE TABLE IF NOT EXISTS newsletter_templates (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name text NOT NULL,
