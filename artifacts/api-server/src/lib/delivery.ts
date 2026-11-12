@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, booksTable, orderItemsTable, ordersTable } from "@workspace/db";
 import { buildPurchaseEmailHtml } from "./email";
@@ -123,6 +122,9 @@ async function sendOrderEmail(
     return;
   }
 
+  // SMTP is a fallback for the Node server only; Cloudflare Workers deliver
+  // through the Resend HTTPS API above.
+  const { default: nodemailer } = await import("nodemailer");
   const transporter = nodemailer.createTransport({
     host: smtpHost,
     port: smtpPort,

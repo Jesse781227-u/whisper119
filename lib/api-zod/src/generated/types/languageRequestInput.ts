@@ -24,4 +24,9 @@ export interface LanguageRequestInput {
      * @maxLength 80
      */
   language: string;
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  email?: string;
 }

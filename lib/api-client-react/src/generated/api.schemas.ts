@@ -21,6 +21,14 @@ export const BookFormat = {
   EPUB: 'EPUB',
 } as const;
 
+export type BookFormatsItem = typeof BookFormatsItem[keyof typeof BookFormatsItem];
+
+
+export const BookFormatsItem = {
+  PDF: 'PDF',
+  EPUB: 'EPUB',
+} as const;
+
 export interface Book {
   id: string;
   slug: string;
@@ -46,12 +54,34 @@ export interface Book {
   featured: boolean;
   publishedAt: string;
   createdAt: string;
+  formats: BookFormatsItem[];
+  /** @nullable */
+  seriesId: string | null;
+  /** @nullable */
+  seriesName: string | null;
+  /** @nullable */
+  seriesSlug: string | null;
+  /** @nullable */
+  seriesNumber: number | null;
+  /** @nullable */
+  pageCount: number | null;
+  /** @nullable */
+  primaryCategory: string | null;
+  hasSample: boolean;
 }
 
 export type BookInputFormat = typeof BookInputFormat[keyof typeof BookInputFormat];
 
 
 export const BookInputFormat = {
+  PDF: 'PDF',
+  EPUB: 'EPUB',
+} as const;
+
+export type BookInputFormatsItem = typeof BookInputFormatsItem[keyof typeof BookInputFormatsItem];
+
+
+export const BookInputFormatsItem = {
   PDF: 'PDF',
   EPUB: 'EPUB',
 } as const;
@@ -81,6 +111,7 @@ export interface BookInput {
   currency: string;
   /**
      * @minItems 1
+     * @maxItems 6
      * @items.minLength 1
      */
   categories: string[];
@@ -99,12 +130,40 @@ export interface BookInput {
   fileName: string;
   featured: boolean;
   publishedAt: string;
+  /** @minItems 1 */
+  formats?: BookInputFormatsItem[];
+  /** @nullable */
+  seriesId?: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  seriesNumber?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  pageCount?: number | null;
+  /** @nullable */
+  primaryCategory?: string | null;
+  /** @nullable */
+  sampleText?: string | null;
+  /** @nullable */
+  sampleObjectPath?: string | null;
 }
 
 export type BookUpdateFormat = typeof BookUpdateFormat[keyof typeof BookUpdateFormat];
 
 
 export const BookUpdateFormat = {
+  PDF: 'PDF',
+  EPUB: 'EPUB',
+} as const;
+
+export type BookUpdateFormatsItem = typeof BookUpdateFormatsItem[keyof typeof BookUpdateFormatsItem];
+
+
+export const BookUpdateFormatsItem = {
   PDF: 'PDF',
   EPUB: 'EPUB',
 } as const;
@@ -134,6 +193,7 @@ export interface BookUpdate {
   currency?: string;
   /**
      * @minItems 1
+     * @maxItems 6
      * @items.minLength 1
      */
   categories?: string[];
@@ -152,6 +212,26 @@ export interface BookUpdate {
   fileName?: string;
   featured?: boolean;
   publishedAt?: string;
+  /** @minItems 1 */
+  formats?: BookUpdateFormatsItem[];
+  /** @nullable */
+  seriesId?: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  seriesNumber?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  pageCount?: number | null;
+  /** @nullable */
+  primaryCategory?: string | null;
+  /** @nullable */
+  sampleText?: string | null;
+  /** @nullable */
+  sampleObjectPath?: string | null;
 }
 
 export interface PageViewInput {
@@ -180,6 +260,46 @@ export interface StorefrontSummary {
   categories: Category[];
 }
 
+export interface Series {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  /** @nullable */
+  coverUrl: string | null;
+  bookCount: number;
+  /** @nullable */
+  firstBookId: string | null;
+  /** @nullable */
+  price: number | null;
+}
+
+export interface SeriesInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  name: string;
+  /** @maxLength 4000 */
+  description?: string;
+  /** @nullable */
+  coverObjectPath?: string | null;
+}
+
+export interface SeriesDetail {
+  series: Series;
+  books: Book[];
+}
+
+export interface BookSample {
+  bookId: string;
+  title: string;
+  /** @nullable */
+  text: string | null;
+  /** @nullable */
+  pdfUrl: string | null;
+}
+
 export interface LanguageRequestInput {
   /** @minLength 1 */
   bookId: string;
@@ -198,6 +318,11 @@ export interface LanguageRequestInput {
      * @maxLength 80
      */
   language: string;
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  email?: string;
 }
 
 export interface LanguageRequest {
@@ -207,6 +332,8 @@ export interface LanguageRequest {
   name: string;
   country: string;
   language: string;
+  /** @nullable */
+  email?: string | null;
   createdAt: string;
 }
 
@@ -410,6 +537,7 @@ export const OrderStatus = {
   paid: 'paid',
   fulfilled: 'fulfilled',
   failed: 'failed',
+  abandoned: 'abandoned',
 } as const;
 
 export type OrderPaymentMethod = typeof OrderPaymentMethod[keyof typeof OrderPaymentMethod];
@@ -462,6 +590,7 @@ export type PaystackWebhookData = {
   reference: string;
   status?: string;
 };
+
 export interface PaystackWebhook {
   event: string;
   data: PaystackWebhookData;
@@ -558,6 +687,7 @@ export const StatusQueryParameter = {
   paid: 'paid',
   fulfilled: 'fulfilled',
   failed: 'failed',
+  abandoned: 'abandoned',
 } as const;
 
 export type ListBooksParams = {
@@ -568,6 +698,28 @@ maxPrice?: MaxPriceQueryParameter;
 language?: LanguageQueryParameter;
 };
 
+export type GetStorefrontSummaryParams = {
+language?: LanguageQueryParameter;
+};
+
+export type ListSeriesParams = {
+language?: LanguageQueryParameter;
+};
+
+export type GetAdminDashboardParams = {
+range?: GetAdminDashboardRange;
+};
+
+export type GetAdminDashboardRange = typeof GetAdminDashboardRange[keyof typeof GetAdminDashboardRange];
+
+
+export const GetAdminDashboardRange = {
+  '7d': '7d',
+  '30d': '30d',
+  all: 'all',
+} as const;
+
 export type ListAdminOrdersParams = {
 status?: StatusQueryParameter;
 };
+

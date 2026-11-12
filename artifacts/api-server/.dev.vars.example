@@ -1,0 +1,15 @@
+# Local secrets for `pnpm --filter @workspace/api-server run cf:dev`.
+# Copy to `.dev.vars` (git-ignored). In production set each of these with
+#   npx wrangler secret put NAME
+# Non-secret settings live in wrangler.jsonc under "vars".
+
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+RESEND_API_KEY=
+RESEND_WEBHOOK_SECRET=
+FLW_SECRET_KEY=
+FLW_PUBLIC_KEY=
+FLW_ENCRYPTION_KEY=
+FLW_SECRET_HASH=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=

@@ -1,157 +1,162 @@
 import { Link, useLocation } from "wouter"
-import { BookOpen, ChevronDown, Menu, Search, ShoppingBag, UserRound, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { ChevronDown, ChevronRight, Globe, Menu, Search, ShoppingBag, UserRound } from "lucide-react"
+import { useRef, useState, type FormEvent, type TouchEvent } from "react"
 import { useGetStorefrontSummary } from "@workspace/api-client-react"
 import { useCart } from "@/components/cart-provider"
-import { LanguageRegionSelector } from "@/components/language-region-selector"
+import { LanguageRegionSelector, LanguageRegionSheet, useLanguageRegionLabel } from "@/components/language-region-selector"
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import { motion, useReducedMotion } from "framer-motion"
+import { useSiteLanguage } from "@/hooks/use-site-language"
+
+function Wordmark({ className = "h-7" }: { className?: string }) {
+  return <img src="/whisper-119-wordmark-light.png" alt="Whisper 119" width={237} height={96} className={`w-auto ${className}`} />
+}
+
+function CartIcon({ count }: { count: number }) {
+  const prefersReducedMotion = useReducedMotion()
+  return (
+    <span className="relative">
+      <motion.span key={count} className="block" animate={prefersReducedMotion ? undefined : { scale: [1, 1.14, 1] }} transition={{ duration: 0.32 }}>
+        <ShoppingBag className="h-5 w-5" aria-hidden="true" />
+      </motion.span>
+      {count > 0 && (
+        <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.6rem] font-bold text-primary-foreground">{count}</span>
+      )}
+    </span>
+  )
+}
+
+const iconButton = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+const drawerRow = "flex min-h-12 w-full items-center justify-between rounded-xl px-4 text-left text-sm font-bold transition-colors hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none"
 
 export function Navbar() {
   const { items } = useCart()
-  const { data: summary } = useGetStorefrontSummary()
+  const language = useSiteLanguage()
+  const { data: summary } = useGetStorefrontSummary({ language }, { query: { queryKey: ["/api/storefront/summary", { language }] } })
   const [open, setOpen] = useState(false)
-  const [menuVisible, setMenuVisible] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
-  const [location] = useLocation()
-  const prefersReducedMotion = useReducedMotion()
+  const [languageOpen, setLanguageOpen] = useState(false)
+  const [location, setLocation] = useLocation()
+  const languageLabel = useLanguageRegionLabel()
+  const touchStartX = useRef<number | null>(null)
   const categories = Array.isArray(summary?.categories) ? summary.categories : []
-
-  useEffect(() => {
-    if (!open) {
-      const timeout = window.setTimeout(() => setMenuVisible(false), 280)
-      return () => window.clearTimeout(timeout)
-    }
-
-    setMenuVisible(true)
-    return undefined
-  }, [open])
-
-  useEffect(() => {
-    document.body.style.overflow = menuVisible ? "hidden" : ""
-    return () => {
-      document.body.style.overflow = ""
-    }
-  }, [menuVisible])
-
-  const toggleMenu = () => {
-    if (open) {
-      setOpen(false)
-      return
-    }
-
-    setMenuVisible(true)
-    window.requestAnimationFrame(() => setOpen(true))
-  }
+  const onShop = location === "/shop"
 
   const closeMenu = () => setOpen(false)
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const query = new FormData(event.currentTarget).get("search")?.toString().trim() ?? ""
+    setLocation(query ? `/shop?search=${encodeURIComponent(query)}` : "/shop")
+  }
+
+  // Swipe left anywhere on the drawer to close it.
+  const onTouchStart = (event: TouchEvent) => { touchStartX.current = event.touches[0]?.clientX ?? null }
+  const onTouchEnd = (event: TouchEvent) => {
+    const start = touchStartX.current
+    const end = event.changedTouches[0]?.clientX
+    touchStartX.current = null
+    if (start !== null && end !== undefined && start - end > 60) closeMenu()
+  }
 
   return (
     <header className="sticky top-0 z-50">
       <div className="border-b border-border bg-background/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6">
-          <button type="button" aria-expanded={open} aria-controls="mobile-navigation" aria-label={open ? "Close menu" : "Open menu"} onClick={toggleMenu} className="shrink-0 rounded-full p-2 text-foreground transition-colors hover:bg-secondary md:hidden">
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        <div className="mx-auto flex h-14 max-w-7xl items-center gap-1 px-2 sm:gap-3 sm:px-6 md:h-16">
+          <button type="button" aria-expanded={open} aria-controls="mobile-navigation" aria-label="Open menu" onClick={() => setOpen(true)} className={`${iconButton} md:hidden`}>
+            <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <Link href="/" className="hidden shrink-0 items-center gap-2 md:flex">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <BookOpen className="h-4 w-4" strokeWidth={2.5} />
-            </span>
-            <span className="text-sm font-extrabold tracking-tight">Whisper 119</span>
+
+          <Link href="/" aria-label="Whisper 119 home" className="flex shrink-0 items-center rounded-lg px-1 py-1">
+            <Wordmark className="h-7 md:h-8" />
           </Link>
-          <label className="relative min-w-0 flex-1 md:max-w-xl">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input aria-label="Search books" placeholder="Search what you want" className="h-10 w-full rounded-full border border-transparent bg-secondary/80 pl-9 pr-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/10" />
-          </label>
-          <Link href="/cart" className={`relative hidden items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold transition-colors hover:bg-secondary sm:flex ${location === "/cart" ? "text-primary" : "text-muted-foreground"}`}>
-            <motion.span key={`desktop-cart-${items.length}`} animate={prefersReducedMotion ? undefined : { scale: [1, 1.14, 1] }} transition={{ duration: 0.32 }}><ShoppingBag className="h-4 w-4" /></motion.span>
-            Cart
-            {items.length > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.58rem] text-primary-foreground">{items.length}</span>}
+
+          {/* Desktop search. Hidden on /shop, which has its own search field. */}
+          {!onShop && (
+            <form role="search" onSubmit={submitSearch} className="relative ml-4 hidden min-w-0 flex-1 md:block md:max-w-xl">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <input name="search" aria-label="Search books" placeholder="Search books" className="h-10 w-full rounded-full border border-transparent bg-secondary/80 pl-9 pr-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/10" />
+            </form>
+          )}
+
+          <span className="flex-1" />
+
+          {!onShop && (
+            <Link href="/shop?focus=search" aria-label="Search books" className={`${iconButton} md:hidden`}>
+              <Search className="h-5 w-5" aria-hidden="true" />
+            </Link>
+          )}
+          <Link href="/cart" aria-label={`Cart, ${items.length} ${items.length === 1 ? "item" : "items"}`} className={`${iconButton} ${location === "/cart" ? "text-primary" : ""}`}>
+            <CartIcon count={items.length} />
           </Link>
-          <Link href="/cart" className="relative rounded-full p-2 text-muted-foreground hover:bg-secondary sm:hidden" aria-label={`Cart, ${items.length} items`}>
-            <motion.span key={`mobile-cart-${items.length}`} animate={prefersReducedMotion ? undefined : { scale: [1, 1.16, 1] }} transition={{ duration: 0.32 }}><ShoppingBag className="h-5 w-5" /></motion.span>
-            {items.length > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[0.58rem] text-primary-foreground">{items.length}</span>}
+          <Link href="/account" aria-label="Reader account" className={`${iconButton} hidden md:flex`}>
+            <UserRound className="h-5 w-5" aria-hidden="true" />
           </Link>
-          <Link href="/account" aria-label="Reader account" className="hidden rounded-full p-2 text-muted-foreground hover:bg-secondary sm:block"><UserRound className="h-4 w-4" /></Link>
-          <LanguageRegionSelector />
-          <span aria-hidden="true" className="hidden h-8 w-px bg-border sm:block" />
+          <div className="hidden md:block"><LanguageRegionSelector /></div>
         </div>
 
-        <nav className="no-scrollbar mx-auto hidden max-w-7xl gap-2 overflow-x-auto px-4 pb-3 sm:px-6 md:flex" aria-label="Book categories">
-          <Link href="/shop" className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${location === "/shop" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary"}`}>All books</Link>
-          {categories.filter(category => category.featured || category.count > 0).slice(0, 6).map((category) => (
+        <nav className="no-scrollbar mx-auto hidden max-w-7xl gap-2 overflow-x-auto px-6 pb-3 md:flex" aria-label="Book categories">
+          <Link href="/shop" className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${onShop ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary"}`}>All books</Link>
+          {categories.filter(category => category.count > 0).slice(0, 6).map((category) => (
             <Link key={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} className="shrink-0 rounded-full bg-secondary px-4 py-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-primary/10 hover:text-primary">
               {category.name}
             </Link>
           ))}
-          <Link href="/categories" className="shrink-0 rounded-full border border-primary/30 px-4 py-2 text-xs font-semibold text-primary">Browse all</Link>
+          <Link href="/categories" className="shrink-0 rounded-full border border-primary/30 px-4 py-2 text-xs font-semibold text-primary">All categories</Link>
         </nav>
       </div>
 
-      {menuVisible && (
-        <div className={`fixed inset-x-0 bottom-0 top-14 z-40 md:hidden ${open ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!open}>
-          <button
-            type="button"
-            aria-label="Close navigation"
-            onClick={closeMenu}
-            className={`absolute inset-0 bg-foreground/25 backdrop-blur-[2px] transition-opacity duration-300 motion-reduce:transition-none ${open ? "opacity-100" : "opacity-0"}`}
-          />
-          <nav
-            id="mobile-navigation"
-            aria-label="Mobile navigation"
-            className={`absolute inset-x-0 top-0 max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-b border-border bg-background px-4 pb-6 pt-3 shadow-xl transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${open ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"}`}
-          >
-            <div className="mx-auto max-w-lg">
-              <div className="mb-3 flex items-center justify-between px-1">
-                <p className="rule-label">Navigate</p>
-                <span className="text-[0.65rem] font-semibold text-muted-foreground">Whisper 119</span>
-              </div>
-              <div className="grid gap-1">
-                <Link href="/" onClick={closeMenu} className="flex items-center rounded-xl px-4 py-3.5 text-sm font-bold transition-colors hover:bg-secondary">
-                  Home
-                </Link>
+      {/* Mobile menu drawer: Esc, backdrop tap and swipe-left close it; focus is trapped while open. */}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent
+          side="left"
+          id="mobile-navigation"
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          className="flex w-[86vw] max-w-sm flex-col gap-0 overflow-y-auto p-0 pb-[env(safe-area-inset-bottom)] [&>button:first-child]:right-3 [&>button:first-child]:top-3 [&>button:first-child]:flex [&>button:first-child]:h-11 [&>button:first-child]:w-11 [&>button:first-child]:items-center [&>button:first-child]:justify-center [&>button:first-child]:rounded-full"
+        >
+          <div className="flex h-16 items-center border-b border-border px-5">
+            <Link href="/" onClick={closeMenu} aria-label="Whisper 119 home"><Wordmark className="h-8" /></Link>
+          </div>
+          <SheetTitle className="sr-only">Menu</SheetTitle>
+          <SheetDescription className="sr-only">Site navigation</SheetDescription>
 
-                <div className="rounded-xl bg-secondary/60">
-                  <button
-                    type="button"
-                    aria-expanded={categoriesOpen}
-                    aria-controls="mobile-category-links"
-                    onClick={() => setCategoriesOpen((value) => !value)}
-                    className="flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-left text-sm font-bold transition-colors hover:bg-secondary"
-                  >
-                    <span>Categories</span>
-                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-300 motion-reduce:transition-none ${categoriesOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  <div className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${categoriesOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-                    <div id="mobile-category-links" className="min-h-0 overflow-hidden">
-                      <div className="border-t border-border/70 px-2 pb-2 pt-1">
-                        <Link href="/shop" onClick={closeMenu} className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-primary hover:bg-background">
-                          All books
-                        </Link>
-                        <Link href="/categories" onClick={closeMenu} className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-primary hover:bg-background">Browse all categories</Link>
-                        {categories.map((category) => (
-                          <Link key={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} onClick={closeMenu} className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-background hover:text-primary">
-                            {category.name}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+          <nav aria-label="Main" className="grid gap-1 p-3">
+            <Link href="/" onClick={closeMenu} className={drawerRow}>Home</Link>
+            <Link href="/shop" onClick={closeMenu} className={drawerRow}>Browse all books</Link>
+
+            <div className="rounded-xl bg-secondary/50">
+              <button type="button" aria-expanded={categoriesOpen} aria-controls="drawer-categories" onClick={() => setCategoriesOpen((value) => !value)} className={drawerRow}>
+                <span>Categories</span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform motion-reduce:transition-none ${categoriesOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+              </button>
+              {categoriesOpen && (
+                <div id="drawer-categories" className="grid border-t border-border/70 px-2 pb-2 pt-1">
+                  <Link href="/categories" onClick={closeMenu} className="flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-primary hover:bg-background">All categories</Link>
+                  {categories.filter((category) => category.count > 0).map((category) => (
+                    <Link key={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} onClick={closeMenu} className="flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-muted-foreground hover:bg-background hover:text-primary">
+                      {category.name}
+                    </Link>
+                  ))}
                 </div>
-
-                <Link href="/cart" onClick={closeMenu} className="flex items-center justify-between rounded-xl px-4 py-3.5 text-sm font-bold transition-colors hover:bg-secondary">
-                  <span>Cart</span>
-                  {items.length > 0 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-xs text-primary-foreground">{items.length}</span>}
-                </Link>
-                <Link href="/account" onClick={closeMenu} className="flex items-center rounded-xl px-4 py-3.5 text-sm font-bold transition-colors hover:bg-secondary">Reader account</Link>
-
-                <a href="mailto:w2162843@ggmail.com" onClick={closeMenu} className="rounded-xl px-4 py-3.5 text-sm font-bold transition-colors hover:bg-secondary">
-                  Contact
-                </a>
-              </div>
+              )}
             </div>
+
+            <Link href="/cart" onClick={closeMenu} className={drawerRow}>
+              <span>My cart</span>
+              {items.length > 0 && <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-xs text-primary-foreground">{items.length}</span>}
+            </Link>
+            <Link href="/account" onClick={closeMenu} className={drawerRow}>Reader account</Link>
+            <button type="button" onClick={() => setLanguageOpen(true)} className={drawerRow}>
+              <span className="flex items-center gap-2"><Globe className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> Language &amp; region</span>
+              <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">{languageLabel}<ChevronRight className="h-4 w-4" aria-hidden="true" /></span>
+            </button>
+            <Link href="/about" onClick={closeMenu} className={drawerRow}>About</Link>
+            <Link href="/contact" onClick={closeMenu} className={drawerRow}>Contact</Link>
           </nav>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
+      <LanguageRegionSheet open={languageOpen} onOpenChange={setLanguageOpen} />
     </header>
   )
 }

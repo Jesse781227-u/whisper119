@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
-import { CreateLanguageRequestBody, CreateLanguageRequestResponse, GetBookParams, GetBookResponse, GetStorefrontSummaryResponse, ListBooksQueryParams, ListBooksResponse } from "@workspace/api-zod";
-import { count, desc, eq } from "drizzle-orm";
+import { CreateLanguageRequestBody, CreateLanguageRequestResponse, GetBookParams, GetBookResponse, GetBookSampleResponse, GetSeriesResponse, GetStorefrontSummaryQueryParams, GetStorefrontSummaryResponse, ListBooksQueryParams, ListBooksResponse, ListSeriesQueryParams, ListSeriesResponse } from "@workspace/api-zod";
+import { and, count, desc, eq } from "drizzle-orm";
 import { bookCategoriesTable, booksTable, categoriesTable, db, languageRequestsTable } from "@workspace/db";
-import { categoryNamesForBooks, findBooks, publicBook, publicBooks } from "../lib/bookstore";
+import { categoryNamesForBooks, findBooks, isPublished, listSeriesWithBooks, publicBook, publicBooks, publicSeries } from "../lib/bookstore";
+import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -68,10 +69,11 @@ router.post("/language-requests", async (req, res): Promise<void> => {
   const [request] = await db.insert(languageRequestsTable).values({
     id: randomUUID(), bookId: book.id, name: parsed.data.name.trim(),
     country: parsed.data.country.trim(), language: parsed.data.language.trim(),
+    email: parsed.data.email?.trim().toLowerCase() || null,
   }).returning();
   res.status(201).json(CreateLanguageRequestResponse.parse({
     id: request.id, bookId: book.id, bookTitle: book.title, name: request.name,
-    country: request.country, language: request.language, createdAt: request.createdAt.toISOString(),
+    country: request.country, language: request.language, email: request.email, createdAt: request.createdAt.toISOString(),
   }));
 });
 
@@ -89,19 +91,69 @@ router.get("/books/:bookId", async (req, res): Promise<void> => {
   res.json(GetBookResponse.parse((await publicBooks([book]))[0]));
 });
 
-router.get("/storefront/summary", async (_req, res): Promise<void> => {
+router.get("/storefront/summary", async (req, res): Promise<void> => {
+  const parsed = GetStorefrontSummaryQueryParams.safeParse(req.query);
+  const language = parsed.success ? parsed.data.language : undefined;
+  const visible = and(isPublished(), language ? eq(booksTable.language, language) : undefined);
+  // Category counts use the same filter as the /books listing (published,
+  // same language) so "Werewolf romance 12" opens a page with 12 books.
   const [featured, newArrivals, categories] = await Promise.all([
-    db.select().from(booksTable).where(eq(booksTable.featured, true)).orderBy(desc(booksTable.publishedAt)).limit(4),
-    db.select().from(booksTable).orderBy(desc(booksTable.publishedAt)).limit(6),
-    db.select({ id: categoriesTable.id, name: categoriesTable.name, featured: categoriesTable.featured, count: count(bookCategoriesTable.bookId) })
-      .from(categoriesTable).leftJoin(bookCategoriesTable, eq(bookCategoriesTable.categoryId, categoriesTable.id))
-      .groupBy(categoriesTable.id).orderBy(desc(count(bookCategoriesTable.bookId)), categoriesTable.name),
+    db.select().from(booksTable).where(and(visible, eq(booksTable.featured, true))).orderBy(desc(booksTable.publishedAt)).limit(4),
+    db.select().from(booksTable).where(visible).orderBy(desc(booksTable.publishedAt)).limit(12),
+    db.select({ id: categoriesTable.id, name: categoriesTable.name, featured: categoriesTable.featured, count: count(booksTable.id) })
+      .from(categoriesTable)
+      .leftJoin(bookCategoriesTable, eq(bookCategoriesTable.categoryId, categoriesTable.id))
+      .leftJoin(booksTable, and(eq(booksTable.id, bookCategoriesTable.bookId), visible))
+      .groupBy(categoriesTable.id).orderBy(desc(count(booksTable.id)), categoriesTable.name),
   ]);
   res.json(GetStorefrontSummaryResponse.parse({
     featured: await publicBooks(featured),
     newArrivals: await publicBooks(newArrivals),
     categories: categories.map((category) => ({ id: category.id, name: category.name, featured: category.featured, count: Number(category.count) })),
   }));
+});
+
+router.get("/series", async (req, res): Promise<void> => {
+  const parsed = ListSeriesQueryParams.safeParse(req.query);
+  const rows = await listSeriesWithBooks(parsed.success ? parsed.data.language : undefined);
+  res.json(ListSeriesResponse.parse(rows.filter((row) => row.volumes.length).map((row) => publicSeries(row.series, row.volumes))));
+});
+
+router.get("/series/:seriesSlug", async (req, res): Promise<void> => {
+  const rows = await listSeriesWithBooks();
+  const row = rows.find((candidate) => candidate.series.slug === req.params.seriesSlug);
+  if (!row || !row.volumes.length) { res.status(404).json({ error: "Series not found" }); return; }
+  res.json(GetSeriesResponse.parse({ series: publicSeries(row.series, row.volumes), books: await publicBooks(row.volumes) }));
+});
+
+router.get("/books/:bookId/sample", async (req, res): Promise<void> => {
+  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, req.params.bookId));
+  if (!book || !(book.sampleText?.trim() || book.sampleObjectPath)) { res.status(404).json({ error: "This book has no free sample." }); return; }
+  // Only the separate sample is exposed; the paid file path never leaves the server.
+  res.json(GetBookSampleResponse.parse({
+    bookId: book.id,
+    title: book.title,
+    text: book.sampleText?.trim() || null,
+    pdfUrl: book.sampleObjectPath ? `/api/books/${book.id}/sample.pdf` : null,
+  }));
+});
+
+router.get("/books/:bookId/sample.pdf", async (req, res): Promise<void> => {
+  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, req.params.bookId));
+  if (!book?.sampleObjectPath) { res.status(404).json({ error: "This book has no sample PDF." }); return; }
+  try {
+    const storage = new ObjectStorageService();
+    const file = await storage.getObjectEntityFile(book.sampleObjectPath);
+    const response = await storage.downloadObject(file, 3600);
+    res.status(200);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    res.setHeader("Content-Disposition", "inline");
+    res.send(Buffer.from(await response.arrayBuffer()));
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) { res.status(404).json({ error: "Sample not found" }); return; }
+    req.log.error({ err: error }, "Could not serve sample PDF");
+    res.status(500).json({ error: "The sample could not be loaded." });
+  }
 });
 
 export default router;

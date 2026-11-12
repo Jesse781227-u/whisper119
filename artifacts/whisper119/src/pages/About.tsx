@@ -1,8 +1,10 @@
+import { useDocumentTitle } from "@/hooks/use-document-title"
 import { ArrowRight, BookOpen, Mail } from "lucide-react"
 import { Link } from "wouter"
 import { useEffect } from "react"
 
 export default function About() {
+  useDocumentTitle("About")
   useEffect(() => {
     document.title = "About Us | Whisper 119"
     let meta = document.querySelector('meta[name="description"]')
@@ -16,7 +18,7 @@ export default function About() {
       <div className="rounded-3xl border border-border bg-card/80 p-6 sm:p-10"><div className="space-y-6 text-base leading-8 text-muted-foreground sm:text-lg">
         <p>Whisper 119 is the author brand of Audrey Leilani Global Limited, a registered Nigerian publishing company (RC 9270417).</p>
         <p>We create and sell serialized romance fiction, including werewolf romance, dark romance, paranormal romance, and billionaire romance. Our stories have been read by over 225,000 readers across multiple countries and translated into multiple languages.</p>
-        <p>All books sold on this website are completed series, available as PDF and EPUB digital downloads, delivered straight to your inbox.</p>
+        <p>All books sold on this website are completed series, available as PDF ebooks (a few also in EPUB), delivered straight to your inbox.</p>
       </div><div className="mt-10 border-t border-border pt-7"><Link href="/shop" className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-mono text-[0.68rem] uppercase tracking-[0.13em] text-primary-foreground">Browse the books <ArrowRight className="h-4 w-4" /></Link><Link href="/contact" className="ml-4 inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary"><Mail className="h-4 w-4" /> Contact us</Link></div></div>
     </div>
   </main>

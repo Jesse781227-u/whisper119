@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "@/hooks/use-document-title"
 import { ArrowRight, CheckCircle2, Trash2 } from "lucide-react"
 import { Link, useLocation } from "wouter"
 import { BookCover } from "@/components/book-card"
@@ -5,6 +6,7 @@ import { ConvertedPrice } from "@/components/converted-price"
 import { useCart } from "@/components/cart-provider"
 
 export default function Cart() {
+  useDocumentTitle("Your cart")
   const { items, removeItem } = useCart()
   const [, setLocation] = useLocation()
   const dollarTotal = items.reduce((sum, item) => sum + item.price, 0)
@@ -32,7 +34,7 @@ export default function Cart() {
                 <div key={item.id} className="flex gap-4 p-4 sm:gap-5 sm:p-5">
                   <Link href={`/book/${item.id}`} className="w-20 shrink-0 sm:w-24">
                     <div className="aspect-[0.69] overflow-hidden rounded-xl bg-secondary book-shadow">
-                      {item.coverUrl ? <img src={item.coverUrl} alt={`Cover of ${item.title}`} className="h-full w-full object-cover" /> : <div className="flex h-full items-end p-3 text-xs font-bold leading-tight">{item.title}</div>}
+                      {item.coverUrl ? <img src={item.coverUrl} loading="lazy" decoding="async" alt={`${item.title} cover`} className="h-full w-full object-cover" /> : <div className="flex h-full items-end p-3 text-xs font-bold leading-tight">{item.title}</div>}
                     </div>
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col">
@@ -56,7 +58,7 @@ export default function Cart() {
 
           <aside className="h-fit rounded-2xl border border-border bg-card p-5 shadow-sm lg:sticky lg:top-32">
             <p className="text-[0.65rem] font-bold uppercase tracking-[0.15em] text-primary">Order summary</p>
-            <div className="mt-4 flex items-end justify-between border-b border-border pb-5"><span className="text-sm text-muted-foreground">Subtotal</span><span className="text-2xl font-extrabold"><ConvertedPrice amountUsd={dollarTotal} /></span></div>
+            <div className="mt-4 flex items-end justify-between border-b border-border pb-5"><span className="text-sm text-muted-foreground">Subtotal</span><span className="text-2xl font-extrabold"><ConvertedPrice amountUsd={dollarTotal} showLocal /></span></div>
             <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-primary" /> No shipping or hidden fees</div>
             <button type="button" onClick={() => setLocation("/checkout")} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-xs font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5">Continue to checkout <ArrowRight className="h-4 w-4" /></button>
             <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Your files arrive as email attachments after Flutterwave confirms payment.</p>

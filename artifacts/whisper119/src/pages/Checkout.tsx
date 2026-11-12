@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "@/hooks/use-document-title"
 import { AlertCircle, ArrowLeft, CheckCircle2, LockKeyhole, Mail, ShieldCheck } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "wouter"
@@ -8,6 +9,7 @@ import { useUsdToNgn } from "@/hooks/use-usd-to-ngn"
 import { countries } from "@/data/countries"
 
 export default function Checkout() {
+  useDocumentTitle("Checkout")
   const { items, total, clearCart } = useCart()
   const dollarTotal = items.reduce((sum, item) => sum + item.price, 0)
   const [, setLocation] = useLocation()
@@ -49,7 +51,7 @@ export default function Checkout() {
         <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">Secure checkout</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">Almost yours.</h1>
       <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Tell us where to send your reading. Payment is handled securely by Flutterwave.</p>
-      <p className="mt-4 max-w-2xl rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs leading-6 text-muted-foreground"><strong className="text-foreground">Digital Download:</strong> This is an ebook in PDF and/or EPUB format. Your purchase will be delivered by email after payment confirmation. No physical product will be shipped.</p>
+      <p className="mt-4 max-w-2xl rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs leading-6 text-muted-foreground"><strong className="text-foreground">Digital Download:</strong> This is a PDF ebook (or EPUB, where the book page says so). Your purchase will be delivered by email after payment confirmation. No physical product will be shipped.</p>
       </div>
 
       <div className="mt-8 grid gap-7 lg:grid-cols-[1fr_20rem]">

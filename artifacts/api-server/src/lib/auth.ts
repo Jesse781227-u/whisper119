@@ -1,5 +1,4 @@
 import type { NextFunction, Request, Response } from "express";
-import { GoogleAuth } from "google-auth-library";
 import { createVerify } from "node:crypto";
 
 function getFirebaseProjectId(): string | null {
@@ -95,19 +94,71 @@ function firstEnv(...names: string[]): string | undefined {
   return names.map((name) => process.env[name]?.trim()).find(Boolean);
 }
 
+let cachedServiceToken: { token: string; expiresAt: number } | null = null;
+
+function base64UrlEncode(bytes: Uint8Array | string): string {
+  return Buffer.from(bytes).toString("base64url");
+}
+
+/**
+ * Exchanges the Firebase service account for a Firestore access token using
+ * the OAuth 2 JWT-bearer flow. Uses Web Crypto so it runs on Node and on
+ * Cloudflare Workers alike.
+ */
 async function getServiceAccessToken(): Promise<string | null> {
+  if (cachedServiceToken && cachedServiceToken.expiresAt > Date.now() + 60_000) {
+    return cachedServiceToken.token;
+  }
+
+  const clientEmail = firstEnv("GCS_CLIENT_EMAIL", "FIREBASE_CLIENT_EMAIL");
+  const privateKey = firstEnv("GCS_PRIVATE_KEY", "FIREBASE_PRIVATE_KEY")?.replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
+  if (!clientEmail || !privateKey) return null;
+
   try {
-    const clientEmail = firstEnv("GCS_CLIENT_EMAIL", "FIREBASE_CLIENT_EMAIL");
-    const privateKey = firstEnv("GCS_PRIVATE_KEY", "FIREBASE_PRIVATE_KEY")?.replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
-    const authOptions: any = { scopes: ["https://www.googleapis.com/auth/datastore"] };
-    if (clientEmail && privateKey) {
-      authOptions.credentials = { client_email: clientEmail, private_key: privateKey };
-    }
-    const auth = new GoogleAuth(authOptions);
-    const client = await auth.getClient();
-    const tokenResponse = await client.getAccessToken();
-    if (!tokenResponse) return null;
-    return typeof tokenResponse === "string" ? tokenResponse : tokenResponse.token ?? null;
+    const pkcs8 = Buffer.from(
+      privateKey.replace(/-----(BEGIN|END) PRIVATE KEY-----/g, "").replace(/\s+/g, ""),
+      "base64",
+    );
+    const key = await crypto.subtle.importKey(
+      "pkcs8",
+      pkcs8,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const header = base64UrlEncode(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+    const claims = base64UrlEncode(JSON.stringify({
+      iss: clientEmail,
+      scope: "https://www.googleapis.com/auth/datastore",
+      aud: "https://oauth2.googleapis.com/token",
+      iat: nowSeconds,
+      exp: nowSeconds + 3600,
+    }));
+    const signature = await crypto.subtle.sign(
+      "RSASSA-PKCS1-v1_5",
+      key,
+      new TextEncoder().encode(`${header}.${claims}`),
+    );
+    const assertion = `${header}.${claims}.${base64UrlEncode(new Uint8Array(signature))}`;
+
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion,
+      }),
+    });
+    if (!response.ok) return null;
+    const body = await response.json() as { access_token?: string; expires_in?: number };
+    if (!body.access_token) return null;
+    cachedServiceToken = {
+      token: body.access_token,
+      expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000,
+    };
+    return body.access_token;
   } catch {
     return null;
   }

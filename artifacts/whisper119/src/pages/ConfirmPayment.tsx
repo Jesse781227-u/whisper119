@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "@/hooks/use-document-title"
 import { ArrowLeft, CheckCircle2, ExternalLink, Mail, ReceiptText } from "lucide-react"
 import { useMemo, useState, type FormEvent } from "react"
 import { Link } from "wouter"
@@ -20,6 +21,7 @@ function getErrorMessage(error: unknown) {
 }
 
 export default function ConfirmPayment() {
+  useDocumentTitle("Confirm payment")
   const initialBookId = useMemo(() => getQueryValue("bookId"), [])
   const initialMethod = useMemo<PaymentMethod>(() => {
     return getQueryValue("method") === "payoneer" ? "payoneer" : "flutterwave"

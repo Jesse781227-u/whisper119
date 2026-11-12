@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BookInputFormat } from './bookInputFormat';
+import type { BookInputFormatsItem } from './bookInputFormatsItem';
 
 export interface BookInput {
   /** @minLength 1 */
@@ -32,6 +33,7 @@ export interface BookInput {
   currency: string;
   /**
      * @minItems 1
+     * @maxItems 6
      * @items.minLength 1
      */
   categories: string[];
@@ -50,4 +52,24 @@ export interface BookInput {
   fileName: string;
   featured: boolean;
   publishedAt: string;
+  /** @minItems 1 */
+  formats?: BookInputFormatsItem[];
+  /** @nullable */
+  seriesId?: string | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  seriesNumber?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  pageCount?: number | null;
+  /** @nullable */
+  primaryCategory?: string | null;
+  /** @nullable */
+  sampleText?: string | null;
+  /** @nullable */
+  sampleObjectPath?: string | null;
 }

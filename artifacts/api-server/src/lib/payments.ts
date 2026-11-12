@@ -55,7 +55,8 @@ export async function confirmFlutterwaveTransaction(transactionId: string, refer
   if (!response.ok || !paid) throw new Error("PAYMENT_NOT_CONFIRMED");
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.reference, reference));
   if (!order || order.status === "fulfilled") return;
-  if (order.status === "pending") {
+  // "abandoned" is an unpaid checkout older than 48h; a late payment still completes it.
+  if (order.status === "pending" || order.status === "abandoned") {
     await db.update(ordersTable)
       .set({ status: "paid", paymentStatus: "success", paidAt: new Date(), paymentReference: transactionId })
       .where(eq(ordersTable.id, order.id));

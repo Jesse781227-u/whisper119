@@ -56,6 +56,11 @@ export default defineConfig({
     strictPort: true,
     host: '0.0.0.0',
     allowedHosts: true,
+    // Optional: API_PROXY_TARGET=https://whisper119.com pnpm dev — serves the
+    // local UI against a deployed API (read-only browsing) without CORS setup.
+    ...(process.env.API_PROXY_TARGET
+      ? { proxy: { '/api': { target: process.env.API_PROXY_TARGET, changeOrigin: true } } }
+      : {}),
     fs: {
       strict: true,
     },
