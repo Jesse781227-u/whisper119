@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link, useLocation, useSearch } from "wouter"
 import { useQueryClient } from "@tanstack/react-query"
-import { BookOpen, Home, LibraryBig, LogOut, Mail, ReceiptText, RefreshCw, Settings } from "lucide-react"
+import { Home, LibraryBig, LogOut, Mail, ReceiptText, RefreshCw, Settings } from "lucide-react"
 import { getListAdminBooksQueryKey, useListAdminBooks, useListAdminOrders } from "@workspace/api-client-react"
 import type { Book, Order } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
@@ -29,7 +29,7 @@ export function AdminLogin() {
   return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090f2d] px-4 py-10 text-white">
     <div className="absolute inset-0 bg-cover bg-center opacity-55" style={{ backgroundImage: "linear-gradient(180deg,rgba(7,12,35,.35),#090f2d 83%),url('/covers/cover-3.jpg')" }} />
     <div className="relative w-full max-w-md">
-      <Link href="/" className="mb-8 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary"><BookOpen className="h-5 w-5" /></span><div><p className="text-lg font-extrabold">Whisper 119</p><p className="text-xs text-white/60">Private Administrative controls</p></div></Link>
+      <Link href="/" className="mb-8 flex items-center gap-3"><img src="/whisper-119-wordmark-light.png" alt="Whisper 119" width={237} height={96} className="h-11 w-auto" /><span className="border-l border-white/20 pl-3 text-xs font-bold text-white/60">Admin</span></Link>
       <div className="rounded-3xl border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary-foreground/70">Admin access</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Access your Administrative controls</h1>
@@ -76,9 +76,9 @@ function isTab(value: string | null): value is AdminTab {
 function AdminHeader({ onRefresh, refreshing, onLogout }: { onRefresh: () => void; refreshing: boolean; onLogout: () => void }) {
   return (
     <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-4 sm:px-6 sm:pt-6">
-      <Link href="/admin" className="flex min-w-0 items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen className="h-5 w-5" /></span>
-        <span className="min-w-0"><span className="block truncate text-sm font-extrabold">Whisper 119</span><span className="block truncate text-xs text-muted-foreground">Admin</span></span>
+      <Link href="/admin" className="flex min-w-0 items-center gap-3" aria-label="Whisper 119 admin home">
+        <img src="/whisper-119-wordmark-light.png" alt="Whisper 119" width={237} height={96} className="h-9 w-auto shrink-0 sm:h-10" />
+        <span className="border-l border-border pl-3 text-xs font-bold text-muted-foreground">Admin</span>
       </Link>
       <div className="flex shrink-0 items-center gap-2">
         <Link href="/" className="hidden h-10 items-center rounded-xl px-3 text-sm font-bold text-muted-foreground hover:bg-secondary sm:inline-flex">View store</Link>
