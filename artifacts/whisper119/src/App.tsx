@@ -12,6 +12,8 @@ import About from '@/pages/About';
 import Shop from '@/pages/Shop';
 import Categories from '@/pages/Categories';
 import BookDetail from '@/pages/BookDetail';
+import Series from '@/pages/Series';
+import SampleReader from '@/pages/SampleReader';
 import Cart from '@/pages/Cart';
 import Checkout from '@/pages/Checkout';
 import Order from '@/pages/Order';
@@ -118,7 +120,9 @@ function Router() {
       <Route path="/contact" component={Contact} />
       <Route path="/shop" component={Shop} />
       <Route path="/categories" component={Categories} />
+      <Route path="/book/:bookId/sample" component={SampleReader} />
       <Route path="/book/:bookId" component={BookDetail} />
+      <Route path="/series/:seriesSlug" component={Series} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/order/:orderId" component={Order} />

@@ -11,6 +11,7 @@ import {
   getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey, getListCategoriesQueryKey,
   useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
   useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory,
+  useListAdminSeries, useCreateSeries, useUpdateSeries, useDeleteSeries, getListAdminSeriesQueryKey,
   useCreateBook, useDeleteBook, useUpdateBook,
   requestUploadUrl as requestUploadUrlApi,
   getListNewsletterMessagesQueryKey, useListNewsletterMessages, useCreateNewsletterMessage, useUpdateNewsletterMessage, useSendNewsletterMessage,
@@ -18,10 +19,12 @@ import {
 import { useAuth } from "@/components/auth-provider"
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
 import { firebaseDb } from "@/lib/firebase"
-import type { Book, BookInput, BookInputFormat, BookUpdate, Order, Category, NewsletterMessage } from "@workspace/api-client-react"
+import type { Book, BookInput, BookInputFormat, BookUpdate, Order, Category, NewsletterMessage, Series } from "@workspace/api-client-react"
 import { formatDate, formatPrice } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { languages } from "@/hooks/use-site-language"
+
+const MAX_TAGS = 6
 
 const fieldClass = "h-11 w-full rounded-xl border border-border/80 bg-background/60 px-3 text-sm text-foreground outline-none transition duration-200 placeholder:text-muted-foreground/80 focus:border-primary focus:ring-4 focus:ring-primary/10"
 const panelCardClass = "rounded-2xl border border-white/10 bg-card/75 p-4 shadow-[0_18px_45px_-32px_rgba(15,19,35,0.8)] backdrop-blur-xl sm:p-6"
@@ -416,7 +419,7 @@ export function AdminLogin() {
   }, [loading, user, isAdmin, setLocation])
 
   if (loading) {
-    return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090f2d] px-4 py-10 text-white"><p>Loading admin accessâ€¦</p></main>
+    return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090f2d] px-4 py-10 text-white"><p>Loading admin access…</p></main>
   }
 
   return <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090f2d] px-4 py-10 text-white">
@@ -451,7 +454,7 @@ function AdminNav({ onLogout }: { onLogout: () => void }) {
 }
 
 type BookFormProps = { book?: Book; onDone: () => void }
-type LanguageRequest = { id: string; bookTitle: string; name: string; country: string; language: string; createdAt: string }
+type LanguageRequest = { id: string; bookTitle: string; name: string; country: string; language: string; email?: string | null; createdAt: string }
 type BookFormPhase = "idle" | "validating" | "uploading" | "saving"
 type UploadProgressHandler = (bytesTransferred: number, totalBytes: number) => void
 
@@ -482,7 +485,19 @@ function BookForm({ book, onDone }: BookFormProps) {
   const [categories, setCategories] = useState<string[]>(book?.categories?.length ? [...book.categories] : [])
   const [slug, setSlug] = useState(book?.slug ?? "")
   const [description, setDescription] = useState(book?.description ?? "")
-  const [format, setFormat] = useState<BookInputFormat>(book?.format ?? "EPUB")
+  const [format, setFormat] = useState<BookInputFormat>(book?.format ?? "PDF")
+  const [formats, setFormats] = useState<BookInputFormat[]>(book?.formats?.length ? [...book.formats] : [book?.format ?? "PDF"])
+  const [primaryCategory, setPrimaryCategory] = useState(book?.primaryCategory ?? "")
+  const [seriesId, setSeriesId] = useState(book?.seriesId ?? "")
+  const [seriesNumber, setSeriesNumber] = useState(book?.seriesNumber ? String(book.seriesNumber) : "")
+  const [newSeriesName, setNewSeriesName] = useState("")
+  const [pageCount, setPageCount] = useState(book?.pageCount ? String(book.pageCount) : "")
+  const [sampleText, setSampleText] = useState("")
+  const [sampleFile, setSampleFile] = useState<File | null>(null)
+  const [removeSample, setRemoveSample] = useState(false)
+  const { data: seriesData } = useListAdminSeries()
+  const createSeries = useCreateSeries()
+  const seriesOptions: Series[] = Array.isArray(seriesData) ? seriesData : []
   const [featured, setFeatured] = useState(book?.featured ?? false)
   const [isCompleted, setIsCompleted] = useState(book?.isCompleted ?? false)
   const [publishedAt, setPublishedAt] = useState(book?.publishedAt ? book.publishedAt.slice(0, 16) : new Date().toISOString().slice(0, 16))
@@ -566,6 +581,19 @@ function BookForm({ book, onDone }: BookFormProps) {
     })))
   }
 
+  async function addSeries() {
+    const name = newSeriesName.trim()
+    if (!name) return
+    try {
+      const created = await createSeries.mutateAsync({ data: { name } })
+      await queryClient.invalidateQueries({ queryKey: getListAdminSeriesQueryKey() })
+      setSeriesId(created.id)
+      setNewSeriesName("")
+    } catch (seriesError) {
+      setError(errorMessage(seriesError, "Could not create the series."))
+    }
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
@@ -585,7 +613,13 @@ function BookForm({ book, onDone }: BookFormProps) {
       if (!price.trim()) throw new Error("Enter the USD price.")
       if (!Number.isFinite(priceValue) || priceValue < 0) throw new Error("Enter a valid non-negative USD price.")
       if (!descriptionValue) throw new Error("Enter a book description.")
-      if (!categories.length) throw new Error("Choose at least one category.")
+      if (!categories.length) throw new Error("Choose at least one tag.")
+      if (categories.length > MAX_TAGS) throw new Error(`Pick at most ${MAX_TAGS} tags.`)
+      if (!primaryCategory) throw new Error("Choose a primary category.")
+      if (!formats.includes(format)) throw new Error(`Formats must include ${format}, the format of the uploaded file.`)
+      if (seriesId && !(Number(seriesNumber) >= 1)) throw new Error("Enter the book's number in the series.")
+      if (pageCount && !(Number(pageCount) >= 1)) throw new Error("Enter a valid page count, or leave it empty.")
+      if (sampleFile && sampleFile.type !== "application/pdf") throw new Error("The sample must be a PDF file.")
       if (!book && !ebookFile) throw new Error("Choose the ebook file before saving this book.")
 
       if (coverFile && !coverFile.type.startsWith("image/")) {
@@ -608,9 +642,20 @@ function BookForm({ book, onDone }: BookFormProps) {
           price: priceValue,
           categories,
           format,
+          formats,
+          primaryCategory,
+          seriesId: seriesId || null,
+          seriesNumber: seriesId ? Number(seriesNumber) : null,
+          pageCount: pageCount ? Number(pageCount) : null,
           featured,
           isCompleted,
           publishedAt: new Date(publishedAt).toISOString(),
+        }
+        if (sampleText.trim()) data.sampleText = sampleText.trim()
+        if (removeSample) { data.sampleText = null; data.sampleObjectPath = null }
+        if (sampleFile) {
+          setPhase("uploading")
+          data.sampleObjectPath = (await uploadFiles([sampleFile], setUploadProgress))[0]
         }
         if (ebookFile || coverFile) {
           setPhase("uploading")
@@ -635,8 +680,10 @@ function BookForm({ book, onDone }: BookFormProps) {
         const uploadedFiles = await uploadFiles(coverFile ? [ebook, coverFile] : [ebook], setUploadProgress)
         const fileObjectPath = uploadedFiles[0]
         const coverObjectPath = coverFile ? uploadedFiles[1] : null
+        const sampleObjectPath = sampleFile ? (await uploadFiles([sampleFile], setUploadProgress))[0] : null
         setPhase("saving")
         const payload: BookInput = {
+          sampleObjectPath,
           title: titleValue,
           titleGroupId: titleGroupValue,
           language: language.trim().toLowerCase(),
@@ -648,6 +695,12 @@ function BookForm({ book, onDone }: BookFormProps) {
           categories,
           description: descriptionValue,
           format,
+          formats,
+          primaryCategory,
+          seriesId: seriesId || null,
+          seriesNumber: seriesId ? Number(seriesNumber) : null,
+          pageCount: pageCount ? Number(pageCount) : null,
+          sampleText: sampleText.trim() || null,
           paystackLink: null,
           payoneerLink: null,
           coverObjectPath,
@@ -663,6 +716,7 @@ function BookForm({ book, onDone }: BookFormProps) {
       await queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
       await queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() })
       await queryClient.invalidateQueries({ queryKey: getGetStorefrontSummaryQueryKey() })
+      await queryClient.invalidateQueries({ queryKey: getListAdminSeriesQueryKey() })
       toast({
         title: book ? "Book updated" : "Book added",
         description: `"${titleValue}" is now in the catalogue.`,
@@ -683,17 +737,17 @@ function BookForm({ book, onDone }: BookFormProps) {
 
   const pending = createBook.isPending || updateBook.isPending || phase !== "idle"
   const submitLabel = phase === "validating"
-    ? "Checking detailsâ€¦"
+    ? "Checking details…"
     : phase === "uploading"
-      ? "Uploading filesâ€¦"
+      ? "Uploading files…"
       : phase === "saving"
-        ? "Savingâ€¦"
+        ? "Saving…"
         : book
           ? "Save changes"
           : "Add book"
 
   return <section id="book-form" className="rounded-2xl border border-primary/25 bg-card p-5 shadow-lg shadow-primary/5 sm:p-7"><div className="flex items-start gap-3 border-b border-border pb-5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{book ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}</span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{book ? "Edit book" : "New book"}</p><h2 className="mt-1 text-xl font-extrabold">{book ? "Refine this listing" : "Add a book to the shelf"}</h2></div></div>
-     {phase === "uploading" && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status" aria-live="polite"><div className="flex items-center justify-between gap-3 text-sm"><p className="font-extrabold">Uploading files</p><p className="font-mono text-xs font-bold text-primary">{uploadProgress === null ? "Workingâ€¦" : `${uploadProgress}%`}</p></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-primary/10" role="progressbar" aria-label="Book file upload progress" aria-valuemin={0} aria-valuemax={100} {...(uploadProgress === null ? { "aria-valuetext": "Upload in progress" } : { "aria-valuenow": uploadProgress })}><div className={uploadProgress === null ? "h-full w-1/3 rounded-full bg-primary animate-pulse" : "h-full rounded-full bg-primary transition-[width] duration-200 ease-out"} style={uploadProgress === null ? undefined : { width: `${uploadProgress}%` }} /></div><p className="mt-2 text-xs text-muted-foreground">{uploadProgress === null ? "Upload started. Waiting for transfer progressâ€¦" : uploadProgress === 100 ? "Upload complete. Preparing your bookâ€¦" : "Keep this window open while the files upload."}</p></div>}
+     {phase === "uploading" && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status" aria-live="polite"><div className="flex items-center justify-between gap-3 text-sm"><p className="font-extrabold">Uploading files</p><p className="font-mono text-xs font-bold text-primary">{uploadProgress === null ? "Working…" : `${uploadProgress}%`}</p></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-primary/10" role="progressbar" aria-label="Book file upload progress" aria-valuemin={0} aria-valuemax={100} {...(uploadProgress === null ? { "aria-valuetext": "Upload in progress" } : { "aria-valuenow": uploadProgress })}><div className={uploadProgress === null ? "h-full w-1/3 rounded-full bg-primary animate-pulse" : "h-full rounded-full bg-primary transition-[width] duration-200 ease-out"} style={uploadProgress === null ? undefined : { width: `${uploadProgress}%` }} /></div><p className="mt-2 text-xs text-muted-foreground">{uploadProgress === null ? "Upload started. Waiting for transfer progress…" : uploadProgress === 100 ? "Upload complete. Preparing your book…" : "Keep this window open while the files upload."}</p></div>}
      <form onSubmit={submit} noValidate className="mt-6 grid gap-4 sm:grid-cols-2">
       <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>
       <label><span className="mb-2 block text-xs font-bold">Author</span><input data-testid="input-book-author" required value={author} onChange={e => setAuthor(e.target.value)} className={fieldClass} /></label>
@@ -701,17 +755,83 @@ function BookForm({ book, onDone }: BookFormProps) {
       <label><span className="mb-2 block text-xs font-bold">Title group</span><input value={titleGroupId} onChange={e => setTitleGroupId(e.target.value)} placeholder="Same ID for translated editions" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Use the same group ID for every language edition of this title.</span></label>
       <label><span className="mb-2 block text-xs font-bold">Slug</span><input required value={slug} onChange={e => setSlug(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Used in catalogue links; keep it lowercase with hyphens.</span></label>
       <label><span className="mb-2 block text-xs font-bold">Price (USD)</span><input data-testid="input-book-price" required min="0" step="0.01" type="number" value={price} onChange={e => setPrice(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">USD is the source price. Nigerian pricing is calculated automatically at checkout.</span></label>
-      <fieldset className="sm:col-span-2"><legend className="mb-2 block text-xs font-bold">Categories</legend><input value={categorySearch} onChange={event => setCategorySearch(event.target.value)} placeholder="Search categories" className={`${fieldClass} mb-2`} /><div className="flex min-h-11 flex-wrap gap-2 rounded-xl border border-border bg-background p-2">{categories.map(category => <button type="button" key={category} onClick={() => setCategories(current => current.filter(item => item !== category))} className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">{category} ×</button>)}{availableCategories.filter(category => !categories.includes(category.name) && category.name.toLowerCase().includes(categorySearch.toLowerCase())).slice(0, 12).map(category => <button type="button" key={category.id} onClick={() => setCategories(current => [...current, category.name])} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:border-primary hover:text-primary">{category.name}</button>)}</div><span className="mt-1 block text-xs text-muted-foreground">Choose every category that applies to this book.</span></fieldset>
-      <label><span className="mb-2 block text-xs font-bold">Format</span><select value={format} onChange={e => setFormat(e.target.value as BookInputFormat)} className={fieldClass}><option>EPUB</option><option>PDF</option></select></label>
+      <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Primary category <span className="text-destructive">*</span></span><select required value={primaryCategory} onChange={e => { const value = e.target.value; setPrimaryCategory(value); if (value && !categories.includes(value) && categories.length < MAX_TAGS) setCategories(current => [value, ...current]) }} className={fieldClass}><option value="">Choose one</option>{availableCategories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}</select><span className="mt-1 block text-xs text-muted-foreground">Used for breadcrumbs and “Related books”.</span></label>
+      <fieldset className="sm:col-span-2"><legend className="mb-2 flex w-full items-center justify-between text-xs font-bold"><span>Tags</span><span className={categories.length > MAX_TAGS ? "text-destructive" : "text-muted-foreground"} aria-live="polite">{categories.length}/{MAX_TAGS}</span></legend><input value={categorySearch} onChange={event => setCategorySearch(event.target.value)} placeholder="Search tags" className={`${fieldClass} mb-2`} /><div className="flex min-h-11 flex-wrap gap-2 rounded-xl border border-border bg-background p-2">{categories.map(category => <button type="button" key={category} onClick={() => setCategories(current => current.filter(item => item !== category))} className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">{category} ×</button>)}{categories.length < MAX_TAGS && availableCategories.filter(category => !categories.includes(category.name) && category.name.toLowerCase().includes(categorySearch.toLowerCase())).slice(0, 12).map(category => <button type="button" key={category.id} onClick={() => setCategories(current => current.length >= MAX_TAGS ? current : [...current, category.name])} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:border-primary hover:text-primary">{category.name}</button>)}</div><span className="mt-1 block text-xs text-muted-foreground">Pick the tags a reader would actually search for (max {MAX_TAGS}).{categories.length > MAX_TAGS ? ` Remove ${categories.length - MAX_TAGS} to save.` : ""}</span></fieldset>
+      <label><span className="mb-2 block text-xs font-bold">Uploaded file format</span><select value={format} onChange={e => { const value = e.target.value as BookInputFormat; setFormat(value); setFormats(current => current.includes(value) ? current : [...current, value]) }} className={fieldClass}><option>PDF</option><option>EPUB</option></select><span className="mt-1 block text-xs text-muted-foreground">The file emailed to buyers.</span></label>
+      <fieldset><legend className="mb-2 block text-xs font-bold">Formats shown to readers</legend><div className="flex gap-2">{(["PDF", "EPUB"] as BookInputFormat[]).map(value => <label key={value} className="flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm"><input type="checkbox" checked={formats.includes(value)} onChange={e => setFormats(current => e.target.checked ? [...new Set([...current, value])] : current.filter(item => item !== value))} />{value}</label>)}</div><span className="mt-1 block text-xs text-muted-foreground">Only tick EPUB if readers really get an EPUB.</span></fieldset>
+      <fieldset className="sm:col-span-2 grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-[1fr_8rem]"><legend className="px-1 text-xs font-bold">Series</legend><label><span className="mb-2 block text-xs font-semibold text-muted-foreground">Series</span><select value={seriesId} onChange={e => setSeriesId(e.target.value)} className={fieldClass}><option value="">Not part of a series</option>{seriesOptions.map(series => <option key={series.id} value={series.id}>{series.name}</option>)}</select></label><label><span className="mb-2 block text-xs font-semibold text-muted-foreground">Book number</span><input type="number" min="1" disabled={!seriesId} value={seriesNumber} onChange={e => setSeriesNumber(e.target.value)} className={fieldClass} /></label><div className="flex gap-2 sm:col-span-2"><input value={newSeriesName} onChange={e => setNewSeriesName(e.target.value)} placeholder="Or create a new series" className={fieldClass} /><button type="button" onClick={() => void addSeries()} disabled={!newSeriesName.trim() || createSeries.isPending} className="h-11 shrink-0 rounded-xl border border-border px-4 text-xs font-bold disabled:opacity-50">Create</button></div></fieldset>
+      <label><span className="mb-2 block text-xs font-bold">Length (pages)</span><input type="number" min="1" value={pageCount} onChange={e => setPageCount(e.target.value)} placeholder="Optional" className={fieldClass} /></label>
       <label><span className="mb-2 block text-xs font-bold">Ebook file {book && <span className="font-normal text-muted-foreground">(optional replacement)</span>}</span><input data-testid="input-book-file" required={!book} accept={format === "PDF" ? ".pdf,application/pdf" : ".epub,application/epub+zip"} type="file" onChange={e => setEbookFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
       <label><span className="mb-2 block text-xs font-bold">Cover image <span className="font-normal text-muted-foreground">({book ? "optional replacement" : "optional"})</span></span><input accept="image/png,image/jpeg,image/webp" type="file" onChange={e => setCoverFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
       <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={featured} onChange={e => setFeatured(e.target.checked)} />Show this book in Featured</label><label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={isCompleted} onChange={e => setIsCompleted(e.target.checked)} />Completed series</label>
       <label><span className="mb-2 block text-xs font-bold">Publish date</span><input type="datetime-local" value={publishedAt} onChange={e => setPublishedAt(e.target.value)} className={fieldClass} /></label>
+      <fieldset className="sm:col-span-2 grid gap-3 rounded-xl border border-border p-3"><legend className="px-1 text-xs font-bold">Free sample <span className="font-normal text-muted-foreground">(optional — never the paid file)</span></legend>{book?.hasSample && <p className="text-xs text-muted-foreground">This book already has a sample. Paste new text or upload a new PDF to replace it.</p>}<label><span className="mb-2 block text-xs font-semibold text-muted-foreground">Sample text (paste the first chapter; blank lines separate paragraphs)</span><textarea value={sampleText} onChange={e => setSampleText(e.target.value)} className={`${fieldClass} min-h-32 py-3`} /></label><label><span className="mb-2 block text-xs font-semibold text-muted-foreground">Or a sample PDF</span><input accept=".pdf,application/pdf" type="file" onChange={e => setSampleFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>{book?.hasSample && <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={removeSample} onChange={e => setRemoveSample(e.target.checked)} />Remove the existing sample</label>}</fieldset>
       <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
        <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{submitLabel}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
        {error && <p role="alert" className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
     </form>
   </section>
+}
+
+function SeriesManager() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const { data } = useListAdminSeries()
+  const updateSeries = useUpdateSeries()
+  const deleteSeries = useDeleteSeries()
+  const [editing, setEditing] = useState<Series | null>(null)
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const series: Series[] = Array.isArray(data) ? data : []
+
+  function edit(item: Series) { setEditing(item); setName(item.name); setDescription(item.description) }
+  async function refresh() {
+    await queryClient.invalidateQueries({ queryKey: getListAdminSeriesQueryKey() })
+    await queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
+  }
+  async function save() {
+    if (!editing || !name.trim()) return
+    try {
+      await updateSeries.mutateAsync({ seriesId: editing.id, data: { name: name.trim(), description: description.trim() } })
+      await refresh(); setEditing(null)
+      toast({ title: "Series saved" })
+    } catch (error) { toast({ variant: "destructive", title: "Series not saved", description: errorMessage(error, "Try again.") }) }
+  }
+  async function remove(item: Series) {
+    try {
+      await deleteSeries.mutateAsync({ seriesId: item.id })
+      await refresh()
+      toast({ title: "Series deleted", description: "Its books were kept and are no longer grouped." })
+    } catch (error) { toast({ variant: "destructive", title: "Series not deleted", description: errorMessage(error, "Try again.") }) }
+  }
+
+  return (
+    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+      <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p>
+      <h2 className="mt-1 text-2xl font-extrabold">Series</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Assign books to a series and set their number from the book form.</p>
+      {series.length ? (
+        <ul className="mt-4 divide-y divide-border">
+          {series.map(item => (
+            <li key={item.id} className="py-3">
+              {editing?.id === item.id ? (
+                <div className="grid gap-2">
+                  <input value={name} onChange={e => setName(e.target.value)} className={fieldClass} aria-label="Series name" />
+                  <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description shown on the series page" className={`${fieldClass} min-h-20 py-2`} />
+                  <div className="flex gap-2"><button type="button" onClick={() => void save()} className="h-10 rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground">Save</button><button type="button" onClick={() => setEditing(null)} className="h-10 rounded-xl border border-border px-4 text-xs font-bold">Cancel</button></div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0"><p className="truncate text-sm font-bold">{item.name}</p><p className="text-xs text-muted-foreground">{item.bookCount} book{item.bookCount === 1 ? "" : "s"} · /series/{item.slug}</p></div>
+                  <div className="flex gap-1"><button type="button" onClick={() => edit(item)} aria-label={`Edit ${item.name}`} className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-secondary"><Pencil className="h-4 w-4" /></button><button type="button" onClick={() => void remove(item)} aria-label={`Delete ${item.name}`} className="flex h-10 w-10 items-center justify-center rounded-xl text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></button></div>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : <p className="mt-4 text-sm text-muted-foreground">No series yet. Create one from the book form.</p>}
+    </section>
+  )
 }
 
 function CategoryManager() {
@@ -891,7 +1011,7 @@ export default function Admin() {
   }, [isAdmin, authLoading, setLocation])
 
   if (authLoading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading Administrative controlsâ€¦</main>
+    return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading Administrative controls…</main>
   }
 
   if (!isAdmin) {
@@ -1050,7 +1170,8 @@ export default function Admin() {
     {activeTab === "catalogue" && <div className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button type="button" data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} aria-expanded={form === "new"} aria-controls="book-form" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add book"}</button></div>
     <CategoryManager />
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Reader demand</p><h2 className="mt-1 text-xl font-extrabold">Language requests</h2></div>{languageRequests.length ? <div className="divide-y divide-border">{languageRequests.map((request) => <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"><div><p className="font-bold">{request.language} for {request.bookTitle}</p><p className="mt-1 text-xs text-muted-foreground">{request.name} · {request.country}</p></div><span className="text-xs text-muted-foreground">{formatDate(request.createdAt)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">No language requests yet.</p>}</section>
+    <SeriesManager />
+    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Reader demand</p><h2 className="mt-1 text-xl font-extrabold">Language requests</h2></div>{languageRequests.length ? <div className="divide-y divide-border">{languageRequests.map((request) => <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"><div><p className="font-bold">{request.language} for {request.bookTitle}</p><p className="mt-1 text-xs text-muted-foreground">{request.name} · {request.country}{request.email ? <> · <a href={`mailto:${request.email}`} className="text-primary hover:underline">{request.email}</a></> : null}</p></div><span className="text-xs text-muted-foreground">{formatDate(request.createdAt)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">No language requests yet.</p>}</section>
     {form && <AdminModal title={form === "new" ? "Add book" : `Edit ${form.title}`} onClose={() => setForm(null)}><BookForm book={form === "new" ? undefined : form} onDone={() => setForm(null)} /></AdminModal>}
      <div>
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -1062,7 +1183,7 @@ export default function Admin() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-extrabold">{book.title}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">{book.author} · {book.format}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{book.author} · {book.formats.join(" + ")}{book.seriesName ? ` · ${book.seriesName} #${book.seriesNumber}` : ""}{book.categories.length > MAX_TAGS ? ` · ${book.categories.length} tags (max ${MAX_TAGS})` : ""}</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">

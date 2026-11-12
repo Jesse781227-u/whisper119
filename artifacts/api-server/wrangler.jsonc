@@ -63,6 +63,11 @@
 
   "observability": { "enabled": true },
 
+  // Production lives on whisper119.com; preview URLs let a version be checked
+  // before `wrangler versions deploy` sends it live.
+  "workers_dev": true,
+  "preview_urls": true,
+
   // The Worker serves all of whisper119.com. The zone's proxied @/www DNS
   // records only need to exist; they are never used as an origin.
   "routes": [

@@ -107,6 +107,13 @@ async function seriesFromBookTitles(client: PoolClient) {
 /** One-time data fixes, each recorded in schema_migrations so it runs once. */
 const DATA_MIGRATIONS: Array<{ name: string; run: (client: PoolClient) => Promise<void> }> = [
   {
+    // Snapshot of the fields the fixes below rewrite, so any of them can be undone.
+    name: "2026-11-12-backup-book-fields",
+    run: async (client) => {
+      await client.query("CREATE TABLE IF NOT EXISTS books_backup_20261112 AS SELECT id, title, author, format, now() AS backed_up_at FROM books");
+    },
+  },
+  {
     name: "2026-11-12-normalize-author",
     run: async (client) => {
       await client.query("UPDATE books SET author = 'Whisper 119' WHERE author <> 'Whisper 119' AND replace(lower(author), ' ', '') LIKE '%whisper119%'");

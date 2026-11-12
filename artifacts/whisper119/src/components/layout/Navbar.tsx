@@ -6,6 +6,7 @@ import { useCart } from "@/components/cart-provider"
 import { LanguageRegionSelector, LanguageRegionSheet, useLanguageRegionLabel } from "@/components/language-region-selector"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import { motion, useReducedMotion } from "framer-motion"
+import { useSiteLanguage } from "@/hooks/use-site-language"
 
 function Wordmark({ className = "h-7" }: { className?: string }) {
   return <img src="/whisper-119-wordmark-light.png" alt="Whisper 119" width={237} height={96} className={`w-auto ${className}`} />
@@ -30,7 +31,8 @@ const drawerRow = "flex min-h-12 w-full items-center justify-between rounded-xl 
 
 export function Navbar() {
   const { items } = useCart()
-  const { data: summary } = useGetStorefrontSummary()
+  const language = useSiteLanguage()
+  const { data: summary } = useGetStorefrontSummary({ language }, { query: { queryKey: ["/api/storefront/summary", { language }] } })
   const [open, setOpen] = useState(false)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
@@ -95,7 +97,7 @@ export function Navbar() {
 
         <nav className="no-scrollbar mx-auto hidden max-w-7xl gap-2 overflow-x-auto px-6 pb-3 md:flex" aria-label="Book categories">
           <Link href="/shop" className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${onShop ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-primary/10 hover:text-primary"}`}>All books</Link>
-          {categories.filter(category => category.featured || category.count > 0).slice(0, 6).map((category) => (
+          {categories.filter(category => category.count > 0).slice(0, 6).map((category) => (
             <Link key={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} className="shrink-0 rounded-full bg-secondary px-4 py-2 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-primary/10 hover:text-primary">
               {category.name}
             </Link>
@@ -131,7 +133,7 @@ export function Navbar() {
               {categoriesOpen && (
                 <div id="drawer-categories" className="grid border-t border-border/70 px-2 pb-2 pt-1">
                   <Link href="/categories" onClick={closeMenu} className="flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-primary hover:bg-background">All categories</Link>
-                  {categories.map((category) => (
+                  {categories.filter((category) => category.count > 0).map((category) => (
                     <Link key={category.name} href={`/shop?category=${encodeURIComponent(category.name)}`} onClick={closeMenu} className="flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-muted-foreground hover:bg-background hover:text-primary">
                       {category.name}
                     </Link>

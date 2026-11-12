@@ -4,12 +4,28 @@ import { useMemo, useState } from "react"
 import { Link, useLocation } from "wouter"
 import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card"
+import { BookCardSkeletons } from "@/components/shelf"
+import type { Book } from "@workspace/api-client-react"
+import { displayTitle } from "@/lib/books"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSiteLanguage } from "@/hooks/use-site-language"
 import { Reveal, Stagger, fadeUpVariants } from "@/lib/motion"
 import { motion, useReducedMotion } from "framer-motion"
 
 type FormatFilter = "" | "PDF" | "EPUB"
+type SortOrder = "newest" | "az" | "series" | "price"
+
+const SORT_LABELS: Record<SortOrder, string> = { newest: "Newest", az: "A–Z", series: "Series order", price: "Price: low to high" }
+
+function sortBooks(books: Book[], order: SortOrder): Book[] {
+  const list = [...books]
+  switch (order) {
+    case "az": return list.sort((a, b) => displayTitle(a).localeCompare(displayTitle(b)) || (a.seriesNumber ?? 0) - (b.seriesNumber ?? 0))
+    case "series": return list.sort((a, b) => (a.seriesName ?? a.title).localeCompare(b.seriesName ?? b.title) || (a.seriesNumber ?? 0) - (b.seriesNumber ?? 0))
+    case "price": return list.sort((a, b) => a.price - b.price)
+    default: return list.sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+  }
+}
 
 function initialQuery() {
   const params = new URLSearchParams(window.location.search)
@@ -18,6 +34,7 @@ function initialQuery() {
     search: params.get("search") ?? "",
     format: (params.get("format") === "PDF" || params.get("format") === "EPUB" ? params.get("format") : "") as FormatFilter,
     maxPrice: params.get("maxPrice") ?? "",
+    sort: (["newest", "az", "series", "price"].includes(params.get("sort") ?? "") ? params.get("sort") : "newest") as SortOrder,
   }
 }
 
@@ -29,6 +46,7 @@ export default function Shop() {
   const [category, setCategory] = useState(initial.category)
   const [format, setFormat] = useState<FormatFilter>(initial.format)
   const [maxPrice, setMaxPrice] = useState(initial.maxPrice)
+  const [sort, setSort] = useState<SortOrder>(initial.sort)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const language = useSiteLanguage()
   const prefersReducedMotion = useReducedMotion()
@@ -54,20 +72,22 @@ export default function Shop() {
       },
     },
   )
-  const { data: summary } = useGetStorefrontSummary()
-  const books = (Array.isArray(booksData) ? booksData : []).slice().sort((left, right) => left.language.localeCompare(right.language))
+  const { data: summary } = useGetStorefrontSummary({ language }, { query: { queryKey: ["/api/storefront/summary", { language }] } })
+  const books = sortBooks(Array.isArray(booksData) ? booksData : [], sort)
   const categories = Array.isArray(summary?.categories) ? summary.categories : []
   const hasFilters = Boolean(search || category || format || maxPrice)
 
-  function updateUrl(next: { search?: string; category?: string; format?: FormatFilter; maxPrice?: string }) {
+  function updateUrl(next: { search?: string; category?: string; format?: FormatFilter; maxPrice?: string; sort?: SortOrder }) {
     const params = new URLSearchParams()
     const values = {
       search,
       category,
       format,
       maxPrice,
+      sort: sort === "newest" ? "" : sort,
       ...next,
     }
+    if (values.sort === "newest") values.sort = ""
     Object.entries(values).forEach(([key, value]) => {
       if (value) params.set(key, value)
     })
@@ -80,7 +100,7 @@ export default function Shop() {
     setCategory("")
     setFormat("")
     setMaxPrice("")
-    setLocation("/shop")
+    setLocation(sort === "newest" ? "/shop" : `/shop?sort=${sort}`)
   }
 
   function selectCategory(value: string) {
@@ -143,9 +163,8 @@ export default function Shop() {
               <div className="grid gap-1">
                 <motion.button type="button" onClick={() => selectCategory("")} animate={{ backgroundColor: !category ? "hsl(var(--primary) / 0.1)" : "transparent", color: !category ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }} transition={{ duration: prefersReducedMotion ? 0 : 0.2 }} className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-secondary hover:text-foreground">
                   All books
-                  {categories.reduce((total, item) => total + item.count, 0) ? <span className="text-[0.65rem]">{categories.reduce((total, item) => total + item.count, 0)}</span> : null}
                 </motion.button>
-                {categories.map((item) => (
+                {categories.filter((item) => item.count > 0 || item.name === category).map((item) => (
                   <motion.button key={item.name} type="button" onClick={() => selectCategory(item.name)} animate={{ backgroundColor: category === item.name ? "hsl(var(--primary) / 0.1)" : "transparent", color: category === item.name ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }} transition={{ duration: prefersReducedMotion ? 0 : 0.2 }} className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-secondary hover:text-foreground">
                     {item.name}<span className="text-[0.65rem]">{item.count}</span>
                   </motion.button>
@@ -183,18 +202,29 @@ export default function Shop() {
         </aside>
 
         <section>
-          <div className="mb-5 flex items-end justify-between border-b border-border pb-4">
-            <div>
-              <p className="text-[0.65rem] font-bold uppercase tracking-[0.15em] text-primary">{category || (search ? "Search results" : "All titles")}</p>
-              <h2 className="mt-1 text-xl font-extrabold">{isLoading ? "Finding books…" : `${books.length} ${books.length === 1 ? "book" : "books"}`}</h2>
-            </div>
-            {hasFilters && <button type="button" onClick={clearFilters} aria-label="Clear filters" className="flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-primary">Reset <X className="h-4 w-4" /></button>}
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+            <p className="flex min-w-0 flex-wrap items-center gap-2 text-sm" aria-live="polite">
+              {category ? (
+                <button type="button" onClick={() => selectCategory("")} aria-label={`Remove filter: ${category}`} className="inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full bg-primary/15 px-3 font-bold text-primary">
+                  <span className="truncate">{category}</span><X className="h-4 w-4 shrink-0" aria-hidden="true" />
+                </button>
+              ) : search ? (
+                <span className="font-bold">Results for “{search}”</span>
+              ) : (
+                <span className="font-bold">All books</span>
+              )}
+              <span className="text-muted-foreground">· {isLoading ? "…" : `${books.length} ${books.length === 1 ? "book" : "books"}`}</span>
+            </p>
+            <label className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+              Sort
+              <select value={sort} onChange={(event) => { const value = event.target.value as SortOrder; setSort(value); updateUrl({ sort: value }) }} className="h-11 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-foreground">
+                {(Object.keys(SORT_LABELS) as SortOrder[]).map((value) => <option key={value} value={value}>{SORT_LABELS[value]}</option>)}
+              </select>
+            </label>
           </div>
 
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
-              {[1, 2, 3, 4, 5, 6].map((item) => <div key={item}><Skeleton className="aspect-[0.69] w-full rounded-xl" /><Skeleton className="mt-3 h-4 w-4/5" /><Skeleton className="mt-2 h-3 w-2/5" /></div>)}
-            </div>
+            <BookCardSkeletons count={8} />
           ) : error ? (
             <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center text-sm text-destructive">
               <p>Could not load the catalogue. Please try again shortly.</p>
@@ -203,7 +233,7 @@ export default function Shop() {
               </button>
             </div>
           ) : books.length ? (
-            <Stagger className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">{books.map((book) => <Reveal key={book.id} variants={fadeUpVariants}><BookCard book={book} /></Reveal>)}</Stagger>
+            <Stagger className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">{books.map((book, index) => <Reveal key={book.id} variants={fadeUpVariants}><BookCard book={book} eager={index < 4} /></Reveal>)}</Stagger>
           ) : (
             <div className="rounded-2xl border border-dashed border-border bg-card px-6 py-20 text-center">
               <p className="text-2xl font-extrabold">Nothing on this shelf yet.</p>

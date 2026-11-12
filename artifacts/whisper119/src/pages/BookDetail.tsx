@@ -1,308 +1,350 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { CopyLinkIcon, InstagramIcon, NewTwitterIcon, WhatsappIcon } from "@hugeicons/core-free-icons"
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Mail, ShoppingCart } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { CopyLinkIcon, Facebook01Icon, NewTwitterIcon, WhatsappIcon } from "@hugeicons/core-free-icons"
+import { ArrowLeft, BookOpenText, Check, ChevronLeft, ChevronRight, Share2, ShoppingCart } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { Link, useLocation, useParams } from "wouter"
-import { useCreateLanguageRequest, useGetBook, useListBooks } from "@workspace/api-client-react"
-import { BookCard, BookCover } from "@/components/book-card"
+import { useCreateLanguageRequest, useGetBook, useListBooks, type Book } from "@workspace/api-client-react"
+import { BookCover } from "@/components/book-card"
 import { ConvertedPrice } from "@/components/converted-price"
 import { useCart } from "@/components/cart-provider"
+import { ShelfRail, SectionHeading } from "@/components/shelf"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatDate } from "@/lib/utils"
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { countries } from "@/data/countries"
-import { motion, useReducedMotion } from "framer-motion"
-import { Reveal, Stagger, fadeUpVariants } from "@/lib/motion"
+import { languages } from "@/hooks/use-site-language"
+import { useRegion } from "@/hooks/use-region"
 import { useToast } from "@/hooks/use-toast"
 import { useDocumentTitle } from "@/hooks/use-document-title"
+import { collapseSeries, fullTitle } from "@/lib/books"
+import { formatPrice } from "@/lib/utils"
 
-function ShareButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
-  const prefersReducedMotion = useReducedMotion()
+const MAX_VISIBLE_TAGS = 6
+
+function languageName(code: string) {
+  return languages.find(([value]) => value === code)?.[1] ?? code.toUpperCase()
+}
+
+function Stat({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <motion.button type="button" aria-label={label} onClick={onClick} whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
-      {children}
-    </motion.button>
+    <div className="min-w-0 px-2 text-center">
+      <dt className="text-[0.65rem] font-bold uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="mt-1 text-sm font-extrabold">{children}</dd>
+    </div>
+  )
+}
+
+function useCartActions(book: Book | undefined) {
+  const { items, addItem } = useCart()
+  const { toast } = useToast()
+  const [, setLocation] = useLocation()
+  const inCart = Boolean(book && items.some((item) => item.id === book.id))
+  return {
+    inCart,
+    cartCount: items.length,
+    add() {
+      if (!book) return
+      if (inCart) { setLocation("/cart"); return }
+      addItem(book)
+      toast({ title: "Added to cart", description: fullTitle(book) })
+    },
+    buy() {
+      if (!book) return
+      if (!inCart) addItem(book)
+      setLocation("/checkout")
+    },
+  }
+}
+
+function CtaPair({ book, sticky = false }: { book: Book; sticky?: boolean }) {
+  const { inCart, cartCount, add, buy } = useCartActions(book)
+  return (
+    <div className={`grid grid-cols-2 gap-2 ${sticky ? "" : "max-w-md"}`}>
+      <button type="button" onClick={add} className="inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-extrabold transition-colors hover:border-primary hover:text-primary">
+        {inCart ? <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /> : <ShoppingCart className="h-4 w-4 shrink-0" aria-hidden="true" />}
+        <span className="truncate">{inCart ? `View cart (${cartCount})` : "Add to cart"}</span>
+      </button>
+      <button type="button" onClick={buy} className="inline-flex h-12 min-w-0 items-center justify-center rounded-xl bg-primary px-3 text-sm font-extrabold text-primary-foreground shadow-lg shadow-primary/20">
+        <span className="truncate">Buy now — {formatPrice(book.price, "USD", "en-US")}</span>
+      </button>
+    </div>
+  )
+}
+
+function LanguageRequestSheet({ book, open, onOpenChange }: { book: Book; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { detected } = useRegion()
+  const request = useCreateLanguageRequest()
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [country, setCountry] = useState("")
+  const [language, setLanguage] = useState("")
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => { if (detected && !country) setCountry(detected) }, [detected, country])
+
+  function submit(event: FormEvent) {
+    event.preventDefault()
+    setError(null)
+    if (!name.trim() || !language.trim() || !country) { setError("Fill in your name, country and the language you want."); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError("Enter your email so we can tell you when it’s ready."); return }
+    request.mutate(
+      { data: { bookId: book.id, name: name.trim(), email: email.trim(), country, language: language.trim() } },
+      { onSuccess: () => setSent(true), onError: () => setError("We couldn’t send your request. Please try again.") },
+    )
+  }
+
+  const field = "box-border h-12 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange} shouldScaleBackground={false}>
+      <DrawerContent className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto w-full max-w-md">
+          <DrawerHeader className="px-0 text-left">
+            <DrawerTitle>Request another language</DrawerTitle>
+            <DrawerDescription>We’ll email you if {fullTitle(book)} is translated.</DrawerDescription>
+          </DrawerHeader>
+          {sent ? (
+            <p className="pb-6 text-sm font-semibold text-primary" aria-live="polite">Thanks — we’ve recorded your request and will email you.</p>
+          ) : (
+            <form onSubmit={submit} noValidate className="grid min-w-0 gap-3 pb-4">
+              <label className="min-w-0"><span className="mb-1 block text-xs font-bold">Your name</span><input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className={field} /></label>
+              <label className="min-w-0"><span className="mb-1 block text-xs font-bold">Email</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className={field} /></label>
+              <label className="min-w-0"><span className="mb-1 block text-xs font-bold">Country</span>
+                <select value={country} onChange={(e) => setCountry(e.target.value)} className={field}>
+                  <option value="">Choose your country</option>
+                  {countries.map(({ code, name: label }) => <option key={code} value={code}>{label}</option>)}
+                </select>
+              </label>
+              <label className="min-w-0"><span className="mb-1 block text-xs font-bold">Language you’d like</span><input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="e.g. Spanish" className={field} /></label>
+              {error && <p role="alert" className="text-sm font-semibold text-destructive">{error}</p>}
+              <button disabled={request.isPending} className="h-12 w-full rounded-xl bg-primary text-sm font-extrabold text-primary-foreground disabled:opacity-60">{request.isPending ? "Sending…" : "Send request"}</button>
+            </form>
+          )}
+        </div>
+      </DrawerContent>
+    </Drawer>
+  )
+}
+
+function ShareRow({ book }: { book: Book }) {
+  const { toast } = useToast()
+  const url = `${window.location.origin}/book/${book.id}`
+  const text = `Read "${fullTitle(book)}" by ${book.author}`
+  const canNativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function"
+  const linkClass = "flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url)
+      toast({ title: "Copied", description: "Link copied to your clipboard." })
+    } catch {
+      toast({ title: "Couldn’t copy", description: url })
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button type="button" onClick={() => void copy()} aria-label="Copy link" className={linkClass}><HugeiconsIcon icon={CopyLinkIcon} size={18} /></button>
+      <a href={`https://wa.me/?text=${encodeURIComponent(`${text} — ${url}`)}`} target="_blank" rel="noopener noreferrer" aria-label="Share on WhatsApp" className={linkClass}><HugeiconsIcon icon={WhatsappIcon} size={18} /></a>
+      <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`} target="_blank" rel="noopener noreferrer" aria-label="Share on X" className={linkClass}><HugeiconsIcon icon={NewTwitterIcon} size={18} /></a>
+      <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook" className={linkClass}><HugeiconsIcon icon={Facebook01Icon} size={18} /></a>
+      {canNativeShare && (
+        <button type="button" aria-label="More sharing options" onClick={() => void navigator.share({ title: fullTitle(book), text, url }).catch(() => undefined)} className={linkClass}><Share2 className="h-4 w-4" aria-hidden="true" /></button>
+      )}
+    </div>
   )
 }
 
 export default function BookDetail() {
   const { bookId } = useParams<{ bookId: string }>()
-  const [, setLocation] = useLocation()
   const { data: apiBook, isLoading: isBookLoading, error: bookError } = useGetBook(bookId ?? "", {
-    query: {
-      queryKey: ["/api/books", bookId],
-      enabled: Boolean(bookId),
-      retry: 2,
-      retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 2000),
-    },
+    query: { queryKey: ["/api/books", bookId], enabled: Boolean(bookId), retry: 2 },
   })
-  const { data: apiBooks, isLoading: isCatalogueLoading } = useListBooks(undefined, {
-    query: {
-      queryKey: ["/api/books"],
-      retry: 2,
-      retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 2000),
-    },
-  })
-  const { items, addItem } = useCart()
-  const { toast } = useToast()
-  const prefersReducedMotion = useReducedMotion()
-  const [expanded, setExpanded] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [requestName, setRequestName] = useState("")
-  const [requestCountry, setRequestCountry] = useState("NG")
-  const [requestLanguage, setRequestLanguage] = useState("")
-  const [requestSent, setRequestSent] = useState(false)
-  const languageRequest = useCreateLanguageRequest()
-
-  const catalogue = (Array.isArray(apiBooks) ? apiBooks : []).slice().sort((left, right) => left.language.localeCompare(right.language))
+  const { data: apiBooks } = useListBooks(undefined, { query: { queryKey: ["/api/books"], retry: 2 } })
+  const catalogue = useMemo(() => (Array.isArray(apiBooks) ? apiBooks : []), [apiBooks])
   const book = apiBook ?? catalogue.find((item) => item.id === bookId || item.slug === bookId)
-  useDocumentTitle(book?.title)
-  const related = useMemo(() => (
-    catalogue
-        .filter((item) => item.id !== book?.id && item.categories.some((category) => book?.categories.includes(category)))
-      .slice(0, 6)
-      ), [catalogue, book?.categories, book?.id])
-  const suggestions = useMemo(() => (
-    catalogue
-      .filter((item) => item.id !== book?.id && !related.some((relatedBook) => relatedBook.id === item.id))
-      .slice(0, 6)
-  ), [catalogue, book?.id, related])
-  const isLoading = !book && (isBookLoading || isCatalogueLoading)
-  const error = !book && bookError
+  useDocumentTitle(book ? fullTitle(book) : undefined)
 
+  const [expanded, setExpanded] = useState(false)
+  const [requestOpen, setRequestOpen] = useState(false)
+  const [showSticky, setShowSticky] = useState(false)
+  const ctaRef = useRef<HTMLDivElement>(null)
+
+  // Mobile sticky bar appears only once the inline price/CTA block scrolls away.
   useEffect(() => {
-    if (!book) return
+    const node = ctaRef.current
+    if (!node) return
+    const observer = new IntersectionObserver(([entry]) => setShowSticky(!entry.isIntersecting && entry.boundingClientRect.top < 0))
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [book?.id])
 
-    const pageUrl = window.location.href
-    const imageUrl = book.coverUrl ? new URL(book.coverUrl, window.location.origin).href : null
-    const previousTitle = document.title
-    const previous = new Map<Element, { created: boolean; value: string }>()
+  const volumes = useMemo(() => (
+    book?.seriesId ? catalogue.filter((item) => item.seriesId === book.seriesId).sort((a, b) => (a.seriesNumber ?? 0) - (b.seriesNumber ?? 0)) : []
+  ), [book?.seriesId, catalogue])
 
-    const setMeta = (attribute: "name" | "property", key: string, content: string) => {
-      let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`)
-      if (!element) {
-        element = document.createElement("meta")
-        element.setAttribute(attribute, key)
-        document.head.appendChild(element)
-        previous.set(element, { created: true, value: "" })
-      } else if (!previous.has(element)) {
-        previous.set(element, { created: false, value: element.content })
-      }
-      element.content = content
-    }
+  const related = useMemo(() => {
+    if (!book) return []
+    const candidates = catalogue.filter((item) => item.id !== book.id && item.language === book.language && (!book.seriesId || item.seriesId !== book.seriesId))
+    const score = (item: Book) => (item.primaryCategory && item.primaryCategory === book.primaryCategory ? 10 : 0) + item.categories.filter((category) => book.categories.includes(category)).length
+    return collapseSeries(candidates.filter((item) => score(item) > 0).sort((a, b) => score(b) - score(a))).slice(0, 8)
+  }, [book, catalogue])
 
-    document.title = `${book.title} · Whisper 119`
-    setMeta("property", "og:title", book.title)
-    setMeta("property", "og:description", book.description || `Discover ${book.title} by ${book.author}.`)
-    setMeta("property", "og:url", pageUrl)
-    setMeta("property", "og:type", "book")
-    setMeta("name", "twitter:card", imageUrl ? "summary_large_image" : "summary")
-    setMeta("name", "twitter:title", book.title)
-    setMeta("name", "twitter:description", book.description || `Discover ${book.title} by ${book.author}.`)
-
-    if (imageUrl) {
-      setMeta("property", "og:image", imageUrl)
-      setMeta("property", "og:image:alt", `Cover of ${book.title}`)
-      setMeta("name", "twitter:image", imageUrl)
-      setMeta("name", "twitter:image:alt", `Cover of ${book.title}`)
-    }
-
-    let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
-    if (!canonical) {
-      canonical = document.createElement("link")
-      canonical.rel = "canonical"
-      document.head.appendChild(canonical)
-      previous.set(canonical, { created: true, value: "" })
-    } else if (!previous.has(canonical)) {
-      previous.set(canonical, { created: false, value: canonical.href })
-    }
-    canonical.href = pageUrl
-
-    return () => {
-      document.title = previousTitle
-      previous.forEach((state, element) => {
-        if (state.created) {
-          element.remove()
-        } else if (element instanceof HTMLMetaElement) {
-          element.content = state.value
-        } else if (element instanceof HTMLLinkElement) {
-          element.href = state.value
-        }
-      })
-    }
-  }, [book])
-
-  if (isLoading) {
+  if (!book && isBookLoading) {
     return (
-      <main className="pb-24">
-        <Skeleton className="h-[27rem] w-full rounded-none sm:h-[34rem]" />
-        <div className="mx-auto max-w-3xl px-4 pt-7 sm:px-6"><Skeleton className="h-8 w-4/5" /><Skeleton className="mt-4 h-5 w-2/5" /><Skeleton className="mt-8 h-28 w-full" /></div>
+      <main className="mx-auto max-w-5xl px-4 pb-24 pt-6 sm:px-6">
+        <div className="grid gap-8 md:grid-cols-[minmax(0,20rem)_1fr]">
+          <Skeleton className="mx-auto aspect-[2/3] w-56 rounded-xl md:w-full" />
+          <div><Skeleton className="h-8 w-4/5" /><Skeleton className="mt-3 h-5 w-2/5" /><Skeleton className="mt-6 h-10 w-32" /><Skeleton className="mt-6 h-12 w-full max-w-md" /></div>
+        </div>
       </main>
     )
   }
 
-  if (error || !book) {
-    return <main className="mx-auto max-w-3xl px-4 py-32 text-center"><p className="text-2xl font-extrabold">This title has left the shelf.</p><Link href="/shop" className="mt-6 inline-block text-xs font-bold text-primary">Back to the catalogue →</Link></main>
+  if (bookError && !book || !book) {
+    return <main className="mx-auto max-w-3xl px-4 py-32 text-center"><p className="text-2xl font-extrabold">This title has left the shelf.</p><Link href="/shop" className="mt-6 inline-flex min-h-11 items-center text-sm font-bold text-primary">Back to all books →</Link></main>
   }
 
-  const inCart = items.some((item) => item.id === book.id)
-  const heroStyle = book.coverUrl ? { backgroundImage: `linear-gradient(180deg, hsl(229 45% 10% / .2), hsl(229 45% 8% / .94)), url("${book.coverUrl}")` } : undefined
-  const descriptors = [...book.categories, book.format, "Email delivery"]
-  const languageEditions = catalogue.filter((item) => item.titleGroupId === book.titleGroupId)
-
-  function addAndNavigate(path: string) {
-    if (!inCart && book) {
-      addItem(book)
-      toast({ title: "Added to cart", description: book.title })
-    }
-    setLocation(path)
-  }
-
-  const shareUrl = window.location.href
-  const shareTitle = book.title
-  const shareText = `Read "${shareTitle}" by ${book.author}`
-  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? window.location.origin).replace(/\/+$/, "").replace(/\/api$/i, "")
-  const previewUrl = `${apiBaseUrl}/api/share/books/${encodeURIComponent(book.id)}?redirect=${encodeURIComponent(shareUrl)}`
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} — ${previewUrl}`)}`
-  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(previewUrl)}`
-
-  async function copyShareUrl() {
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1800)
-    } catch {
-      setCopied(false)
-    }
-  }
-
-  async function shareOnInstagram() {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: shareTitle, text: shareText, url: previewUrl })
-        return
-      } catch (shareError) {
-        if (shareError instanceof DOMException && shareError.name === "AbortError") return
-      }
-    }
-
-    await copyShareUrl()
-    window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer")
-  }
+  const editions = catalogue.filter((item) => item.titleGroupId === book.titleGroupId)
+  const tags = [...new Set([book.primaryCategory, ...book.categories].filter((tag): tag is string => Boolean(tag)))].slice(0, MAX_VISIBLE_TAGS)
+  const position = volumes.findIndex((item) => item.id === book.id)
+  const previous = position > 0 ? volumes[position - 1] : null
+  const next = position >= 0 && position < volumes.length - 1 ? volumes[position + 1] : null
+  const description = book.description || "I hope this book gives you something good to carry with you."
 
   return (
-    <main className="pb-28">
-      <section className="relative isolate overflow-hidden bg-[#0c112b] text-white">
-        <div className="absolute inset-0 -z-10 bg-cover bg-center opacity-60 blur-2xl scale-110" style={heroStyle} />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(8,12,34,.38),#0c112b_88%)]" />
-        <div className="mx-auto max-w-5xl px-4 pb-8 pt-5 sm:px-6 sm:pb-12 sm:pt-7">
-          <div className="flex items-center justify-between">
-            <Link href="/shop" className="inline-flex items-center gap-2 text-xs font-bold text-white/80 hover:text-white"><ArrowLeft className="h-5 w-5" /> Back</Link>
-            <span className="max-w-[60%] truncate text-[0.68rem] font-medium text-white/60">Home / {book.categories.join(" / ")} / {book.title}</span>
+    <main className="pb-28 md:pb-12">
+      <div className="mx-auto max-w-5xl px-4 pt-4 sm:px-6 sm:pt-6">
+        <Link href="/shop" onClick={(event) => { if (window.history.length > 1) { event.preventDefault(); window.history.back() } }} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground md:hidden">
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" /> Back
+        </Link>
+        <nav aria-label="Breadcrumb" className="hidden text-sm text-muted-foreground md:block">
+          <ol className="flex min-w-0 items-center gap-1.5">
+            <li><Link href="/" className="hover:text-foreground">Home</Link></li>
+            <li aria-hidden="true">/</li>
+            <li><Link href="/shop" className="hover:text-foreground">Books</Link></li>
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" className="truncate font-semibold text-foreground">{fullTitle(book)}</li>
+          </ol>
+        </nav>
+
+        <div className="mt-4 grid gap-8 md:mt-6 md:grid-cols-[minmax(0,20rem)_1fr] md:items-start">
+          <div className="mx-auto w-56 sm:w-64 md:sticky md:top-28 md:w-full">
+            <BookCover book={book} className="border border-white/10 shadow-2xl shadow-black/40" />
           </div>
-          <div className="mx-auto mt-8 max-w-xs sm:mt-10">
-            <BookCover book={book} className="aspect-[0.69] border border-white/15 shadow-2xl shadow-black/40" />
-          </div>
-          <div className="mx-auto mt-7 max-w-2xl text-center">
-            <div className="flex justify-center gap-2">
-              {book.categories.map((category) => <span key={category} className="rounded-md bg-primary px-2.5 py-1 text-[0.65rem] font-extrabold">{category}</span>)}
-              <span className="rounded-md bg-white/15 px-2.5 py-1 text-[0.65rem] font-bold text-white/85">{book.format}</span>
+
+          <div className="min-w-0">
+            <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">{fullTitle(book)}</h1>
+            {book.seriesSlug && book.seriesNumber && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Book {book.seriesNumber} of the <Link href={`/series/${book.seriesSlug}`} className="font-semibold italic text-primary hover:underline">{book.seriesName}</Link> series
+              </p>
+            )}
+            <p className="mt-2 text-sm text-muted-foreground">by <span className="font-semibold text-foreground">{book.author}</span></p>
+
+            <div ref={ctaRef} className="mt-5">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <p className="text-3xl tracking-tight"><ConvertedPrice amountUsd={book.price} showLocal /></p>
+                <Link href="/refund" className="text-xs font-semibold text-muted-foreground underline underline-offset-2 hover:text-primary">Refund policy</Link>
+              </div>
+              {book.hasSample && (
+                <Link href={`/book/${book.id}/sample`} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/40 px-4 text-sm font-bold text-primary hover:bg-primary/10">
+                  <BookOpenText className="h-4 w-4" aria-hidden="true" /> Read free sample
+                </Link>
+              )}
+              <dl className="mt-5 grid grid-cols-2 gap-y-4 divide-border rounded-2xl border border-border bg-card py-4 sm:grid-cols-4 sm:divide-x">
+                <Stat label="Format">{book.formats.join(" + ")}</Stat>
+                <Stat label="Language">{languageName(book.language)}</Stat>
+                <Stat label="Delivery">Email</Stat>
+                <Stat label="Length">{book.pageCount ? `~${book.pageCount} pages` : "Full book"}</Stat>
+              </dl>
+              <div className="mt-5"><CtaPair book={book} /></div>
             </div>
-            <div className="mt-4 text-center">
-              <p className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl"><ConvertedPrice amountUsd={book.price} showLocal /></p>
-            </div>
-            <h1 className="mt-4 text-3xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">{book.title}</h1>
-            <p className="mt-2 text-sm text-white/70">by <span className="font-semibold text-white/90">{book.author}</span></p>
-            <p className="mt-3 text-xs text-white/60">Published {formatDate(book.publishedAt)} · Digital edition</p>
+
+            {editions.length > 1 && (
+              <div className="mt-5">
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Also available in</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {editions.map((edition) => (
+                    <Link key={edition.id} href={`/book/${edition.id}`} aria-current={edition.id === book.id ? "page" : undefined} className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-bold ${edition.id === book.id ? "bg-primary text-primary-foreground" : "bg-secondary hover:text-primary"}`}>
+                      {languageName(edition.language)}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {volumes.length > 1 && (
+              <nav aria-label="Books in this series" className="mt-6 rounded-2xl border border-border bg-card p-4">
+                <p className="text-sm font-extrabold">Books in this series</p>
+                <ol className="mt-2 flex flex-wrap items-center gap-1">
+                  {volumes.map((volume) => (
+                    <li key={volume.id}>
+                      <Link href={`/book/${volume.id}`} aria-current={volume.id === book.id ? "page" : undefined} aria-label={`Book ${volume.seriesNumber}`} className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold ${volume.id === book.id ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}>
+                        {volume.seriesNumber}
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+                <div className="mt-2 flex justify-between gap-2 text-sm font-bold">
+                  {previous ? <Link href={`/book/${previous.id}`} className="inline-flex min-h-11 items-center gap-1 text-primary"><ChevronLeft className="h-4 w-4" aria-hidden="true" /> Book {previous.seriesNumber}</Link> : <span />}
+                  {next ? <Link href={`/book/${next.id}`} className="inline-flex min-h-11 items-center gap-1 text-primary">Book {next.seriesNumber} <ChevronRight className="h-4 w-4" aria-hidden="true" /></Link> : <span />}
+                </div>
+              </nav>
+            )}
+
+            <details className="group mt-4 rounded-2xl border border-border bg-card">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 text-sm font-extrabold">
+                How delivery works
+                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
+              </summary>
+              <ol className="grid gap-2 px-4 pb-4 text-sm text-muted-foreground">
+                <li><span className="font-bold text-foreground">1. Pay</span> securely by card or bank transfer.</li>
+                <li><span className="font-bold text-foreground">2. We confirm</span> your payment automatically.</li>
+                <li><span className="font-bold text-foreground">3. Your ebook arrives</span> in your inbox as an attachment, usually within minutes.</li>
+              </ol>
+            </details>
+
+            <section className="mt-8" aria-labelledby="synopsis">
+              <h2 id="synopsis" className="text-xl font-extrabold">Synopsis</h2>
+              <p id="synopsis-text" className={`mt-3 whitespace-pre-wrap text-sm leading-7 text-muted-foreground ${expanded ? "" : "line-clamp-5"}`}>{description}</p>
+              {description.length > 320 && (
+                <button type="button" aria-expanded={expanded} aria-controls="synopsis-text" onClick={() => setExpanded((value) => !value)} className="mt-1 min-h-11 text-sm font-bold text-primary">
+                  {expanded ? "Show less" : "Read more"}
+                </button>
+              )}
+              {tags.length > 0 && (
+                <ul className="mt-4 flex flex-wrap gap-2" aria-label="Tags">
+                  {tags.map((tag) => (
+                    <li key={tag}><Link href={`/shop?category=${encodeURIComponent(tag)}`} className="inline-flex min-h-9 items-center rounded-full border border-border px-3 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary">{tag}</Link></li>
+                  ))}
+                </ul>
+              )}
+              {editions.length <= 1 && (
+                <button type="button" onClick={() => setRequestOpen(true)} className="mt-5 inline-flex min-h-11 items-center text-sm font-bold text-primary">Request another language →</button>
+              )}
+            </section>
+
+            <section className="mt-8 border-t border-border pt-6" aria-label="Share this book">
+              <p className="mb-3 text-sm font-extrabold">Share this book</p>
+              <ShareRow book={book} />
+            </section>
           </div>
         </div>
-      </section>
-
-      <div className="mx-auto max-w-3xl px-4 sm:px-6">
-        <section className="-mt-1 rounded-b-2xl border border-t-0 border-border bg-card shadow-sm">
-          <div className="grid grid-cols-3 divide-x divide-border px-2 py-5 text-center">
-            <div><p className="text-lg font-extrabold text-primary"><ConvertedPrice amountUsd={book.price} /></p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">Price</p></div>
-            <div><p className="text-lg font-extrabold">{book.format}</p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">Format</p></div>
-            <div><p className="text-lg font-extrabold">Email</p><p className="mt-1 text-[0.62rem] font-bold uppercase tracking-wide text-muted-foreground">Delivery</p></div>
-          </div>
-        </section>
-
-        <Reveal className="mt-8">
-          <button type="button" onClick={() => setExpanded((value) => !value)} className="flex w-full items-center justify-between text-left">
-            <div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">About this book</p><h2 className="mt-1 text-xl font-extrabold">Synopsis</h2></div>
-            {expanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
-          </button>
-           <p className={`mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground ${expanded ? "" : "line-clamp-4"}`}>{book.description || "I hope this book gives you something good to carry with you."}</p>
-           {!expanded && (book.description?.length ?? 0) > 260 && <button type="button" onClick={() => setExpanded(true)} className="mt-2 text-xs font-bold text-primary">Read more</button>}
-          <div className="mt-5 flex flex-wrap gap-2">
-            {descriptors.map((descriptor) => <span key={descriptor} className="rounded-full bg-primary/10 px-3 py-1.5 text-[0.68rem] font-bold text-primary">{descriptor}</span>)}
-          </div>
-          <div className="mt-6 grid gap-2 sm:grid-cols-2">
-            <button type="button" onClick={() => addAndNavigate("/cart")} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5">
-              {inCart ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />} {inCart ? "In cart" : "Add to cart"}
-            </button>
-            <Link href="/cart" className="inline-flex h-12 items-center justify-center rounded-xl border border-border bg-card px-4 text-xs font-extrabold uppercase tracking-wide text-foreground transition-colors hover:border-primary hover:text-primary">View cart</Link>
-          </div>
-        </Reveal>
-
-        <Reveal className="mt-8 border-y border-border py-6">
-          <p className="text-sm font-extrabold">Share this book</p>
-          <div className="mt-3 flex items-center gap-2">
-            <ShareLink label="Share on WhatsApp" href={whatsappUrl}><HugeiconsIcon icon={WhatsappIcon} size={18} /></ShareLink>
-            <ShareButton label="Share on Instagram" onClick={() => void shareOnInstagram()}><HugeiconsIcon icon={InstagramIcon} size={18} /></ShareButton>
-            <ShareLink label="Share on X" href={twitterUrl}><HugeiconsIcon icon={NewTwitterIcon} size={18} /></ShareLink>
-            <ShareButton label="Copy link" onClick={() => void copyShareUrl()}>{copied ? <Check className="h-4 w-4 text-primary" /> : <HugeiconsIcon icon={CopyLinkIcon} size={18} />}</ShareButton>
-            {copied && <span className="ml-2 text-xs font-bold text-primary">Link copied</span>}
-          </div>
-        </Reveal>
-
-        <Reveal className="mt-8 rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">Available languages</p>
-          <h2 className="mt-1 text-xl font-extrabold">Choose your reading language</h2>
-          <div className="mt-4 flex flex-wrap gap-2">{languageEditions.map((edition) => <Link key={edition.id} href={`/book/${edition.id}`} className={`rounded-full px-3 py-2 text-xs font-extrabold ${edition.id === book.id ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-primary/10 hover:text-primary"}`}>{edition.language.toUpperCase()}</Link>)}</div>
-          <div className="mt-5 border-t border-border pt-5">
-            <p className="text-sm font-extrabold">Can’t find your language?</p>
-            {requestSent ? <p className="mt-2 text-sm text-primary">Thanks — we’ve recorded your request.</p> : <form className="mt-3 grid gap-3 sm:grid-cols-2" onSubmit={(event) => { event.preventDefault(); languageRequest.mutate({ data: { bookId: book.id, name: requestName.trim(), country: requestCountry.trim(), language: requestLanguage.trim() } }, { onSuccess: () => setRequestSent(true) }) }}><input required value={requestName} onChange={(event) => setRequestName(event.target.value)} placeholder="Your name" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><select required aria-label="Country" value={requestCountry} onChange={(event) => setRequestCountry(event.target.value)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm"><option value="">Country</option>{countries.map(({ code, name }) => <option key={code} value={code}>{name}</option>)}</select><input required value={requestLanguage} onChange={(event) => setRequestLanguage(event.target.value)} placeholder="Requested language" className="h-11 rounded-xl border border-border bg-background px-3 text-sm" /><button disabled={languageRequest.isPending} className="h-11 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{languageRequest.isPending ? "Sending…" : "Request language"}</button></form>}
-          </div>
-        </Reveal>
 
         {related.length > 0 && (
-          <Reveal className="mt-8">
-            <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">Same world</p><h2 className="mt-1 text-xl font-extrabold">Related books</h2></div><Link href={`/shop?category=${encodeURIComponent(book.categories[0] ?? "")}`} className="text-xs font-bold text-primary">More →</Link></div>
-            <Stagger className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{related.map((item) => <Reveal key={item.id} variants={fadeUpVariants}><BookCard book={item} /></Reveal>)}</Stagger>
-          </Reveal>
+          <section className="mt-12" aria-labelledby="related">
+            <SectionHeading eyebrow="You might also like" title="Related books" href={book.primaryCategory ? `/shop?category=${encodeURIComponent(book.primaryCategory)}` : "/shop"} />
+            <span id="related" className="sr-only">Related books</span>
+            <ShelfRail items={related} label="Related books" />
+          </section>
         )}
-
-        {suggestions.length > 0 && (
-          <Reveal className="mt-9">
-            <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-primary">A few more from me</p><h2 className="mt-1 text-xl font-extrabold">You might also like</h2></div><Link href="/shop" className="text-xs font-bold text-primary">Browse all →</Link></div>
-            <Stagger className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3">{suggestions.map((item) => <Reveal key={item.id} variants={fadeUpVariants}><BookCard book={item} /></Reveal>)}</Stagger>
-          </Reveal>
-        )}
-
-        <section className="mt-8 rounded-2xl bg-secondary/70 p-5">
-           <div className="flex items-start gap-3"><Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="text-sm font-extrabold">I’ll send it to your inbox</p><p className="mt-1 text-xs leading-5 text-muted-foreground">After your payment is confirmed, I’ll email your {book.format} file and receipt as real attachments. There are no public download links on this page.</p></div></div>
-        </section>
       </div>
 
-      <motion.div initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: prefersReducedMotion ? 0 : 0.28, ease: "easeOut" }} className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 shadow-[0_-8px_24px_hsl(224_30%_22%_/_0.12)] backdrop-blur-xl">
-        <div className="mx-auto grid max-w-3xl gap-2 sm:grid-cols-2">
-          <motion.button type="button" onClick={() => addAndNavigate("/cart")} whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card text-[0.68rem] font-extrabold uppercase tracking-wide text-foreground transition-colors hover:border-primary hover:text-primary">
-            {inCart ? <Check className="h-4 w-4 text-primary" /> : <ShoppingCart className="h-4 w-4" />} {inCart ? "In cart" : "Add to cart"}
-          </motion.button>
-          <motion.button type="button" onClick={() => addAndNavigate("/checkout")} whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }} className="flex h-12 flex-1 items-center justify-center rounded-xl bg-primary px-3 text-center text-[0.68rem] font-extrabold uppercase tracking-wide text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:-translate-y-0.5">
-            Buy now
-          </motion.button>
-        </div>
-      </motion.div>
-    </main>
-  )
-}
+      <div aria-hidden={!showSticky} className={`fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl transition-transform duration-200 motion-reduce:transition-none md:hidden ${showSticky ? "translate-y-0" : "pointer-events-none translate-y-full"}`}>
+        <CtaPair book={book} sticky />
+      </div>
 
-function ShareLink({ label, href, children }: { label: string; href: string; children: React.ReactNode }) {
-  const prefersReducedMotion = useReducedMotion()
-  return (
-    <motion.a href={href} target="_blank" rel="noreferrer" aria-label={label} whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
-      {children}
-    </motion.a>
+      <LanguageRequestSheet book={book} open={requestOpen} onOpenChange={setRequestOpen} />
+    </main>
   )
 }
