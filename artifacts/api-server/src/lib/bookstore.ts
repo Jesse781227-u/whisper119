@@ -1,5 +1,5 @@
-import { and, desc, eq, ilike, inArray, lte, or } from "drizzle-orm";
-import { bookCategoriesTable, booksTable, categoriesTable, db, orderItemsTable, ordersTable, type Book, type Order, type OrderItem } from "@workspace/db";
+import { and, asc, desc, eq, ilike, inArray, lte, or } from "drizzle-orm";
+import { bookCategoriesTable, booksTable, categoriesTable, db, orderItemsTable, ordersTable, seriesTable, type Book, type Order, type OrderItem, type Series } from "@workspace/db";
 
 export function coverUrl(book: Book): string | null {
   if (book.coverObjectPath?.startsWith("http://") || book.coverObjectPath?.startsWith("https://")) {
@@ -9,11 +9,19 @@ export function coverUrl(book: Book): string | null {
     return book.coverObjectPath;
   }
   if (!book.coverObjectPath) return null;
-  const publicUrl = process.env.R2_PUBLIC_URL?.trim();
-  if (publicUrl && book.coverObjectPath.startsWith("/objects/")) {
-    return `${publicUrl.replace(/\/+$/, "")}/${book.coverObjectPath.slice("/objects/".length)}`;
-  }
-  return `/api/storage${book.coverObjectPath}`;
+  return objectImageUrl(book.coverObjectPath);
+}
+
+/**
+ * Public image URL on our own domain: the Worker serves `/img/<key>` from R2
+ * with edge caching and optional resizing (`?w=300`).
+ */
+export function objectImageUrl(objectPath: string | null | undefined): string | null {
+  if (!objectPath) return null;
+  if (/^https?:\/\//.test(objectPath) || objectPath.startsWith("/covers/")) return objectPath;
+  if (!objectPath.startsWith("/objects/")) return `/api/storage${objectPath}`;
+  const origin = (process.env.PUBLIC_APP_URL?.trim() || "https://whisper119.com").replace(/\/+$/, "");
+  return `${origin}/img/${objectPath.slice("/objects/".length)}`;
 }
 
 function isoDate(value: Date | string | null | undefined): string {
@@ -25,7 +33,14 @@ function publicFormat(value: string): "PDF" | "EPUB" {
   return value.toUpperCase() === "PDF" ? "PDF" : "EPUB";
 }
 
-export function publicBook(book: Book, categories: string[] = []) {
+type SeriesRef = Pick<Series, "id" | "name" | "slug"> | null | undefined;
+
+function publicFormats(book: Book): Array<"PDF" | "EPUB"> {
+  const formats = (book.formats ?? []).map((value) => value.toUpperCase()).filter((value): value is "PDF" | "EPUB" => value === "PDF" || value === "EPUB");
+  return formats.length ? [...new Set(formats)] : [publicFormat(book.format)];
+}
+
+export function publicBook(book: Book, categories: string[] = [], series?: SeriesRef) {
   return {
     id: book.id,
     slug: book.slug || book.id,
@@ -47,8 +62,19 @@ export function publicBook(book: Book, categories: string[] = []) {
     featured: book.featured,
     publishedAt: isoDate(book.publishedAt),
     createdAt: isoDate(book.createdAt),
+    formats: publicFormats(book),
+    seriesId: series?.id ?? null,
+    seriesName: series?.name ?? null,
+    seriesSlug: series?.slug ?? null,
+    seriesNumber: series ? book.seriesNumber ?? null : null,
+    pageCount: book.pageCount ?? null,
+    primaryCategory: book.primaryCategory ?? null,
+    hasSample: Boolean(book.sampleText?.trim() || book.sampleObjectPath),
   };
 }
+
+/** Only books whose publish date has passed are listed or counted. */
+export const isPublished = () => lte(booksTable.publishedAt, new Date());
 
 export async function findBooks(filters: {
   category?: string;
@@ -62,6 +88,7 @@ export async function findBooks(filters: {
     filters.maxPrice !== undefined ? lte(booksTable.price, filters.maxPrice) : undefined,
     filters.search ? or(ilike(booksTable.title, `%${filters.search}%`), ilike(booksTable.author, `%${filters.search}%`)) : undefined,
     filters.language ? eq(booksTable.language, filters.language) : undefined,
+    isPublished(),
   ].filter(Boolean);
   if (filters.category) {
     return db.select({ book: booksTable }).from(booksTable)
@@ -85,9 +112,42 @@ export async function categoryNamesForBooks(bookIds: string[]) {
   return result;
 }
 
+export async function seriesForBooks(books: Book[]) {
+  const ids = [...new Set(books.map((book) => book.seriesId).filter((id): id is string => Boolean(id)))];
+  if (!ids.length) return new Map<string, Series>();
+  const rows = await db.select().from(seriesTable).where(inArray(seriesTable.id, ids));
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
 export async function publicBooks(books: Book[]) {
-  const names = await categoryNamesForBooks(books.map(book => book.id));
-  return books.map(book => publicBook(book, names.get(book.id) ?? []));
+  const [names, series] = await Promise.all([categoryNamesForBooks(books.map(book => book.id)), seriesForBooks(books)]);
+  return books.map(book => publicBook(book, names.get(book.id) ?? [], book.seriesId ? series.get(book.seriesId) : null));
+}
+
+/** Series with their published books (optionally one language), in reading order. */
+export async function listSeriesWithBooks(language?: string) {
+  const seriesRows = await db.select().from(seriesTable).orderBy(asc(seriesTable.name));
+  const books = await db.select().from(booksTable)
+    .where(and(isPublished(), language ? eq(booksTable.language, language) : undefined))
+    .orderBy(asc(booksTable.seriesNumber), asc(booksTable.publishedAt));
+  return seriesRows.map((series) => {
+    const volumes = books.filter((book) => book.seriesId === series.id);
+    return { series, volumes };
+  });
+}
+
+export function publicSeries(series: Series, volumes: Book[]) {
+  const first = volumes[0];
+  return {
+    id: series.id,
+    name: series.name,
+    slug: series.slug,
+    description: series.description || first?.description || "",
+    coverUrl: objectImageUrl(series.coverObjectPath) ?? (first ? coverUrl(first) : null),
+    bookCount: volumes.length,
+    firstBookId: first?.id ?? null,
+    price: first ? Number(first.price) || 0 : null,
+  };
 }
 
 export async function replaceBookCategories(bookId: string, names: string[]) {

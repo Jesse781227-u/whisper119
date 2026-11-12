@@ -51,7 +51,15 @@ export const ListBooksResponseItem = zod.object({
   "fileName": zod.string(),
   "featured": zod.boolean(),
   "publishedAt": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "formats": zod.array(zod.enum(['PDF', 'EPUB'])),
+  "seriesId": zod.string().nullable(),
+  "seriesName": zod.string().nullable(),
+  "seriesSlug": zod.string().nullable(),
+  "seriesNumber": zod.number().nullable(),
+  "pageCount": zod.number().nullable(),
+  "primaryCategory": zod.string().nullable(),
+  "hasSample": zod.boolean()
 })
 export const ListBooksResponse = zod.array(ListBooksResponseItem)
 
@@ -86,13 +94,25 @@ export const GetBookResponse = zod.object({
   "fileName": zod.string(),
   "featured": zod.boolean(),
   "publishedAt": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "formats": zod.array(zod.enum(['PDF', 'EPUB'])),
+  "seriesId": zod.string().nullable(),
+  "seriesName": zod.string().nullable(),
+  "seriesSlug": zod.string().nullable(),
+  "seriesNumber": zod.number().nullable(),
+  "pageCount": zod.number().nullable(),
+  "primaryCategory": zod.string().nullable(),
+  "hasSample": zod.boolean()
 })
 
 
 /**
  * @summary Get featured books and catalogue highlights
  */
+export const GetStorefrontSummaryQueryParams = zod.object({
+  "language": zod.coerce.string().optional()
+})
+
 
 
 
@@ -118,7 +138,15 @@ export const GetStorefrontSummaryResponse = zod.object({
   "fileName": zod.string(),
   "featured": zod.boolean(),
   "publishedAt": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "formats": zod.array(zod.enum(['PDF', 'EPUB'])),
+  "seriesId": zod.string().nullable(),
+  "seriesName": zod.string().nullable(),
+  "seriesSlug": zod.string().nullable(),
+  "seriesNumber": zod.number().nullable(),
+  "pageCount": zod.number().nullable(),
+  "primaryCategory": zod.string().nullable(),
+  "hasSample": zod.boolean()
 })),
   "newArrivals": zod.array(zod.object({
   "id": zod.string(),
@@ -140,7 +168,15 @@ export const GetStorefrontSummaryResponse = zod.object({
   "fileName": zod.string(),
   "featured": zod.boolean(),
   "publishedAt": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "formats": zod.array(zod.enum(['PDF', 'EPUB'])),
+  "seriesId": zod.string().nullable(),
+  "seriesName": zod.string().nullable(),
+  "seriesSlug": zod.string().nullable(),
+  "seriesNumber": zod.number().nullable(),
+  "pageCount": zod.number().nullable(),
+  "primaryCategory": zod.string().nullable(),
+  "hasSample": zod.boolean()
 })),
   "categories": zod.array(zod.object({
   "name": zod.string(),
@@ -149,6 +185,179 @@ export const GetStorefrontSummaryResponse = zod.object({
   "featured": zod.boolean()
 }))
 })
+
+
+/**
+ * @summary Get the free sample for a book
+ */
+export const GetBookSampleParams = zod.object({
+  "bookId": zod.coerce.string()
+})
+
+export const GetBookSampleResponse = zod.object({
+  "bookId": zod.string(),
+  "title": zod.string(),
+  "text": zod.string().nullable(),
+  "pdfUrl": zod.string().nullable()
+})
+
+
+/**
+ * @summary List book series
+ */
+export const ListSeriesQueryParams = zod.object({
+  "language": zod.coerce.string().optional()
+})
+
+export const ListSeriesResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "coverUrl": zod.string().nullable(),
+  "bookCount": zod.number(),
+  "firstBookId": zod.string().nullable(),
+  "price": zod.number().nullable()
+})
+export const ListSeriesResponse = zod.array(ListSeriesResponseItem)
+
+
+/**
+ * @summary Get a series and its books in reading order
+ */
+export const GetSeriesParams = zod.object({
+  "seriesSlug": zod.coerce.string()
+})
+
+
+
+
+export const GetSeriesResponse = zod.object({
+  "series": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "coverUrl": zod.string().nullable(),
+  "bookCount": zod.number(),
+  "firstBookId": zod.string().nullable(),
+  "price": zod.number().nullable()
+}),
+  "books": zod.array(zod.object({
+  "id": zod.string(),
+  "slug": zod.string(),
+  "title": zod.string(),
+  "titleGroupId": zod.string(),
+  "language": zod.string(),
+  "author": zod.string(),
+  "price": zod.number(),
+  "priceNgn": zod.number(),
+  "currency": zod.string(),
+  "categories": zod.array(zod.string().min(1)),
+  "isCompleted": zod.boolean(),
+  "description": zod.string(),
+  "format": zod.enum(['PDF', 'EPUB']),
+  "paystackLink": zod.string().nullable(),
+  "payoneerLink": zod.string().nullable(),
+  "coverUrl": zod.string().nullable(),
+  "fileName": zod.string(),
+  "featured": zod.boolean(),
+  "publishedAt": zod.string(),
+  "createdAt": zod.string(),
+  "formats": zod.array(zod.enum(['PDF', 'EPUB'])),
+  "seriesId": zod.string().nullable(),
+  "seriesName": zod.string().nullable(),
+  "seriesSlug": zod.string().nullable(),
+  "seriesNumber": zod.number().nullable(),
+  "pageCount": zod.number().nullable(),
+  "primaryCategory": zod.string().nullable(),
+  "hasSample": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary List series for the admin
+ */
+export const ListAdminSeriesResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "coverUrl": zod.string().nullable(),
+  "bookCount": zod.number(),
+  "firstBookId": zod.string().nullable(),
+  "price": zod.number().nullable()
+})
+export const ListAdminSeriesResponse = zod.array(ListAdminSeriesResponseItem)
+
+
+/**
+ * @summary Create a series
+ */
+export const createSeriesBodyNameMax = 200;
+
+export const createSeriesBodyDescriptionMax = 4000;
+
+
+
+export const CreateSeriesBody = zod.object({
+  "name": zod.string().min(1).max(createSeriesBodyNameMax),
+  "description": zod.string().max(createSeriesBodyDescriptionMax).optional(),
+  "coverObjectPath": zod.string().nullish()
+})
+
+export const CreateSeriesResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "coverUrl": zod.string().nullable(),
+  "bookCount": zod.number(),
+  "firstBookId": zod.string().nullable(),
+  "price": zod.number().nullable()
+})
+
+
+/**
+ * @summary Update a series
+ */
+export const UpdateSeriesParams = zod.object({
+  "seriesId": zod.coerce.string()
+})
+
+export const updateSeriesBodyNameMax = 200;
+
+export const updateSeriesBodyDescriptionMax = 4000;
+
+
+
+export const UpdateSeriesBody = zod.object({
+  "name": zod.string().min(1).max(updateSeriesBodyNameMax),
+  "description": zod.string().max(updateSeriesBodyDescriptionMax).optional(),
+  "coverObjectPath": zod.string().nullish()
+})
+
+export const UpdateSeriesResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string(),
+  "coverUrl": zod.string().nullable(),
+  "bookCount": zod.number(),
+  "firstBookId": zod.string().nullable(),
+  "price": zod.number().nullable()
+})
+
+
+/**
+ * @summary Delete a series (its books are kept and unassigned)
+ */
+export const DeleteSeriesParams = zod.object({
+  "seriesId": zod.coerce.string()
+})
+
+export const DeleteSeriesResponse = zod.void()
 
 
 /**
@@ -163,13 +372,17 @@ export const createLanguageRequestBodyCountryMax = 80;
 export const createLanguageRequestBodyLanguageMin = 2;
 export const createLanguageRequestBodyLanguageMax = 80;
 
+export const createLanguageRequestBodyEmailMin = 3;
+export const createLanguageRequestBodyEmailMax = 200;
+
 
 
 export const CreateLanguageRequestBody = zod.object({
   "bookId": zod.string().min(1),
   "name": zod.string().min(1).max(createLanguageRequestBodyNameMax),
   "country": zod.string().min(createLanguageRequestBodyCountryMin).max(createLanguageRequestBodyCountryMax),
-  "language": zod.string().min(createLanguageRequestBodyLanguageMin).max(createLanguageRequestBodyLanguageMax)
+  "language": zod.string().min(createLanguageRequestBodyLanguageMin).max(createLanguageRequestBodyLanguageMax),
+  "email": zod.string().min(createLanguageRequestBodyEmailMin).max(createLanguageRequestBodyEmailMax).optional()
 })
 
 export const CreateLanguageRequestResponse = zod.object({
@@ -179,6 +392,7 @@ export const CreateLanguageRequestResponse = zod.object({
   "name": zod.string(),
   "country": zod.string(),
   "language": zod.string(),
+  "email": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -334,6 +548,7 @@ export const ListNewsletterMessagesResponseItem = zod.object({
   "subject": zod.string(),
   "bodyHtml": zod.string(),
   "bodyMarkdown": zod.string(),
+  "bodyText": zod.string(),
   "status": zod.enum(['draft', 'scheduled', 'sent']),
   "scheduledAt": zod.string().nullable(),
   "sentAt": zod.string().nullable(),
@@ -361,7 +576,7 @@ export const createNewsletterMessageBodySubjectMax = 200;
 
 export const CreateNewsletterMessageBody = zod.object({
   "subject": zod.string().min(1).max(createNewsletterMessageBodySubjectMax),
-  "bodyMarkdown": zod.string().min(1),
+  "bodyMarkdown": zod.string().min(1).describe('Legacy plain-text\/template field'),
   "bodyHtml": zod.string().optional(),
   "bodyText": zod.string().optional(),
   "scheduledAt": zod.string().nullish()
@@ -372,6 +587,7 @@ export const CreateNewsletterMessageResponse = zod.object({
   "subject": zod.string(),
   "bodyHtml": zod.string(),
   "bodyMarkdown": zod.string(),
+  "bodyText": zod.string(),
   "status": zod.enum(['draft', 'scheduled', 'sent']),
   "scheduledAt": zod.string().nullable(),
   "sentAt": zod.string().nullable(),
@@ -402,7 +618,7 @@ export const updateNewsletterMessageBodySubjectMax = 200;
 
 export const UpdateNewsletterMessageBody = zod.object({
   "subject": zod.string().min(1).max(updateNewsletterMessageBodySubjectMax),
-  "bodyMarkdown": zod.string().min(1),
+  "bodyMarkdown": zod.string().min(1).describe('Legacy plain-text\/template field'),
   "bodyHtml": zod.string().optional(),
   "bodyText": zod.string().optional(),
   "scheduledAt": zod.string().nullish()
@@ -413,6 +629,7 @@ export const UpdateNewsletterMessageResponse = zod.object({
   "subject": zod.string(),
   "bodyHtml": zod.string(),
   "bodyMarkdown": zod.string(),
+  "bodyText": zod.string(),
   "status": zod.enum(['draft', 'scheduled', 'sent']),
   "scheduledAt": zod.string().nullable(),
   "sentAt": zod.string().nullable(),
@@ -441,6 +658,7 @@ export const SendNewsletterMessageResponse = zod.object({
   "subject": zod.string(),
   "bodyHtml": zod.string(),
   "bodyMarkdown": zod.string(),
+  "bodyText": zod.string(),
   "status": zod.enum(['draft', 'scheduled', 'sent']),
   "scheduledAt": zod.string().nullable(),
   "sentAt": zod.string().nullable(),
@@ -577,7 +795,15 @@ export const ListAdminBooksResponseItem = zod.object({
   "fileName": zod.string(),
   "featured": zod.boolean(),
   "publishedAt": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "formats": zod.array(zod.enum(['PDF', 'EPUB'])),
+  "seriesId": zod.string().nullable(),
+  "seriesName": zod.string().nullable(),
+  "seriesSlug": zod.string().nullable(),
+  "seriesNumber": zod.number().nullable(),
+  "pageCount": zod.number().nullable(),
+  "primaryCategory": zod.string().nullable(),
+  "hasSample": zod.boolean()
 })
 export const ListAdminBooksResponse = zod.array(ListAdminBooksResponseItem)
 
@@ -600,6 +826,10 @@ export const createBookBodyCurrencyMin = 3;
 export const createBookBodyCurrencyMax = 3;
 
 
+export const createBookBodyCategoriesMax = 6;
+
+
+
 
 
 
@@ -614,7 +844,7 @@ export const CreateBookBody = zod.object({
   "price": zod.number().min(createBookBodyPriceMin),
   "priceNgn": zod.number().min(createBookBodyPriceNgnMin),
   "currency": zod.string().min(createBookBodyCurrencyMin).max(createBookBodyCurrencyMax),
-  "categories": zod.array(zod.string().min(1)).min(1),
+  "categories": zod.array(zod.string().min(1)).min(1).max(createBookBodyCategoriesMax),
   "isCompleted": zod.boolean(),
   "description": zod.string(),
   "format": zod.enum(['PDF', 'EPUB']),
@@ -624,7 +854,14 @@ export const CreateBookBody = zod.object({
   "fileObjectPath": zod.string().min(1),
   "fileName": zod.string().min(1),
   "featured": zod.boolean(),
-  "publishedAt": zod.string()
+  "publishedAt": zod.string(),
+  "formats": zod.array(zod.enum(['PDF', 'EPUB'])).min(1).optional(),
+  "seriesId": zod.string().nullish(),
+  "seriesNumber": zod.number().min(1).nullish(),
+  "pageCount": zod.number().min(1).nullish(),
+  "primaryCategory": zod.string().nullish(),
+  "sampleText": zod.string().nullish(),
+  "sampleObjectPath": zod.string().nullish()
 })
 
 
@@ -650,7 +887,15 @@ export const CreateBookResponse = zod.object({
   "fileName": zod.string(),
   "featured": zod.boolean(),
   "publishedAt": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "formats": zod.array(zod.enum(['PDF', 'EPUB'])),
+  "seriesId": zod.string().nullable(),
+  "seriesName": zod.string().nullable(),
+  "seriesSlug": zod.string().nullable(),
+  "seriesNumber": zod.number().nullable(),
+  "pageCount": zod.number().nullable(),
+  "primaryCategory": zod.string().nullable(),
+  "hasSample": zod.boolean()
 })
 
 
@@ -740,6 +985,10 @@ export const updateBookBodyCurrencyMin = 3;
 export const updateBookBodyCurrencyMax = 3;
 
 
+export const updateBookBodyCategoriesMax = 6;
+
+
+
 
 
 
@@ -754,7 +1003,7 @@ export const UpdateBookBody = zod.object({
   "price": zod.number().min(updateBookBodyPriceMin).optional(),
   "priceNgn": zod.number().min(updateBookBodyPriceNgnMin).optional(),
   "currency": zod.string().min(updateBookBodyCurrencyMin).max(updateBookBodyCurrencyMax).optional(),
-  "categories": zod.array(zod.string().min(1)).min(1).optional(),
+  "categories": zod.array(zod.string().min(1)).min(1).max(updateBookBodyCategoriesMax).optional(),
   "isCompleted": zod.boolean().optional(),
   "description": zod.string().optional(),
   "format": zod.enum(['PDF', 'EPUB']).optional(),
@@ -764,7 +1013,14 @@ export const UpdateBookBody = zod.object({
   "fileObjectPath": zod.string().min(1).optional(),
   "fileName": zod.string().min(1).optional(),
   "featured": zod.boolean().optional(),
-  "publishedAt": zod.string().optional()
+  "publishedAt": zod.string().optional(),
+  "formats": zod.array(zod.enum(['PDF', 'EPUB'])).min(1).optional(),
+  "seriesId": zod.string().nullish(),
+  "seriesNumber": zod.number().min(1).nullish(),
+  "pageCount": zod.number().min(1).nullish(),
+  "primaryCategory": zod.string().nullish(),
+  "sampleText": zod.string().nullish(),
+  "sampleObjectPath": zod.string().nullish()
 })
 
 
@@ -790,7 +1046,15 @@ export const UpdateBookResponse = zod.object({
   "fileName": zod.string(),
   "featured": zod.boolean(),
   "publishedAt": zod.string(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "formats": zod.array(zod.enum(['PDF', 'EPUB'])),
+  "seriesId": zod.string().nullable(),
+  "seriesName": zod.string().nullable(),
+  "seriesSlug": zod.string().nullable(),
+  "seriesNumber": zod.number().nullable(),
+  "pageCount": zod.number().nullable(),
+  "primaryCategory": zod.string().nullable(),
+  "hasSample": zod.boolean()
 })
 
 
@@ -930,4 +1194,5 @@ export const RequestUploadUrlResponse = zod.object({
   "uploadURL": zod.string(),
   "objectPath": zod.string()
 })
+
 

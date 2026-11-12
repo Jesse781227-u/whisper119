@@ -17,10 +17,11 @@ import {
   DeleteBookParams,
   ListCategoriesResponse, CreateCategoryBody, CreateCategoryResponse,
   UpdateCategoryParams, UpdateCategoryBody, UpdateCategoryResponse, DeleteCategoryParams,
+  ListAdminSeriesResponse, CreateSeriesBody, CreateSeriesResponse, UpdateSeriesParams, UpdateSeriesBody, UpdateSeriesResponse, DeleteSeriesParams,
 } from "@workspace/api-zod";
-import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable, db, languageRequestsTable, ordersTable } from "@workspace/db";
+import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable, db, languageRequestsTable, ordersTable, seriesTable } from "@workspace/db";
 import { requireAdmin } from "../lib/auth";
-import { getOrderById, orderResponse, publicBook, publicBooks, replaceBookCategories } from "../lib/bookstore";
+import { getOrderById, listSeriesWithBooks, orderResponse, publicBook, publicBooks, publicSeries, replaceBookCategories } from "../lib/bookstore";
 
 const router: IRouter = Router();
 function isUniqueConstraintError(error: unknown): boolean {
@@ -38,6 +39,22 @@ router.use("/admin/dashboard", requireAdmin);
 router.use("/admin/books", requireAdmin);
 router.use("/admin/categories", requireAdmin);
 router.use("/admin/orders", requireAdmin);
+router.use("/admin/series", requireAdmin);
+router.use("/admin/language-requests", requireAdmin);
+
+const MAX_TAGS = 6;
+
+/** Shared checks for create/update; returns an error message or null. */
+function bookRulesError(data: { categories?: string[]; primaryCategory?: string | null; formats?: string[]; format?: string }, creating: boolean): string | null {
+  if (data.categories && data.categories.length > MAX_TAGS) return `Pick at most ${MAX_TAGS} tags (this book has ${data.categories.length}).`;
+  if (creating && !data.primaryCategory?.trim()) return "Choose a primary category.";
+  if (data.formats && data.format && !data.formats.includes(data.format)) return `Formats must include ${data.format}, the format of the uploaded file.`;
+  return null;
+}
+
+function slugify(value: string): string {
+  return value.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "series";
+}
 router.use("/storage/uploads", requireAdmin);
 
 router.get("/admin/dashboard", async (_req, res): Promise<void> => {
@@ -80,7 +97,7 @@ router.get("/admin/books", async (_req, res): Promise<void> => {
 });
 
 router.get("/admin/language-requests", async (_req, res): Promise<void> => {
-  const rows = await db.select({ id: languageRequestsTable.id, bookId: languageRequestsTable.bookId, bookTitle: booksTable.title, name: languageRequestsTable.name, country: languageRequestsTable.country, language: languageRequestsTable.language, createdAt: languageRequestsTable.createdAt })
+  const rows = await db.select({ id: languageRequestsTable.id, bookId: languageRequestsTable.bookId, bookTitle: booksTable.title, name: languageRequestsTable.name, country: languageRequestsTable.country, language: languageRequestsTable.language, email: languageRequestsTable.email, createdAt: languageRequestsTable.createdAt })
     .from(languageRequestsTable).innerJoin(booksTable, eq(booksTable.id, languageRequestsTable.bookId)).orderBy(desc(languageRequestsTable.createdAt));
   res.json(rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() })));
 });
@@ -124,6 +141,8 @@ router.post("/admin/books", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const ruleError = bookRulesError(parsed.data, true);
+  if (ruleError) { res.status(400).json({ error: ruleError }); return; }
   try {
     const { categories, ...bookData } = parsed.data;
     const [book] = await db.insert(booksTable).values({
@@ -159,6 +178,8 @@ router.patch("/admin/books/:bookId", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const ruleError = bookRulesError(parsed.data, false);
+  if (ruleError) { res.status(400).json({ error: ruleError }); return; }
   const { categories, ...bookData } = parsed.data;
   const [book] = await db.update(booksTable).set({
     ...bookData,
@@ -183,6 +204,52 @@ router.delete("/admin/books/:bookId", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Book not found" });
     return;
   }
+  res.status(204).send();
+});
+
+router.get("/admin/series", async (_req, res): Promise<void> => {
+  const rows = await listSeriesWithBooks();
+  res.json(ListAdminSeriesResponse.parse(rows.map((row) => publicSeries(row.series, row.volumes))));
+});
+
+router.post("/admin/series", async (req, res): Promise<void> => {
+  const parsed = CreateSeriesBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const name = parsed.data.name.trim();
+  try {
+    const [series] = await db.insert(seriesTable).values({
+      id: randomUUID(), name, slug: slugify(name),
+      description: parsed.data.description?.trim() ?? "", coverObjectPath: parsed.data.coverObjectPath ?? null,
+    }).returning();
+    res.status(201).json(CreateSeriesResponse.parse(publicSeries(series, [])));
+  } catch (error) {
+    res.status(isUniqueConstraintError(error) ? 409 : 500).json({ error: isUniqueConstraintError(error) ? "A series with this name already exists." : "The series could not be created." });
+  }
+});
+
+router.patch("/admin/series/:seriesId", async (req, res): Promise<void> => {
+  const params = UpdateSeriesParams.safeParse(req.params); const parsed = UpdateSeriesBody.safeParse(req.body);
+  if (!params.success || !parsed.success) { res.status(400).json({ error: "Invalid series update." }); return; }
+  const name = parsed.data.name.trim();
+  try {
+    const [series] = await db.update(seriesTable).set({
+      name, slug: slugify(name),
+      ...(parsed.data.description !== undefined ? { description: parsed.data.description.trim() } : {}),
+      ...(parsed.data.coverObjectPath !== undefined ? { coverObjectPath: parsed.data.coverObjectPath } : {}),
+    }).where(eq(seriesTable.id, params.data.seriesId)).returning();
+    if (!series) { res.status(404).json({ error: "Series not found" }); return; }
+    const volumes = await db.select().from(booksTable).where(eq(booksTable.seriesId, series.id)).orderBy(booksTable.seriesNumber);
+    res.json(UpdateSeriesResponse.parse(publicSeries(series, volumes)));
+  } catch (error) {
+    res.status(isUniqueConstraintError(error) ? 409 : 500).json({ error: isUniqueConstraintError(error) ? "A series with this name already exists." : "The series could not be saved." });
+  }
+});
+
+router.delete("/admin/series/:seriesId", async (req, res): Promise<void> => {
+  const parsed = DeleteSeriesParams.safeParse(req.params);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const deleted = await db.delete(seriesTable).where(eq(seriesTable.id, parsed.data.seriesId)).returning();
+  if (!deleted.length) { res.status(404).json({ error: "Series not found" }); return; }
   res.status(204).send();
 });
 

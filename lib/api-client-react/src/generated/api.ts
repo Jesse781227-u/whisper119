@@ -26,17 +26,20 @@ import type {
   BadRequestResponse,
   Book,
   BookInput,
+  BookSample,
   BookUpdate,
   Category,
   CategoryInput,
   CheckoutSession,
   Download,
   ErrorResponse,
+  GetStorefrontSummaryParams,
   HealthStatus,
   LanguageRequest,
   LanguageRequestInput,
   ListAdminOrdersParams,
   ListBooksParams,
+  ListSeriesParams,
   NewsletterMessage,
   NewsletterMessageInput,
   NewsletterMessageUpdateInput,
@@ -48,6 +51,9 @@ import type {
   PageViewInput,
   PaymentConfirmation,
   PaymentConfirmationInput,
+  Series,
+  SeriesDetail,
+  SeriesInput,
   StorefrontSummary,
   UnauthorizedResponse,
   UploadInput,
@@ -337,20 +343,27 @@ export function useGetBook<TData = Awaited<ReturnType<typeof getBook>>, TError =
 
 
 
-export const getGetStorefrontSummaryUrl = () => {
+export const getGetStorefrontSummaryUrl = (params?: GetStorefrontSummaryParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/storefront/summary`
+  return stringifiedParams.length > 0 ? `/api/storefront/summary?${stringifiedParams}` : `/api/storefront/summary`
 }
 
 /**
  * @summary Get featured books and catalogue highlights
  */
-export const getStorefrontSummary = async ( options?: RequestInit): Promise<StorefrontSummary> => {
+export const getStorefrontSummary = async (params?: GetStorefrontSummaryParams, options?: RequestInit): Promise<StorefrontSummary> => {
 
-  const res = await fetch(getGetStorefrontSummaryUrl(),
+  const res = await fetch(getGetStorefrontSummaryUrl(params),
   {
     ...options,
     method: 'GET'
@@ -370,23 +383,23 @@ export const getStorefrontSummary = async ( options?: RequestInit): Promise<Stor
 
 
 
-export const getGetStorefrontSummaryQueryKey = () => {
+export const getGetStorefrontSummaryQueryKey = (params?: GetStorefrontSummaryParams,) => {
     return [
-    `/api/storefront/summary`
+    `/api/storefront/summary`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetStorefrontSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getStorefrontSummary>>, TError = unknown>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStorefrontSummary>>, TError, TData>, fetch?: RequestInit}
+export const getGetStorefrontSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getStorefrontSummary>>, TError = unknown>(params?: GetStorefrontSummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStorefrontSummary>>, TError, TData>, fetch?: RequestInit}
 ) => {
 
 const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetStorefrontSummaryQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetStorefrontSummaryQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStorefrontSummary>>> = ({ signal }) => getStorefrontSummary({ signal, ...fetchOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStorefrontSummary>>> = ({ signal }) => getStorefrontSummary(params, { signal, ...fetchOptions });
 
 
 
@@ -404,11 +417,11 @@ export type GetStorefrontSummaryQueryError = unknown
  */
 
 export function useGetStorefrontSummary<TData = Awaited<ReturnType<typeof getStorefrontSummary>>, TError = unknown>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStorefrontSummary>>, TError, TData>, fetch?: RequestInit}
+ params?: GetStorefrontSummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStorefrontSummary>>, TError, TData>, fetch?: RequestInit}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetStorefrontSummaryQueryOptions(options)
+  const queryOptions = getGetStorefrontSummaryQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -420,6 +433,584 @@ export function useGetStorefrontSummary<TData = Awaited<ReturnType<typeof getSto
 
 
 
+
+export const getGetBookSampleUrl = (bookId: string,) => {
+
+
+
+
+  return `/api/books/${bookId}/sample`
+}
+
+/**
+ * @summary Get the free sample for a book
+ */
+export const getBookSample = async (bookId: string, options?: RequestInit): Promise<BookSample> => {
+
+  const res = await fetch(getGetBookSampleUrl(bookId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: BookSample = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getGetBookSampleQueryKey = (bookId: string,) => {
+    return [
+    `/api/books/${bookId}/sample`
+    ] as const;
+    }
+
+
+export const getGetBookSampleQueryOptions = <TData = Awaited<ReturnType<typeof getBookSample>>, TError = NotFoundResponse>(bookId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBookSample>>, TError, TData>, fetch?: RequestInit}
+) => {
+
+const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBookSampleQueryKey(bookId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBookSample>>> = ({ signal }) => getBookSample(bookId, { signal, ...fetchOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: bookId !== null && bookId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBookSample>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBookSampleQueryResult = NonNullable<Awaited<ReturnType<typeof getBookSample>>>
+export type GetBookSampleQueryError = NotFoundResponse
+
+
+/**
+ * @summary Get the free sample for a book
+ */
+
+export function useGetBookSample<TData = Awaited<ReturnType<typeof getBookSample>>, TError = NotFoundResponse>(
+ bookId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBookSample>>, TError, TData>, fetch?: RequestInit}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBookSampleQueryOptions(bookId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListSeriesUrl = (params?: ListSeriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/series?${stringifiedParams}` : `/api/series`
+}
+
+/**
+ * @summary List book series
+ */
+export const listSeries = async (params?: ListSeriesParams, options?: RequestInit): Promise<Series[]> => {
+
+  const res = await fetch(getListSeriesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: Series[] = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getListSeriesQueryKey = (params?: ListSeriesParams,) => {
+    return [
+    `/api/series`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSeriesQueryOptions = <TData = Awaited<ReturnType<typeof listSeries>>, TError = unknown>(params?: ListSeriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSeries>>, TError, TData>, fetch?: RequestInit}
+) => {
+
+const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSeriesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSeries>>> = ({ signal }) => listSeries(params, { signal, ...fetchOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSeries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSeriesQueryResult = NonNullable<Awaited<ReturnType<typeof listSeries>>>
+export type ListSeriesQueryError = unknown
+
+
+/**
+ * @summary List book series
+ */
+
+export function useListSeries<TData = Awaited<ReturnType<typeof listSeries>>, TError = unknown>(
+ params?: ListSeriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSeries>>, TError, TData>, fetch?: RequestInit}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSeriesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSeriesUrl = (seriesSlug: string,) => {
+
+
+
+
+  return `/api/series/${seriesSlug}`
+}
+
+/**
+ * @summary Get a series and its books in reading order
+ */
+export const getSeries = async (seriesSlug: string, options?: RequestInit): Promise<SeriesDetail> => {
+
+  const res = await fetch(getGetSeriesUrl(seriesSlug),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: SeriesDetail = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getGetSeriesQueryKey = (seriesSlug: string,) => {
+    return [
+    `/api/series/${seriesSlug}`
+    ] as const;
+    }
+
+
+export const getGetSeriesQueryOptions = <TData = Awaited<ReturnType<typeof getSeries>>, TError = NotFoundResponse>(seriesSlug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSeries>>, TError, TData>, fetch?: RequestInit}
+) => {
+
+const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSeriesQueryKey(seriesSlug);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSeries>>> = ({ signal }) => getSeries(seriesSlug, { signal, ...fetchOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: seriesSlug !== null && seriesSlug !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSeries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSeriesQueryResult = NonNullable<Awaited<ReturnType<typeof getSeries>>>
+export type GetSeriesQueryError = NotFoundResponse
+
+
+/**
+ * @summary Get a series and its books in reading order
+ */
+
+export function useGetSeries<TData = Awaited<ReturnType<typeof getSeries>>, TError = NotFoundResponse>(
+ seriesSlug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSeries>>, TError, TData>, fetch?: RequestInit}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSeriesQueryOptions(seriesSlug,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminSeriesUrl = () => {
+
+
+
+
+  return `/api/admin/series`
+}
+
+/**
+ * @summary List series for the admin
+ */
+export const listAdminSeries = async ( options?: RequestInit): Promise<Series[]> => {
+
+  const res = await fetch(getListAdminSeriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: Series[] = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getListAdminSeriesQueryKey = () => {
+    return [
+    `/api/admin/series`
+    ] as const;
+    }
+
+
+export const getListAdminSeriesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminSeries>>, TError = unknown>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSeries>>, TError, TData>, fetch?: RequestInit}
+) => {
+
+const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminSeriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminSeries>>> = ({ signal }) => listAdminSeries({ signal, ...fetchOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminSeries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminSeriesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminSeries>>>
+export type ListAdminSeriesQueryError = unknown
+
+
+/**
+ * @summary List series for the admin
+ */
+
+export function useListAdminSeries<TData = Awaited<ReturnType<typeof listAdminSeries>>, TError = unknown>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSeries>>, TError, TData>, fetch?: RequestInit}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminSeriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSeriesUrl = () => {
+
+
+
+
+  return `/api/admin/series`
+}
+
+/**
+ * @summary Create a series
+ */
+export const createSeries = async (seriesInput: SeriesInput, options?: RequestInit): Promise<Series> => {
+
+  const res = await fetch(getCreateSeriesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(seriesInput)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: Series = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getCreateSeriesMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSeries>>, TError,{data: SeriesInput}, TContext>, fetch?: RequestInit}
+): UseMutationOptions<Awaited<ReturnType<typeof createSeries>>, TError,{data: SeriesInput}, TContext> => {
+
+const mutationKey = ['createSeries'];
+const {mutation: mutationOptions, fetch: fetchOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, fetch: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSeries>>, {data: SeriesInput}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSeries(data,fetchOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSeriesMutationResult = NonNullable<Awaited<ReturnType<typeof createSeries>>>
+    export type CreateSeriesMutationBody = SeriesInput
+    export type CreateSeriesMutationError = unknown
+
+    /**
+ * @summary Create a series
+ */
+export const useCreateSeries = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSeries>>, TError,{data: SeriesInput}, TContext>, fetch?: RequestInit}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSeries>>,
+        TError,
+        {data: SeriesInput},
+        TContext
+      > => {
+      return useMutation(getCreateSeriesMutationOptions(options));
+    }
+
+export const getUpdateSeriesUrl = (seriesId: string,) => {
+
+
+
+
+  return `/api/admin/series/${seriesId}`
+}
+
+/**
+ * @summary Update a series
+ */
+export const updateSeries = async (seriesId: string,
+    seriesInput: SeriesInput, options?: RequestInit): Promise<Series> => {
+
+  const res = await fetch(getUpdateSeriesUrl(seriesId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(seriesInput)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: Series = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getUpdateSeriesMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSeries>>, TError,{seriesId: string;data: SeriesInput}, TContext>, fetch?: RequestInit}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSeries>>, TError,{seriesId: string;data: SeriesInput}, TContext> => {
+
+const mutationKey = ['updateSeries'];
+const {mutation: mutationOptions, fetch: fetchOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, fetch: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSeries>>, {seriesId: string;data: SeriesInput}> = (props) => {
+          const {seriesId,data} = props ?? {};
+
+          return  updateSeries(seriesId,data,fetchOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSeriesMutationResult = NonNullable<Awaited<ReturnType<typeof updateSeries>>>
+    export type UpdateSeriesMutationBody = SeriesInput
+    export type UpdateSeriesMutationError = unknown
+
+    /**
+ * @summary Update a series
+ */
+export const useUpdateSeries = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSeries>>, TError,{seriesId: string;data: SeriesInput}, TContext>, fetch?: RequestInit}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSeries>>,
+        TError,
+        {seriesId: string;data: SeriesInput},
+        TContext
+      > => {
+      return useMutation(getUpdateSeriesMutationOptions(options));
+    }
+
+export const getDeleteSeriesUrl = (seriesId: string,) => {
+
+
+
+
+  return `/api/admin/series/${seriesId}`
+}
+
+/**
+ * @summary Delete a series (its books are kept and unassigned)
+ */
+export const deleteSeries = async (seriesId: string, options?: RequestInit): Promise<void> => {
+
+  const res = await fetch(getDeleteSeriesUrl(seriesId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: void = body ? JSON.parse(body) : undefined
+  return data
+}
+
+
+
+
+
+export const getDeleteSeriesMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSeries>>, TError,{seriesId: string}, TContext>, fetch?: RequestInit}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSeries>>, TError,{seriesId: string}, TContext> => {
+
+const mutationKey = ['deleteSeries'];
+const {mutation: mutationOptions, fetch: fetchOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, fetch: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSeries>>, {seriesId: string}> = (props) => {
+          const {seriesId} = props ?? {};
+
+          return  deleteSeries(seriesId,fetchOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSeriesMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSeries>>>
+
+    export type DeleteSeriesMutationError = unknown
+
+    /**
+ * @summary Delete a series (its books are kept and unassigned)
+ */
+export const useDeleteSeries = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSeries>>, TError,{seriesId: string}, TContext>, fetch?: RequestInit}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSeries>>,
+        TError,
+        {seriesId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteSeriesMutationOptions(options));
+    }
 
 export const getCreateLanguageRequestUrl = () => {
 

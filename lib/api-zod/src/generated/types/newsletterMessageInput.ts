@@ -12,7 +12,10 @@ export interface NewsletterMessageInput {
      * @maxLength 200
      */
   subject: string;
-  /** @minLength 1 */
+  /**
+     * Legacy plain-text/template field
+     * @minLength 1
+     */
   bodyMarkdown: string;
   bodyHtml?: string;
   bodyText?: string;

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BookFormat } from './bookFormat';
+import type { BookFormatsItem } from './bookFormatsItem';
 
 export interface Book {
   id: string;
@@ -32,4 +33,18 @@ export interface Book {
   featured: boolean;
   publishedAt: string;
   createdAt: string;
+  formats: BookFormatsItem[];
+  /** @nullable */
+  seriesId: string | null;
+  /** @nullable */
+  seriesName: string | null;
+  /** @nullable */
+  seriesSlug: string | null;
+  /** @nullable */
+  seriesNumber: number | null;
+  /** @nullable */
+  pageCount: number | null;
+  /** @nullable */
+  primaryCategory: string | null;
+  hasSample: boolean;
 }

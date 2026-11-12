@@ -1,6 +1,17 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, numeric, pgTable, text, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { boolean, integer, numeric, pgTable, text, timestamp, primaryKey } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
+
+export const seriesTable = pgTable("series", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description").notNull().default(""),
+  coverObjectPath: text("cover_object_path"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Series = typeof seriesTable.$inferSelect;
 
 export const booksTable = pgTable("books", {
   id: text("id").primaryKey(),
@@ -23,6 +34,16 @@ export const booksTable = pgTable("books", {
   featured: boolean("featured").notNull().default(false),
   publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Formats the reader can get. `format` above stays the format of the
+  // uploaded paid file, which delivery uses.
+  formats: text("formats").array().notNull().default(["PDF"]),
+  seriesId: text("series_id").references(() => seriesTable.id, { onDelete: "set null" }),
+  seriesNumber: integer("series_number"),
+  pageCount: integer("page_count"),
+  primaryCategory: text("primary_category"),
+  // Free sample: pasted text and/or a separate sample PDF (never the paid file).
+  sampleText: text("sample_text"),
+  sampleObjectPath: text("sample_object_path"),
 });
 
 export const languageRequestsTable = pgTable("language_requests", {
@@ -31,6 +52,7 @@ export const languageRequestsTable = pgTable("language_requests", {
   name: text("name").notNull(),
   country: text("country").notNull(),
   language: text("language").notNull(),
+  email: text("email"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -12,7 +12,8 @@
     "migrate": "tsx ./src/scripts/migrate.ts",
     "cf:dev": "pnpm --filter @workspace/whisper119 run build && wrangler dev",
     "deploy": "pnpm --filter @workspace/whisper119 run build && wrangler deploy",
-    "deploy:dry-run": "pnpm --filter @workspace/whisper119 run build && wrangler deploy --dry-run --outdir dist-worker"
+    "deploy:dry-run": "pnpm --filter @workspace/whisper119 run build && wrangler deploy --dry-run --outdir dist-worker",
+    "tags:report": "tsx ./src/scripts/list-overtagged-books.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1111.0",

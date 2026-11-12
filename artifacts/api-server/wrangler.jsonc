@@ -16,7 +16,7 @@
     "directory": "../whisper119/dist/public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/unsubscribe/*"]
+    "run_worker_first": ["/api/*", "/unsubscribe/*", "/book/*", "/series/*", "/img/*"]
   },
 
   // Run the Worker close to the Render Postgres instead of at every edge
@@ -35,6 +35,9 @@
       "localConnectionString": "postgres://postgres:postgres@localhost:5432/whisper119"
     }
   ],
+
+  // Resizes cover images served from /img/* (cached at the edge).
+  "images": { "binding": "IMAGES" },
 
   // Replaces node-cron: send scheduled newsletters every five minutes.
   "triggers": { "crons": ["*/5 * * * *"] },

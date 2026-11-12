@@ -13,5 +13,7 @@ export interface LanguageRequest {
   name: string;
   country: string;
   language: string;
+  /** @nullable */
+  email?: string | null;
   createdAt: string;
 }
