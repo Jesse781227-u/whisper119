@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react"
-import { Check } from "lucide-react"
+import { ArrowRight, Check } from "lucide-react"
 import { useSubscribeNewsletter } from "@workspace/api-client-react"
 
 /** Email + consent signup wired to the in-house newsletter list. */
@@ -13,7 +13,7 @@ export function NewsletterSignup() {
     event.preventDefault()
     setError(null)
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError("Enter a valid email address."); return }
-    if (!consent) { setError("Please tick the box to agree to receive emails."); return }
+    if (!consent) { setError("Tick the box to agree to receive emails."); return }
     try {
       await subscribe.mutateAsync({ data: { email: email.trim() } })
     } catch {
@@ -21,40 +21,38 @@ export function NewsletterSignup() {
     }
   }
 
-  if (subscribe.isSuccess) {
-    return (
-      <section className="rounded-2xl border border-primary/25 bg-card p-6 text-center sm:p-8" aria-live="polite">
-        <Check className="mx-auto h-6 w-6 text-primary" aria-hidden="true" />
-        <p className="mt-2 text-lg font-extrabold">You’re on the list.</p>
-        <p className="mt-1 text-sm text-muted-foreground">New releases will land in your inbox.</p>
-      </section>
-    )
-  }
-
   return (
-    <section aria-labelledby="newsletter-heading" className="rounded-2xl border border-primary/25 bg-card p-6 sm:p-8">
-      <div className="grid gap-5 md:grid-cols-[1fr_1.2fr] md:items-center">
+    <section
+      aria-labelledby="newsletter-heading"
+      className="relative overflow-hidden rounded-2xl bg-[linear-gradient(120deg,#2a1438_0%,#5a2347_60%,#8f3c65_100%)] p-5 text-white shadow-lg shadow-primary/15 sm:p-8"
+    >
+      <div aria-hidden="true" className="absolute inset-0 bg-[url('/dark-romance-background.jpg')] bg-cover bg-center opacity-10 mix-blend-luminosity" />
+      <div className="relative grid gap-4 md:grid-cols-[1fr_1.2fr] md:items-center md:gap-8">
         <div>
-          <p className="text-[0.68rem] font-bold uppercase tracking-[0.15em] text-primary">Newsletter</p>
-          <h2 id="newsletter-heading" className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl">Hear about new releases first</h2>
-          <p className="mt-1 text-sm text-muted-foreground">One email when a new book or series is out. No spam.</p>
+          <h2 id="newsletter-heading" className="text-lg font-extrabold leading-tight sm:text-2xl">New releases, first.</h2>
+          <p className="mt-1 text-sm text-white/80">One email when a new book is out. No spam.</p>
         </div>
-        <form onSubmit={submit} noValidate className="grid min-w-0 gap-3">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
-            <label className="min-w-0 flex-1">
-              <span className="sr-only">Email address</span>
-              <input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="box-border h-12 w-full min-w-0 rounded-xl border border-border bg-background px-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+        {subscribe.isSuccess ? (
+          <p className="flex items-center gap-2 text-sm font-bold" aria-live="polite"><Check className="h-5 w-5" aria-hidden="true" /> You’re on the list.</p>
+        ) : (
+          <form onSubmit={submit} noValidate className="grid min-w-0 gap-2.5">
+            <div className="flex min-w-0 gap-2">
+              <label className="min-w-0 flex-1">
+                <span className="sr-only">Email address</span>
+                <input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" className="box-border h-12 w-full min-w-0 rounded-xl border border-white/20 bg-white/10 px-4 text-sm text-white outline-none placeholder:text-white/55 focus:border-white/60 focus:bg-white/15" />
+              </label>
+              <button type="submit" disabled={subscribe.isPending} aria-label="Get new releases" className="flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-extrabold text-[#5a2347] disabled:opacity-60">
+                <span className="hidden sm:inline">{subscribe.isPending ? "Saving…" : "Get new releases"}</span>
+                <ArrowRight className="h-4 w-4 sm:hidden" aria-hidden="true" />
+              </button>
+            </div>
+            <label className="flex items-center gap-2.5 text-xs text-white/80">
+              <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="h-5 w-5 shrink-0 accent-white" />
+              Email me new releases. Unsubscribe anytime.
             </label>
-            <button type="submit" disabled={subscribe.isPending} className="h-12 shrink-0 rounded-xl bg-primary px-5 text-sm font-extrabold text-primary-foreground disabled:opacity-60">
-              {subscribe.isPending ? "Saving…" : "Get new releases"}
-            </button>
-          </div>
-          <label className="flex items-start gap-2.5 text-xs leading-5 text-muted-foreground">
-            <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[hsl(var(--primary))]" />
-            I agree to receive emails from Whisper 119. I can unsubscribe at any time.
-          </label>
-          {error && <p role="alert" className="text-sm font-semibold text-destructive">{error}</p>}
-        </form>
+            {error && <p role="alert" className="text-sm font-semibold text-rose-100">{error}</p>}
+          </form>
+        )}
       </div>
     </section>
   )
