@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, or, sql } from "drizzle-orm";
 import {
+  GetAdminDashboardQueryParams,
   GetAdminDashboardResponse,
+  ResendOrderEbookParams,
+  ResendOrderEbookResponse,
   GetAdminOrderParams,
   GetAdminOrderResponse,
   GetAdminSessionResponse,
@@ -21,6 +24,8 @@ import {
 } from "@workspace/api-zod";
 import { analyticsEventsTable, bookCategoriesTable, booksTable, categoriesTable, db, languageRequestsTable, ordersTable, seriesTable } from "@workspace/db";
 import { requireAdmin } from "../lib/auth";
+import { markAbandonedOrders } from "../lib/order-maintenance";
+import { confirmFlutterwaveTransaction } from "../lib/payments";
 import { getOrderById, listSeriesWithBooks, orderResponse, publicBook, publicBooks, publicSeries, replaceBookCategories } from "../lib/bookstore";
 
 const router: IRouter = Router();
@@ -57,18 +62,22 @@ function slugify(value: string): string {
 }
 router.use("/storage/uploads", requireAdmin);
 
-router.get("/admin/dashboard", async (_req, res): Promise<void> => {
+router.get("/admin/dashboard", async (req, res): Promise<void> => {
+  await markAbandonedOrders();
+  const parsedRange = GetAdminDashboardQueryParams.safeParse(req.query);
+  const range = parsedRange.success ? parsedRange.data.range ?? "all" : "all";
+  const since = range === "7d" ? new Date(Date.now() - 7 * 864e5) : range === "30d" ? new Date(Date.now() - 30 * 864e5) : null;
   const [orders, books, [analytics]] = await Promise.all([
-    db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt)),
+    db.select().from(ordersTable).where(since ? gte(ordersTable.createdAt, since) : undefined).orderBy(desc(ordersTable.createdAt)),
     db.select().from(booksTable),
     db.select({
       totalPageViews: sql<number>`count(*)`,
       uniqueVisitors: sql<number>`count(distinct ${analyticsEventsTable.visitorId})`,
-    }).from(analyticsEventsTable).where(eq(analyticsEventsTable.eventType, "page_view")),
+    }).from(analyticsEventsTable).where(and(eq(analyticsEventsTable.eventType, "page_view"), since ? gte(analyticsEventsTable.createdAt, since) : undefined)),
   ]);
   const [sales] = await db.select({
     paidOrders: sql<number>`count(*)`,
-  }).from(ordersTable).where(or(eq(ordersTable.status, "paid"), eq(ordersTable.status, "fulfilled")));
+  }).from(ordersTable).where(and(or(eq(ordersTable.status, "paid"), eq(ordersTable.status, "fulfilled")), since ? gte(ordersTable.createdAt, since) : undefined));
   const revenueByCurrency = orders
     .filter((order) => order.status === "paid" || order.status === "fulfilled")
     .reduce((totals, order) => {
@@ -259,6 +268,7 @@ router.get("/admin/orders", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  await markAbandonedOrders();
   const orders = await db.select().from(ordersTable)
     .where(parsed.data.status ? eq(ordersTable.status, parsed.data.status) : undefined)
     .orderBy(desc(ordersTable.createdAt));
@@ -267,6 +277,36 @@ router.get("/admin/orders", async (req, res): Promise<void> => {
     return result ? orderResponse(result.order, result.items) : null;
   }));
   res.json(ListAdminOrdersResponse.parse(response.filter((order): order is NonNullable<typeof order> => Boolean(order))));
+});
+
+/**
+ * "Resend ebook": only for paid orders whose delivery email has not gone out.
+ * The transaction is re-verified with Flutterwave before anything is sent.
+ */
+router.post("/admin/orders/:orderId/resend", async (req, res): Promise<void> => {
+  const parsed = ResendOrderEbookParams.safeParse(req.params);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const result = await getOrderById(parsed.data.orderId);
+  if (!result) { res.status(404).json({ error: "Order not found" }); return; }
+  const { order } = result;
+  if (order.status !== "paid" || order.deliveryEmailSent) {
+    res.status(409).json({ error: "Only paid orders whose ebook has not been delivered can be resent." });
+    return;
+  }
+  if (order.paymentMethod !== "flutterwave" || !order.paymentReference) {
+    res.status(409).json({ error: "This order has no Flutterwave transaction to verify, so it cannot be resent from here." });
+    return;
+  }
+  try {
+    await confirmFlutterwaveTransaction(order.paymentReference, order.reference, order.subtotal, order.currency);
+  } catch (error) {
+    req.log.error({ err: error, orderId: order.id }, "Resend ebook failed");
+    const notConfirmed = error instanceof Error && error.message === "PAYMENT_NOT_CONFIRMED";
+    res.status(notConfirmed ? 409 : 502).json({ error: notConfirmed ? "Flutterwave did not confirm this payment, so nothing was sent." : "The ebook could not be sent. Check the email and storage settings, then try again." });
+    return;
+  }
+  const updated = await getOrderById(order.id);
+  res.json(ResendOrderEbookResponse.parse(orderResponse(updated!.order, updated!.items)));
 });
 
 router.get("/admin/orders/:orderId", async (req, res): Promise<void> => {

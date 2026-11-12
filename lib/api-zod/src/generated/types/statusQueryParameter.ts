@@ -14,4 +14,5 @@ export const StatusQueryParameter = {
   paid: 'paid',
   fulfilled: 'fulfilled',
   failed: 'failed',
+  abandoned: 'abandoned',
 } as const;

@@ -489,6 +489,11 @@ paths:
       operationId: getAdminDashboard
       tags: [admin]
       summary: Get admin dashboard totals and recent orders
+      parameters:
+        - name: range
+          in: query
+          required: false
+          schema: { type: string, enum: ["7d", "30d", "all"] }
       responses:
         "200":
           description: Dashboard
@@ -675,6 +680,27 @@ paths:
                   $ref: "#/components/schemas/Order"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /admin/orders/{orderId}/resend:
+    post:
+      operationId: resendOrderEbook
+      tags: [admin]
+      summary: Re-verify a paid order with the payment provider, then email the ebook
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/BadRequest"
   /admin/orders/{orderId}:
     get:
       operationId: getAdminOrder
@@ -797,7 +823,7 @@ components:
       required: false
       schema:
         type: string
-        enum: [pending, paid, fulfilled, failed]
+        enum: [pending, paid, fulfilled, failed, abandoned]
   responses:
     BadRequest:
       description: Invalid request
@@ -1122,7 +1148,7 @@ components:
         country: { type: string }
         currency: { type: string }
         subtotal: { type: number }
-        status: { type: string, enum: [pending, paid, fulfilled, failed] }
+        status: { type: string, enum: [pending, paid, fulfilled, failed, abandoned] }
         paymentStatus: { type: string }
         paymentMethod: { type: string, enum: [flutterwave, payoneer] }
         paymentReference: { type: ["string", "null"] }

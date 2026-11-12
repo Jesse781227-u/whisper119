@@ -489,7 +489,7 @@ export const GetOrderResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed', 'abandoned']),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.enum(['flutterwave', 'payoneer']),
   "paymentReference": zod.string().nullable(),
@@ -712,6 +712,10 @@ export const GetAdminSessionResponse = zod.object({
 /**
  * @summary Get admin dashboard totals and recent orders
  */
+export const GetAdminDashboardQueryParams = zod.object({
+  "range": zod.enum(['7d', '30d', 'all']).optional()
+})
+
 export const GetAdminDashboardResponse = zod.object({
   "totalOrders": zod.number(),
   "pendingOrders": zod.number(),
@@ -730,7 +734,7 @@ export const GetAdminDashboardResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed', 'abandoned']),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.enum(['flutterwave', 'payoneer']),
   "paymentReference": zod.string().nullable(),
@@ -1072,7 +1076,7 @@ export const DeleteBookResponse = zod.void()
  * @summary List customer orders
  */
 export const ListAdminOrdersQueryParams = zod.object({
-  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']).optional()
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed', 'abandoned']).optional()
 })
 
 export const ListAdminOrdersResponseItem = zod.object({
@@ -1082,7 +1086,7 @@ export const ListAdminOrdersResponseItem = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed', 'abandoned']),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.enum(['flutterwave', 'payoneer']),
   "paymentReference": zod.string().nullable(),
@@ -1104,6 +1108,40 @@ export const ListAdminOrdersResponse = zod.array(ListAdminOrdersResponseItem)
 
 
 /**
+ * @summary Re-verify a paid order with the payment provider, then email the ebook
+ */
+export const ResendOrderEbookParams = zod.object({
+  "orderId": zod.coerce.string()
+})
+
+export const ResendOrderEbookResponse = zod.object({
+  "id": zod.string(),
+  "reference": zod.string(),
+  "email": zod.string(),
+  "country": zod.string(),
+  "currency": zod.string(),
+  "subtotal": zod.number(),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed', 'abandoned']),
+  "paymentStatus": zod.string(),
+  "paymentMethod": zod.enum(['flutterwave', 'payoneer']),
+  "paymentReference": zod.string().nullable(),
+  "deliveryEmailSent": zod.boolean(),
+  "downloaded": zod.boolean(),
+  "createdAt": zod.string(),
+  "paidAt": zod.string().nullable(),
+  "items": zod.array(zod.object({
+  "bookId": zod.string(),
+  "title": zod.string(),
+  "author": zod.string(),
+  "price": zod.number(),
+  "format": zod.string(),
+  "downloadUrl": zod.string().nullable(),
+  "downloaded": zod.boolean()
+}))
+})
+
+
+/**
  * @summary Get an order for administration
  */
 export const GetAdminOrderParams = zod.object({
@@ -1117,7 +1155,7 @@ export const GetAdminOrderResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed', 'abandoned']),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.enum(['flutterwave', 'payoneer']),
   "paymentReference": zod.string().nullable(),
@@ -1152,7 +1190,7 @@ export const ConfirmAdminOrderResponse = zod.object({
   "country": zod.string(),
   "currency": zod.string(),
   "subtotal": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed']),
+  "status": zod.enum(['pending', 'paid', 'fulfilled', 'failed', 'abandoned']),
   "paymentStatus": zod.string(),
   "paymentMethod": zod.enum(['flutterwave', 'payoneer']),
   "paymentReference": zod.string().nullable(),

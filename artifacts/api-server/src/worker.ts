@@ -23,6 +23,7 @@ import app from "./app";
 import { coverUrl } from "./lib/bookstore";
 import { ensureMigrations } from "./lib/migrations";
 import { sendDueNewsletters } from "./lib/newsletter-scheduler";
+import { markAbandonedOrders } from "./lib/order-maintenance";
 import { ObjectStorageService } from "./lib/objectStorage";
 
 interface ImagesBinding {
@@ -230,6 +231,7 @@ export default {
   async scheduled(_controller: unknown, env: Env, ctx: WorkerContext): Promise<void> {
     await runWithDatabase(connectionString(env), async () => {
       await ensureMigrations();
+      await markAbandonedOrders();
       await sendDueNewsletters();
     }, (promise) => ctx.waitUntil(promise));
   },

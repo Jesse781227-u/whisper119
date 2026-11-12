@@ -507,6 +507,7 @@ export const OrderStatus = {
   paid: 'paid',
   fulfilled: 'fulfilled',
   failed: 'failed',
+  abandoned: 'abandoned',
 } as const;
 
 export type OrderPaymentMethod = typeof OrderPaymentMethod[keyof typeof OrderPaymentMethod];
@@ -656,6 +657,7 @@ export const StatusQueryParameter = {
   paid: 'paid',
   fulfilled: 'fulfilled',
   failed: 'failed',
+  abandoned: 'abandoned',
 } as const;
 
 export type ListBooksParams = {
@@ -673,6 +675,19 @@ language?: LanguageQueryParameter;
 export type ListSeriesParams = {
 language?: LanguageQueryParameter;
 };
+
+export type GetAdminDashboardParams = {
+range?: GetAdminDashboardRange;
+};
+
+export type GetAdminDashboardRange = typeof GetAdminDashboardRange[keyof typeof GetAdminDashboardRange];
+
+
+export const GetAdminDashboardRange = {
+  '7d': '7d',
+  '30d': '30d',
+  all: 'all',
+} as const;
 
 export type ListAdminOrdersParams = {
 status?: StatusQueryParameter;

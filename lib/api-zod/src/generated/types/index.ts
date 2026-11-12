@@ -28,6 +28,8 @@ export * from './checkoutSession';
 export * from './download';
 export * from './errorResponse';
 export * from './formatQueryParameter';
+export * from './getAdminDashboardParams';
+export * from './getAdminDashboardRange';
 export * from './getStorefrontSummaryParams';
 export * from './healthStatus';
 export * from './languageQueryParameter';

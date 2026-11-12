@@ -33,6 +33,7 @@ import type {
   CheckoutSession,
   Download,
   ErrorResponse,
+  GetAdminDashboardParams,
   GetStorefrontSummaryParams,
   HealthStatus,
   LanguageRequest,
@@ -2129,20 +2130,27 @@ export function useGetAdminSession<TData = Awaited<ReturnType<typeof getAdminSes
 
 
 
-export const getGetAdminDashboardUrl = () => {
+export const getGetAdminDashboardUrl = (params?: GetAdminDashboardParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/admin/dashboard`
+  return stringifiedParams.length > 0 ? `/api/admin/dashboard?${stringifiedParams}` : `/api/admin/dashboard`
 }
 
 /**
  * @summary Get admin dashboard totals and recent orders
  */
-export const getAdminDashboard = async ( options?: RequestInit): Promise<AdminDashboard> => {
+export const getAdminDashboard = async (params?: GetAdminDashboardParams, options?: RequestInit): Promise<AdminDashboard> => {
 
-  const res = await fetch(getGetAdminDashboardUrl(),
+  const res = await fetch(getGetAdminDashboardUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2162,23 +2170,23 @@ export const getAdminDashboard = async ( options?: RequestInit): Promise<AdminDa
 
 
 
-export const getGetAdminDashboardQueryKey = () => {
+export const getGetAdminDashboardQueryKey = (params?: GetAdminDashboardParams,) => {
     return [
-    `/api/admin/dashboard`
+    `/api/admin/dashboard`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetAdminDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getAdminDashboard>>, TError = UnauthorizedResponse>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminDashboard>>, TError, TData>, fetch?: RequestInit}
+export const getGetAdminDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getAdminDashboard>>, TError = UnauthorizedResponse>(params?: GetAdminDashboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminDashboard>>, TError, TData>, fetch?: RequestInit}
 ) => {
 
 const {query: queryOptions, fetch: fetchOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetAdminDashboardQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminDashboardQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminDashboard>>> = ({ signal }) => getAdminDashboard({ signal, ...fetchOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminDashboard>>> = ({ signal }) => getAdminDashboard(params, { signal, ...fetchOptions });
 
 
 
@@ -2196,11 +2204,11 @@ export type GetAdminDashboardQueryError = UnauthorizedResponse
  */
 
 export function useGetAdminDashboard<TData = Awaited<ReturnType<typeof getAdminDashboard>>, TError = UnauthorizedResponse>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminDashboard>>, TError, TData>, fetch?: RequestInit}
+ params?: GetAdminDashboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminDashboard>>, TError, TData>, fetch?: RequestInit}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetAdminDashboardQueryOptions(options)
+  const queryOptions = getGetAdminDashboardQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -3020,6 +3028,84 @@ export function useListAdminOrders<TData = Awaited<ReturnType<typeof listAdminOr
 
 
 
+
+export const getResendOrderEbookUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/admin/orders/${orderId}/resend`
+}
+
+/**
+ * @summary Re-verify a paid order with the payment provider, then email the ebook
+ */
+export const resendOrderEbook = async (orderId: string, options?: RequestInit): Promise<Order> => {
+
+  const res = await fetch(getResendOrderEbookUrl(orderId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: Order = body ? JSON.parse(body) : {}
+  return data
+}
+
+
+
+
+
+export const getResendOrderEbookMutationOptions = <TError = NotFoundResponse | BadRequestResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendOrderEbook>>, TError,{orderId: string}, TContext>, fetch?: RequestInit}
+): UseMutationOptions<Awaited<ReturnType<typeof resendOrderEbook>>, TError,{orderId: string}, TContext> => {
+
+const mutationKey = ['resendOrderEbook'];
+const {mutation: mutationOptions, fetch: fetchOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, fetch: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendOrderEbook>>, {orderId: string}> = (props) => {
+          const {orderId} = props ?? {};
+
+          return  resendOrderEbook(orderId,fetchOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResendOrderEbookMutationResult = NonNullable<Awaited<ReturnType<typeof resendOrderEbook>>>
+
+    export type ResendOrderEbookMutationError = NotFoundResponse | BadRequestResponse
+
+    /**
+ * @summary Re-verify a paid order with the payment provider, then email the ebook
+ */
+export const useResendOrderEbook = <TError = NotFoundResponse | BadRequestResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resendOrderEbook>>, TError,{orderId: string}, TContext>, fetch?: RequestInit}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resendOrderEbook>>,
+        TError,
+        {orderId: string},
+        TContext
+      > => {
+      return useMutation(getResendOrderEbookMutationOptions(options));
+    }
 
 export const getGetAdminOrderUrl = (orderId: string,) => {
 
