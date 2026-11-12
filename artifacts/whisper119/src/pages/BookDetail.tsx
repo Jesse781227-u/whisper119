@@ -13,6 +13,7 @@ import { countries } from "@/data/countries"
 import { motion, useReducedMotion } from "framer-motion"
 import { Reveal, Stagger, fadeUpVariants } from "@/lib/motion"
 import { useToast } from "@/hooks/use-toast"
+import { useDocumentTitle } from "@/hooks/use-document-title"
 
 function ShareButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
   const prefersReducedMotion = useReducedMotion()
@@ -54,6 +55,7 @@ export default function BookDetail() {
 
   const catalogue = (Array.isArray(apiBooks) ? apiBooks : []).slice().sort((left, right) => left.language.localeCompare(right.language))
   const book = apiBook ?? catalogue.find((item) => item.id === bookId || item.slug === bookId)
+  useDocumentTitle(book?.title)
   const related = useMemo(() => (
     catalogue
         .filter((item) => item.id !== book?.id && item.categories.some((category) => book?.categories.includes(category)))
@@ -206,7 +208,7 @@ export default function BookDetail() {
               <span className="rounded-md bg-white/15 px-2.5 py-1 text-[0.65rem] font-bold text-white/85">{book.format}</span>
             </div>
             <div className="mt-4 text-center">
-              <p className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl"><ConvertedPrice amountUsd={book.price} /></p>
+              <p className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl"><ConvertedPrice amountUsd={book.price} showLocal /></p>
             </div>
             <h1 className="mt-4 text-3xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">{book.title}</h1>
             <p className="mt-2 text-sm text-white/70">by <span className="font-semibold text-white/90">{book.author}</span></p>

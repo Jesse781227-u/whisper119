@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "@/hooks/use-document-title"
 import { firebaseAuth } from "@/lib/firebase"
 import { sendEmailVerification } from "firebase/auth"
 import { AlertCircle, ArrowLeft, BookOpen, Check, CheckCircle2, ChevronRight, Eye, KeyRound, LogOut, Mail, RefreshCw, ShieldCheck, UserRound } from "lucide-react"
@@ -105,6 +106,7 @@ function ReaderOrders({ userId }: { userId: string }) {
 }
 
 export default function Account() {
+  useDocumentTitle("Your account")
   const { user, loading, configured, signIn, signUp, signInWithGoogle, resetPassword, refreshUser, signOutUser } = useAuth()
   const [mode, setMode] = useState<"signin" | "signup">("signin")
   const [email, setEmail] = useState("")

@@ -113,7 +113,8 @@ input[placeholder="Country"] { display: none; }
       url("/dark-romance-background.jpg") center top / cover no-repeat;
     content: "";
     inset: 0;
-    opacity: 0.42;
+    /* Kept faint so book grids, text and the footer stay high-contrast. */
+    opacity: 0.06;
     pointer-events: none;
     position: fixed;
     z-index: 0;

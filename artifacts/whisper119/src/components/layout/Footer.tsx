@@ -8,7 +8,7 @@ export function Footer() {
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-sm">
             <Link href="/" className="flex items-center gap-2.5">
-              <img src="/whisper-119-logo.png" alt="Whisper 119" className="h-10 w-auto max-w-[12rem] object-contain dark:invert" />
+              <img src="/whisper-119-wordmark-light.png" alt="Whisper 119" width={237} height={96} loading="lazy" className="h-10 w-auto" />
             </Link>
             <p className="mt-2 text-[0.68rem] font-extrabold uppercase tracking-[0.2em] text-primary">browse, buy, read</p>
             <p className="mt-4 text-sm font-medium text-muted-foreground">Whisper 119, operated by Audrey Leilani Global Limited</p>

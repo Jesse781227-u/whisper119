@@ -17,7 +17,9 @@ function CoverArtwork({ book }: { book: Book }) {
           {!loaded && <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-muted" />}
           <motion.img
           src={book.coverUrl}
-          alt={`Cover of ${book.title}`}
+          loading="lazy"
+          decoding="async"
+          alt={`${book.title} cover`}
             onLoad={() => setLoaded(true)}
             initial={{ opacity: 0 }}
             animate={{ opacity: loaded ? 1 : 0 }}
@@ -85,7 +87,7 @@ export function BookCover({ book, className = "" }: { book: Book; className?: st
   return (
     <div className={`relative overflow-hidden rounded-xl bg-secondary book-shadow ${className}`}>
       {book.coverUrl ? (
-        <img src={book.coverUrl} alt={`Cover of ${book.title}`} className="h-full w-full object-cover" />
+        <img src={book.coverUrl} alt={`${book.title} cover`} className="h-full w-full object-cover" />
       ) : (
         <div className="flex h-full flex-col justify-between bg-[linear-gradient(145deg,hsl(var(--primary)),hsl(224_70%_32%))] p-6 text-primary-foreground">
           <span className="text-[0.62rem] font-bold uppercase tracking-[0.15em]">{book.format} · Whisper 119</span>

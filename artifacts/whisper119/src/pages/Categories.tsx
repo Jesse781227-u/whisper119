@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "@/hooks/use-document-title"
 import { Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "wouter"
@@ -5,6 +6,7 @@ import { useGetStorefrontSummary } from "@workspace/api-client-react"
 import { Reveal, Stagger, fadeUpVariants } from "@/lib/motion"
 
 export default function Categories() {
+  useDocumentTitle("Categories")
   const { data, isLoading } = useGetStorefrontSummary()
   const [search, setSearch] = useState("")
   const categories = Array.isArray(data?.categories) ? data.categories : []

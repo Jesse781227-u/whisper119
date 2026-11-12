@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "@/hooks/use-document-title"
 import { ArrowRight, BookOpen, ChevronRight, LoaderCircle, Mail } from "lucide-react"
 import { Link } from "wouter"
 import { useGetStorefrontSummary, useListBooks } from "@workspace/api-client-react"
@@ -51,7 +52,7 @@ function ServiceStrip() {
   return (
     <div className="grid grid-cols-2 gap-3 rounded-2xl bg-primary px-4 py-4 text-primary-foreground shadow-lg shadow-primary/15 sm:grid-cols-3">
       <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0" /><span className="text-[0.68rem] font-bold leading-4">Delivered by email</span></div>
-      <div className="flex items-center gap-2"><BookOpen className="h-4 w-4 shrink-0" /><span className="text-[0.68rem] font-bold leading-4">PDF + EPUB</span></div>
+      <div className="flex items-center gap-2"><BookOpen className="h-4 w-4 shrink-0" /><span className="text-[0.68rem] font-bold leading-4">PDF ebook</span></div>
       <div className="col-span-2 flex items-center gap-2 sm:col-span-1"><span className="text-[0.68rem] font-bold leading-4">Keep your copy forever</span></div>
     </div>
   )
@@ -75,6 +76,7 @@ function StorefrontLoadingScreen() {
 }
 
 export default function Home() {
+  useDocumentTitle()
   const language = useSiteLanguage()
   const { data: summary, isLoading, error, refetch, isRefetching } = useGetStorefrontSummary({
     query: {

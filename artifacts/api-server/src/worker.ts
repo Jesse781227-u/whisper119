@@ -40,6 +40,12 @@ function connectionString(env: Env): string {
 export default {
   async fetch(request: Request, env: Env, ctx: WorkerContext): Promise<Response> {
     const { pathname } = new URL(request.url);
+    // Visitor country from Cloudflare's edge, used to decide whether to show
+    // NGN alongside USD prices. Never cached: it differs per visitor.
+    if (pathname === "/api/geo") {
+      const country = (request as Request & { cf?: { country?: string } }).cf?.country ?? null;
+      return Response.json({ country }, { headers: { "Cache-Control": "private, no-store" } });
+    }
     if (!pathname.startsWith("/api/") && pathname !== "/api" && !pathname.startsWith("/unsubscribe/")) {
       return env.ASSETS.fetch(request);
     }

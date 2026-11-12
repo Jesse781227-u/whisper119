@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "@/hooks/use-document-title"
 import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link, useLocation } from "wouter"
@@ -21,6 +22,7 @@ function initialQuery() {
 }
 
 export default function Shop() {
+  useDocumentTitle("All books")
   const initial = useMemo(initialQuery, [])
   const [, setLocation] = useLocation()
   const [search, setSearch] = useState(initial.search)
@@ -91,13 +93,14 @@ export default function Shop() {
       <Reveal className="mb-7">
         <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-primary">My books</p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">Have a look around.</h1>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">These are the books I’ve written, chosen, and made available as  PDF and EPUB files.</p>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">These are the books I’ve written, each available as a PDF ebook delivered to your email.</p>
       </Reveal>
 
       <div className="relative mb-5 md:hidden">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           aria-label="Search the catalogue"
+          autoFocus={new URLSearchParams(window.location.search).get("focus") === "search"}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value)
