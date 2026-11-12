@@ -18,8 +18,8 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 void applyRuntimeMigrations()
-  .then(() => {
-    startNewsletterScheduler();
+  .then(async () => {
+    await startNewsletterScheduler();
     app.listen(port, (err) => {
       if (err) {
         logger.error({ err }, "Error listening on port");

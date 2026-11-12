@@ -1,10 +1,9 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import pinoHttp from "pino-http";
 import router from "./routes";
 import unsubscribeRouter from "./routes/unsubscribe";
-import { logger } from "./lib/logger";
+import { requestLogger } from "./lib/request-logger";
 
 const app: Express = express();
 
@@ -13,25 +12,7 @@ const app: Express = express();
 // no body and is treated as an error by the generated client.
 app.disable("etag");
 
-app.use(
-  pinoHttp({
-    logger,
-    serializers: {
-      req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
-      },
-      res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
-      },
-    },
-  }),
-);
+app.use(requestLogger);
 const allowedOrigins = new Set(
   (process.env.CORS_ORIGINS ?? process.env.PUBLIC_APP_URL ?? "https://whisper119.com,https://www.whisper119.com")
     .split(",")

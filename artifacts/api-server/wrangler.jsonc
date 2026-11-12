@@ -1,0 +1,69 @@
+// Cloudflare Worker for whisper119.com — storefront + API in one deployment.
+// See CLOUDFLARE_MIGRATION.md at the repo root for the full setup.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "whisper119",
+  // Account that owns the whisper119.com zone; prevents deploying elsewhere.
+  "account_id": "9513298ba5e65d404a2e359f3afa5eff",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Built storefront (run `pnpm --filter @workspace/whisper119 run build` first;
+  // the `deploy` script does this). Only /api/* and /unsubscribe/* wake the
+  // Worker; everything else is served straight from the edge cache.
+  "assets": {
+    "directory": "../whisper119/dist/public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/unsubscribe/*"]
+  },
+
+  // Run the Worker close to the Render Postgres instead of at every edge
+  // location, so each API request's several DB round-trips stay short.
+  "placement": { "mode": "smart" },
+
+  // Pooled connection to the existing Postgres (hosted on Aiven; it stays put).
+  // Create the config from the API's DATABASE_URL (drop `uselibpqcompat`):
+  //   npx wrangler hyperdrive create whisper119-db --connection-string="postgres://...?sslmode=require"
+  // then paste the returned id here.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "9c326eec41a749b5b4691db657a52db3",
+      // Used by `wrangler dev` instead of the remote Hyperdrive.
+      "localConnectionString": "postgres://postgres:postgres@localhost:5432/whisper119"
+    }
+  ],
+
+  // Replaces node-cron: send scheduled newsletters every five minutes.
+  "triggers": { "crons": ["*/5 * * * *"] },
+
+  // Non-secret configuration. Secrets (DATABASE_URL is NOT needed here —
+  // Hyperdrive supplies it) are set with `npx wrangler secret put NAME`:
+  //   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, RESEND_API_KEY,
+  //   RESEND_WEBHOOK_SECRET, FLW_SECRET_KEY, FLW_PUBLIC_KEY,
+  //   FLW_ENCRYPTION_KEY, FLW_SECRET_HASH, R2_ENDPOINT, R2_PUBLIC_URL,
+  //   ADMIN_EMAILS (comma-separated admin allowlist, kept out of git),
+  //   and optionally FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
+  "vars": {
+    "NODE_ENV": "production",
+    "PUBLIC_APP_URL": "https://whisper119.com",
+    "CORS_ORIGINS": "https://whisper119.com,https://www.whisper119.com",
+    "MAIL_FROM_ADDRESS": "Whisper 119 <delivery@whisper119.com>",
+    "FIREBASE_PROJECT_ID": "whisper-119-304f7",
+    // R2_ENDPOINT and R2_PUBLIC_URL are set as secrets alongside the R2 keys.
+    "R2_BUCKET": "whisper",
+    "R2_UPLOAD_PREFIX": "uploads",
+    "R2_PUBLIC_PREFIXES": "public"
+  },
+
+  "observability": { "enabled": true },
+
+  // The Worker serves all of whisper119.com. The zone's proxied @/www DNS
+  // records only need to exist; they are never used as an origin.
+  "routes": [
+    { "pattern": "whisper119.com/*", "zone_name": "whisper119.com" },
+    { "pattern": "www.whisper119.com/*", "zone_name": "whisper119.com" }
+  ]
+}

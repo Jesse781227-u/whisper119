@@ -16,15 +16,22 @@ function objectKey(objectPath: string): string {
   return key;
 }
 
-export const objectStorageClient = new S3Client({
-  region: process.env.R2_REGION?.trim() || "auto",
-  endpoint: requiredEnv("R2_ENDPOINT"),
-  forcePathStyle: true,
-  credentials: {
-    accessKeyId: requiredEnv("R2_ACCESS_KEY_ID"),
-    secretAccessKey: requiredEnv("R2_SECRET_ACCESS_KEY"),
-  },
-});
+let client: S3Client | null = null;
+
+// Created on first use so a missing R2 setting fails only storage requests
+// instead of crashing the whole API at startup.
+function objectStorageClient(): S3Client {
+  client ??= new S3Client({
+    region: process.env.R2_REGION?.trim() || "auto",
+    endpoint: requiredEnv("R2_ENDPOINT"),
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: requiredEnv("R2_ACCESS_KEY_ID"),
+      secretAccessKey: requiredEnv("R2_SECRET_ACCESS_KEY"),
+    },
+  });
+  return client;
+}
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -48,7 +55,7 @@ export class ObjectStorageService {
   }
 
   private send<T>(command: T): Promise<any> {
-    return objectStorageClient.send(command as any);
+    return objectStorageClient().send(command as any);
   }
 
   async searchPublicObject(filePath: string): Promise<R2ObjectFile | null> {
@@ -69,7 +76,12 @@ export class ObjectStorageService {
     const result = await this.send(new GetObjectCommand({ Bucket: this.getBucketName(), Key: file.name }));
     if (!result.Body) throw new ObjectNotFoundError();
     const metadata = await this.send(new HeadObjectCommand({ Bucket: this.getBucketName(), Key: file.name }));
-    const webStream = Readable.toWeb(result.Body as Readable) as ReadableStream;
+    // The SDK body is a Node stream on Node and a web stream on Workers;
+    // `transformToWebStream` handles both.
+    const body = result.Body as { transformToWebStream?: () => ReadableStream };
+    const webStream = body.transformToWebStream
+      ? body.transformToWebStream()
+      : (Readable.toWeb(result.Body as Readable) as ReadableStream);
     const headers: Record<string, string> = {
       "Content-Type": metadata.ContentType || result.ContentType || "application/octet-stream",
       "Cache-Control": `public, max-age=${cacheTtlSec}`,
@@ -89,7 +101,7 @@ export class ObjectStorageService {
       ? `${this.getUploadPrefix()}/${subdirectory.trim().replace(/^\/+|\/+$/g, "")}`
       : this.getUploadPrefix();
     const key = `${prefix}/${randomUUID()}`;
-    return getSignedUrl(objectStorageClient, new PutObjectCommand({
+    return getSignedUrl(objectStorageClient(), new PutObjectCommand({
       Bucket: this.getBucketName(),
       Key: key,
       ...(contentType ? { ContentType: contentType } : {}),
