@@ -1,415 +1,19 @@
-import { useEffect, useState, type ReactNode } from "react"
-import { EditorContent, useEditor } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import TiptapLink from "@tiptap/extension-link"
-import Image from "@tiptap/extension-image"
-import Underline from "@tiptap/extension-underline"
-import { Link, useLocation } from "wouter"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { BookOpen, CheckCircle2, Clock3, FileText, LogOut, Pencil, Plus, RefreshCw, Trash2, Upload, Users, Eye, WalletCards, Mail, CalendarClock, Send, X } from "lucide-react"
-import {
-  getGetAdminDashboardQueryKey, getGetStorefrontSummaryQueryKey, getListAdminBooksQueryKey, getListBooksQueryKey, getListCategoriesQueryKey,
-  useGetAdminDashboard, useListAdminBooks, useListAdminOrders,
-  useListCategories, useCreateCategory, useUpdateCategory, useDeleteCategory,
-  useListAdminSeries, useCreateSeries, useUpdateSeries, useDeleteSeries, getListAdminSeriesQueryKey,
-  useCreateBook, useDeleteBook, useUpdateBook,
-  requestUploadUrl as requestUploadUrlApi,
-  getListNewsletterMessagesQueryKey, useListNewsletterMessages, useCreateNewsletterMessage, useUpdateNewsletterMessage, useSendNewsletterMessage,
-} from "@workspace/api-client-react"
+import { useCallback, useEffect, useState } from "react"
+import { Link, useLocation, useSearch } from "wouter"
+import { useQueryClient } from "@tanstack/react-query"
+import { BookOpen, Home, LibraryBig, LogOut, Mail, ReceiptText, RefreshCw, Settings } from "lucide-react"
+import { getListAdminBooksQueryKey, useListAdminBooks, useListAdminOrders } from "@workspace/api-client-react"
+import type { Book, Order } from "@workspace/api-client-react"
 import { useAuth } from "@/components/auth-provider"
-import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore"
-import { firebaseDb } from "@/lib/firebase"
-import type { Book, BookInput, BookInputFormat, BookUpdate, Order, Category, NewsletterMessage, Series } from "@workspace/api-client-react"
-import { formatDate, formatPrice } from "@/lib/utils"
-import { useToast } from "@/hooks/use-toast"
-import { languages } from "@/hooks/use-site-language"
-
-const MAX_TAGS = 6
-
-const fieldClass = "h-11 w-full rounded-xl border border-border/80 bg-background/60 px-3 text-sm text-foreground outline-none transition duration-200 placeholder:text-muted-foreground/80 focus:border-primary focus:ring-4 focus:ring-primary/10"
-const panelCardClass = "rounded-2xl border border-white/10 bg-card/75 p-4 shadow-[0_18px_45px_-32px_rgba(15,19,35,0.8)] backdrop-blur-xl sm:p-6"
-const softCardClass = "rounded-2xl border border-white/10 bg-card/70 p-4 shadow-[0_16px_38px_-28px_rgba(15,19,35,0.8)] backdrop-blur-xl"
-
-function AdminModal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose() }
-    document.body.style.overflow = "hidden"
-    window.addEventListener("keydown", onKeyDown)
-    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKeyDown) }
-  }, [onClose])
-
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-0 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-card shadow-2xl sm:h-auto sm:max-h-[calc(100vh-3rem)] sm:max-w-5xl sm:rounded-2xl">
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:px-6">
-        <h2 className="text-lg font-extrabold">{title}</h2>
-        <button type="button" onClick={onClose} aria-label="Close dialog" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-    </div>
-  </div>
-}
-
-function previewMarkdown(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/^### (.+)$/gm, "<h3>$1</h3>").replace(/^## (.+)$/gm, "<h2>$1</h2>").replace(/^# (.+)$/gm, "<h1>$1</h1>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>').replace(/\n/g, "<br />")
-}
-
-function normalizeRichHtml(value: string): string {
-  if (!value.includes("&lt;")) return value
-  const node = document.createElement("textarea")
-  node.innerHTML = value
-  const decoded = node.value
-  return /<\/?(?:p|h[1-6]|strong|em|u|ul|ol|li|a|blockquote|hr|img|br)\b[^>]*>/i.test(decoded) ? decoded : value
-}
-
-function RichNewsletterEditor({ html, disabled, onChange }: { html: string; disabled?: boolean; onChange: (html: string) => void }) {
-  const editor = useEditor({
-    extensions: [StarterKit, Underline, TiptapLink.configure({ openOnClick: false }), Image.configure({ inline: false, allowBase64: false })],
-    content: html,
-    editable: !disabled,
-    onUpdate: ({ editor: nextEditor }) => onChange(nextEditor.getHTML()),
-  })
-  useEffect(() => {
-    if (editor && html !== editor.getHTML() && !editor.isFocused) editor.commands.setContent(html || "<p></p>")
-  }, [editor, html])
-  async function insertImage() {
-    const input = document.createElement("input")
-    input.type = "file"; input.accept = "image/*"
-    input.onchange = async () => {
-      const file = input.files?.[0]
-      if (!file || !editor) return
-      try {
-        const upload = await requestUploadUrlApi({ name: file.name, size: file.size, contentType: file.type, language: "newsletter" })
-        const response = await fetch(upload.uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file })
-        if (!response.ok) throw new Error("Image upload failed")
-        editor.chain().focus().setImage({ src: `/api/storage${upload.objectPath}`, alt: file.name }).run()
-      } catch (error) { window.alert(error instanceof Error ? error.message : "Image upload failed") }
-    }
-    input.click()
-  }
-  if (!editor) return <div className="min-h-64 rounded-xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">Loading editor…</div>
-  const button = (label: string, action: () => void, active = false) => <button type="button" disabled={disabled} onClick={action} className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold ${active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{label}</button>
-  return <div className="overflow-hidden rounded-xl border border-border bg-background/60">
-    <div className="flex flex-wrap gap-1 border-b border-border p-2">
-      {button("B", () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}{button("I", () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"))}{button("U", () => editor.chain().focus().toggleUnderline().run(), editor.isActive("underline"))}
-      {button("H1", () => editor.chain().focus().toggleHeading({ level: 1 }).run(), editor.isActive("heading", { level: 1 }))}{button("H2", () => editor.chain().focus().toggleHeading({ level: 2 }).run(), editor.isActive("heading", { level: 2 }))}{button("H3", () => editor.chain().focus().toggleHeading({ level: 3 }).run(), editor.isActive("heading", { level: 3 }))}
-      {button("• List", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}{button("1. List", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}{button("Quote", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}{button("Divider", () => editor.chain().focus().setHorizontalRule().run())}
-      {button("Link", () => { const href = window.prompt("Link URL"); if (href) editor.chain().focus().setLink({ href }).run() })}{button("Image", () => void insertImage())}
-    </div>
-    <EditorContent editor={editor} className="newsletter-editor min-h-64 p-4 text-sm leading-6" />
-  </div>
-}
-
-function htmlToPlainText(html: string): string {
-  const node = document.createElement("div"); node.innerHTML = normalizeRichHtml(html)
-  return (node.textContent || "").replace(/\n{3,}/g, "\n\n").trim()
-}
-
-function NewsletterPanel() {
-  type NewsletterOverview = {
-    subscribers: Array<{ id: string; email: string; name: string | null; source: "signup_form" | "purchase" | "both"; subscribed: boolean; createdAt: string }>
-    summary: { totalSubscribers: number; activeSubscribers: number; totalMessagesSent: number; engagement: Record<"sent" | "delivered" | "opened" | "clicked" | "bounced" | "complained", number>; rates: Record<"delivered" | "opened" | "clicked" | "bounced", number> }
-    bySource: Record<"signup_form" | "purchase" | "both", number>
-    byStatus: Record<"active" | "unsubscribed", number>
-  }
-  type NewsletterTemplate = { id: string; name: string; subject: string; bodyMarkdown: string; createdAt: string; updatedAt: string }
-  const overview = useQuery({ queryKey: ["/api/admin/newsletter/overview"], queryFn: async () => {
-    const response = await fetch("/api/admin/newsletter/overview")
-    if (!response.ok) throw new Error("Could not load newsletter overview")
-    return response.json() as Promise<NewsletterOverview>
-  }})
-  const messages = useListNewsletterMessages({ query: { queryKey: getListNewsletterMessagesQueryKey() } })
-  const templates = useQuery({ queryKey: ["/api/admin/newsletter/templates"], queryFn: async () => {
-    const response = await fetch("/api/admin/newsletter/templates")
-    if (!response.ok) throw new Error("Could not load newsletter templates")
-    return response.json() as Promise<NewsletterTemplate[]>
-  }})
-  const saveTemplate = useMutation({ mutationFn: async (data: { name: string; subject: string; bodyMarkdown: string }) => {
-    const response = await fetch("/api/admin/newsletter/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
-    if (!response.ok) throw new Error("Could not save newsletter template")
-    return response.json() as Promise<NewsletterTemplate>
-  }})
-  const create = useCreateNewsletterMessage()
-  const update = useUpdateNewsletterMessage()
-  const send = useSendNewsletterMessage()
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-  const [selected, setSelected] = useState<NewsletterMessage | null>(null)
-  const [composerOpen, setComposerOpen] = useState(false)
-  const [subject, setSubject] = useState("")
-  const [bodyHtml, setBodyHtml] = useState("")
-  const [bodyText, setBodyText] = useState("")
-  const [scheduledAt, setScheduledAt] = useState("")
-
-  function edit(message: NewsletterMessage | null) {
-    setComposerOpen(true)
-    setSelected(message)
-    setSubject(message?.subject ?? "")
-    setBodyHtml(normalizeRichHtml(message?.bodyHtml ?? ""))
-    setBodyText((message as NewsletterMessage & { bodyText?: string }).bodyText ?? "")
-    setScheduledAt(message?.scheduledAt ? message.scheduledAt.slice(0, 16) : "")
-  }
-
-  function useTemplate(template: NewsletterTemplate) {
-    setComposerOpen(true)
-    setSelected(null)
-    setSubject(template.subject)
-    setBodyHtml(previewMarkdown(template.bodyMarkdown))
-    setBodyText("")
-    setScheduledAt("")
-  }
-
-  function saveCurrentTemplate() {
-    const name = window.prompt("Template name", subject.trim())?.trim()
-    if (!name) return
-    if (!subject.trim() || !bodyHtml.replace(/<[^>]+>/g, "").trim()) {
-      toast({ title: "Cannot save template", description: "Add a subject and body before saving a template.", variant: "destructive" })
-      return
-    }
-    saveTemplate.mutate({ name, subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml) }, {
-      onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["/api/admin/newsletter/templates"] }); toast({ title: "Template saved" }) },
-      onError: (error) => toast({ title: "Template could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" }),
-    })
-  }
-
-  function save(schedule = false) {
-    if (!subject.trim() || !bodyHtml.replace(/<[^>]+>/g, "").trim()) {
-      toast({ title: "Cannot save newsletter", description: "Add a subject and body before saving.", variant: "destructive" })
-      return
-    }
-    if (schedule && !scheduledAt) {
-      toast({ title: "Choose a schedule time", description: "Select when this newsletter should be sent.", variant: "destructive" })
-      return
-    }
-    const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyText.trim() || htmlToPlainText(bodyHtml), scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : null }
-    const onSuccess = () => { void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() }); toast({ title: schedule ? "Newsletter scheduled" : "Draft saved" }) }
-    const onError = (error: unknown) => toast({ title: schedule ? "Newsletter could not be scheduled" : "Draft could not be saved", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" })
-    if (selected) update.mutate({ messageId: selected.id, data }, { onSuccess, onError })
-    else create.mutate({ data }, { onSuccess: (message) => { edit(message); onSuccess() }, onError })
-  }
-
-  async function sendNow() {
-    const activeCount = overview.data?.summary.activeSubscribers ?? 0
-    if (!window.confirm(`Send to ${activeCount} subscriber${activeCount === 1 ? "" : "s"} now?`)) return
-    try {
-      const data = { subject: subject.trim(), bodyMarkdown: bodyText.trim() || htmlToPlainText(bodyHtml), bodyHtml, bodyText: bodyText.trim() || htmlToPlainText(bodyHtml), scheduledAt: null }
-      const message = selected
-        ? await update.mutateAsync({ messageId: selected.id, data })
-        : await create.mutateAsync({ data })
-      await send.mutateAsync({ messageId: message.id })
-      setComposerOpen(false)
-      void queryClient.invalidateQueries({ queryKey: getListNewsletterMessagesQueryKey() })
-      toast({ title: "Newsletter sent" })
-    } catch (error) {
-      toast({ title: "Newsletter could not be sent", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" })
-    }
-  }
-
-  const messageList = Array.isArray(messages.data) ? messages.data : []
-  const overviewData = overview.data
-  const normalizedBodyHtml = normalizeRichHtml(bodyHtml)
-  const bodyHasContent = Boolean(normalizedBodyHtml.replace(/<[^>]+>/g, "").trim())
-  const canSave = Boolean(subject.trim() && bodyHasContent)
-  return <section className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Newsletter</p>
-        <h2 className="mt-1 text-2xl font-extrabold">Audience and messages</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Review subscribers, engagement, and compose updates for subscribed readers.</p>
-      </div>
-      <button type="button" onClick={() => edit(null)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> New message</button>
-    </div>
-
-    {overview.isLoading ? (
-      <div className={panelCardClass}>
-        <p className="text-sm text-muted-foreground">Loading newsletter overview...</p>
-      </div>
-    ) : overviewData ? (
-      <>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[["Total subscribers", overviewData.summary.totalSubscribers], ["Active", overviewData.summary.activeSubscribers], ["Messages sent", overviewData.summary.totalMessagesSent], ["Open rate", `${overviewData.summary.rates.opened}%`]].map(([label, value]) => (
-            <div key={String(label)} className={softCardClass + " flex items-center justify-between gap-3"}>
-              <div>
-                <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-                <p className="mt-2 text-2xl font-extrabold tracking-tight">{value}</p>
-              </div>
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.12em] text-primary">Live</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid gap-5 lg:grid-cols-[1fr_1.35fr]">
-          <div className={panelCardClass}>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Audience</p>
-                <h3 className="mt-1 text-xl font-extrabold">Subscribers</h3>
-              </div>
-              <Users className="h-5 w-5 text-primary" />
-            </div>
-            <div className="mb-5 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl border border-border/80 bg-background/40 p-3">
-                <p className="text-muted-foreground">Active</p>
-                <p className="mt-1 text-lg font-extrabold">{overviewData.byStatus.active}</p>
-              </div>
-              <div className="rounded-xl border border-border/80 bg-background/40 p-3">
-                <p className="text-muted-foreground">Unsubscribed</p>
-                <p className="mt-1 text-lg font-extrabold">{overviewData.byStatus.unsubscribed}</p>
-              </div>
-              <div className="rounded-xl border border-border/80 bg-background/40 p-3">
-                <p className="text-muted-foreground">Signup form</p>
-                <p className="mt-1 text-lg font-extrabold">{overviewData.bySource.signup_form}</p>
-              </div>
-              <div className="rounded-xl border border-border/80 bg-background/40 p-3">
-                <p className="text-muted-foreground">Purchase</p>
-                <p className="mt-1 text-lg font-extrabold">{overviewData.bySource.purchase}</p>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-border text-muted-foreground">
-                  <tr>
-                    <th className="pb-2 pr-3 font-bold">Email</th>
-                    <th className="pb-2 pr-3 font-bold">Source</th>
-                    <th className="pb-2 pr-3 font-bold">Status</th>
-                    <th className="pb-2 font-bold">Joined</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {overviewData.subscribers.map((subscriber) => (
-                    <tr key={subscriber.id}>
-                      <td className="max-w-44 py-2 pr-3 font-medium text-foreground">{subscriber.email}</td>
-                      <td className="py-2 pr-3 text-muted-foreground">{subscriber.source === "both" ? "Both" : subscriber.source === "purchase" ? "Purchase" : "Signup form"}</td>
-                      <td className="py-2 pr-3"><span className={`rounded-full px-2 py-1 text-[0.62rem] font-bold uppercase ${subscriber.subscribed ? "bg-emerald-500/10 text-emerald-600" : "bg-secondary text-muted-foreground"}`}>{subscriber.subscribed ? "Active" : "Inactive"}</span></td>
-                      <td className="py-2 text-muted-foreground">{formatDate(subscriber.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            <div className={panelCardClass}>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Messages</p>
-                  <h3 className="mt-1 text-xl font-extrabold">Campaign history</h3>
-                </div>
-                <span className="rounded-full border border-border bg-secondary/70 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">{messageList.length} total</span>
-              </div>
-              <div className="overflow-hidden rounded-2xl border border-border/80 bg-background/30 divide-y divide-border">
-                {messages.isLoading ? (
-                  <p className="p-6 text-sm text-muted-foreground">Loading messages...</p>
-                ) : messageList.length ? (
-                  messageList.map((message) => (
-                    <button type="button" key={message.id} onClick={() => edit(message)} className="flex w-full flex-wrap items-center gap-3 p-4 text-left transition-colors hover:bg-secondary/60 sm:p-5">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-extrabold">{message.subject}</span>
-                        <span className="mt-1 block text-xs text-muted-foreground">{message.status === "scheduled" && message.scheduledAt ? `Scheduled ${formatDate(message.scheduledAt)}` : message.sentAt ? `Sent ${formatDate(message.sentAt)}` : "Draft"}</span>
-                      </span>
-                      <span className="rounded-full bg-secondary px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">{message.status}</span>
-                      {message.status === "sent" && <span className="text-right text-xs text-muted-foreground">{message.stats.sent} sent · {message.stats.opened} opened · {message.stats.clicked} clicked</span>}
-                    </button>
-                  ))
-                ) : (
-                  <p className="p-8 text-center text-sm text-muted-foreground">No newsletter messages yet.</p>
-                )}
-              </div>
-            </div>
-
-            <div className={panelCardClass}>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Templates</p>
-                  <h3 className="mt-1 text-xl font-extrabold">Saved snippets</h3>
-                </div>
-                <span className="text-xs text-muted-foreground">{templates.data?.length ?? 0} saved</span>
-              </div>
-              <div className="overflow-hidden rounded-2xl border border-border/80 bg-background/30 divide-y divide-border">
-                {templates.isLoading ? (
-                  <p className="p-6 text-sm text-muted-foreground">Loading templates...</p>
-                ) : templates.data?.length ? (
-                  templates.data.map((template) => (
-                    <button key={template.id} type="button" onClick={() => useTemplate(template)} className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-secondary/60">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-extrabold">{template.name}</p>
-                        <p className="mt-1 truncate text-xs text-muted-foreground">{template.subject}</p>
-                      </div>
-                      <span className="rounded-full border border-border bg-secondary/50 px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">Use</span>
-                    </button>
-                  ))
-                ) : (
-                  <p className="p-8 text-center text-sm text-muted-foreground">No saved templates yet.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {composerOpen && (
-          <AdminModal title={selected ? "Edit message" : "New message"} onClose={() => setComposerOpen(false)}>
-          <div className="p-4 sm:p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Mail className="h-4 w-4" /></span>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Message composer</p>
-                <h3 className="text-xl font-extrabold">{selected ? "Edit message" : "New message"}</h3>
-              </div>
-            </div>
-            <div className="grid gap-5 lg:grid-cols-2">
-              <div>
-                <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Subject</span>
-                  <input value={subject} onChange={(event) => setSubject(event.target.value)} disabled={selected?.status === "sent"} className={fieldClass} />
-                </label>
-                  <label className="mt-4 block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Message content</span>
-                  <RichNewsletterEditor html={normalizedBodyHtml} onChange={setBodyHtml} disabled={selected?.status === "sent"} />
-                  <details className="mt-4 rounded-xl border border-border bg-background/35 p-3">
-                    <summary className="cursor-pointer text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">View plain-text version</summary>
-                    <textarea value={bodyText} onChange={(event) => setBodyText(event.target.value)} disabled={selected?.status === "sent"} className={`${fieldClass} mt-3 min-h-28 py-3`} placeholder={htmlToPlainText(bodyHtml) || "Generated automatically from the rich content"} />
-                    <p className="mt-2 text-xs text-muted-foreground">Leave this blank to generate text automatically from the rich message.</p>
-                  </details>
-                </label>
-              </div>
-
-              <div className="rounded-2xl border border-border/80 bg-background/35 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Preview</p>
-                <div className="mt-3 rounded-2xl border border-border bg-card/70 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{subject.trim() || "Subject preview"}</p>
-                  <div className="mt-3 text-sm leading-6 text-foreground" dangerouslySetInnerHTML={{ __html: normalizedBodyHtml || "<p>Write a message for your readers.</p>" }} />
-                </div>
-                <p className="mt-4 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-semibold text-muted-foreground">Will be sent to {overviewData?.summary.activeSubscribers ?? 0} active subscribers.</p>
-                <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
-                  <button type="button" onClick={() => save()} disabled={!canSave || Boolean(selected?.status === "sent") || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><Pencil className="h-3.5 w-3.5" /> Save as draft</button>
-                  <button type="button" onClick={saveCurrentTemplate} disabled={!canSave || saveTemplate.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground disabled:cursor-not-allowed disabled:opacity-50">Save as template</button>
-                  {selected?.status !== "sent" && (
-                    <>
-                      <input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} className="h-10 rounded-xl border border-border bg-background/70 px-3 text-xs text-foreground" />
-                      <button type="button" onClick={() => save(true)} disabled={!canSave || !scheduledAt || create.isPending || update.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-extrabold text-foreground disabled:cursor-not-allowed disabled:opacity-50">Schedule</button>
-                    </>
-                  )}
-                  {selected?.status !== "sent" && (
-                    <button type="button" onClick={() => void sendNow()} disabled={!canSave || send.isPending || create.isPending} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-500 px-4 text-xs font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"><Send className="h-3.5 w-3.5" /> {send.isPending ? "Sending..." : "Send now"}</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-          </AdminModal>
-        )}
-      </>
-    ) : null}
-  </section>
-}
+import { BooksTab, type BookFilter } from "./admin/books"
+import { HomeTab, type AdminTab, type GoTo } from "./admin/home"
+import { NewsletterPanel } from "./admin/newsletter"
+import { OrdersTab, type OrderFilter } from "./admin/orders"
+import { SettingsTab, type LanguageRequest } from "./admin/settings"
+import { iconButton } from "./admin/shared"
 
 export function AdminLogin() {
-  const [location, setLocation] = useLocation()
+  const [, setLocation] = useLocation()
   const { user, loading, isAdmin, signInWithGoogle } = useAuth()
 
   useEffect(() => {
@@ -449,800 +53,148 @@ export function AdminLogin() {
     </div>
   </main>
 }
-function AdminNav({ onLogout }: { onLogout: () => void }) {
-  return <div className="flex flex-wrap items-center justify-between gap-4"><Link href="/admin" className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen className="h-5 w-5" /></span><div><p className="text-sm font-extrabold">Whisper 119</p><p className="text-xs text-muted-foreground">Administrative controls</p></div></Link><div className="flex items-center gap-2"><Link href="/" className="hidden rounded-full px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-secondary sm:block">Back</Link><button data-testid="button-admin-logout" onClick={onLogout} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:border-destructive hover:text-destructive"><LogOut className="h-3.5 w-3.5" /> Sign out</button></div></div>
+
+const TABS: Array<{ id: AdminTab; label: string; icon: typeof Home }> = [
+  { id: "home", label: "Home", icon: Home },
+  { id: "books", label: "Books", icon: LibraryBig },
+  { id: "orders", label: "Orders", icon: ReceiptText },
+  { id: "newsletter", label: "Newsletter", icon: Mail },
+  { id: "settings", label: "Settings", icon: Settings },
+]
+
+const BOOK_FILTERS: BookFilter[] = ["all", "featured", "nocover", "series", "tags"]
+const ORDER_FILTERS: OrderFilter[] = ["all", "paid", "fulfilled", "pending", "abandoned"]
+
+function pick<T extends string>(allowed: readonly T[], value: string | null): T | undefined {
+  return allowed.find((item) => item === value)
 }
 
-type BookFormProps = { book?: Book; onDone: () => void }
-type LanguageRequest = { id: string; bookTitle: string; name: string; country: string; language: string; email?: string | null; createdAt: string }
-type BookFormPhase = "idle" | "validating" | "uploading" | "saving"
-type UploadProgressHandler = (bytesTransferred: number, totalBytes: number) => void
-
-const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000
-
-function errorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message) return error.message
-  if (typeof error === "object" && error !== null && "error" in error) {
-    const message = (error as { error?: unknown }).error
-    if (typeof message === "string" && message.trim()) return message
-  }
-  return fallback
+function isTab(value: string | null): value is AdminTab {
+  return TABS.some((tab) => tab.id === value)
 }
 
-function BookForm({ book, onDone }: BookFormProps) {
-  const createBook = useCreateBook()
-  const updateBook = useUpdateBook()
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-  const [title, setTitle] = useState(book?.title ?? "")
-  const [titleGroupId, setTitleGroupId] = useState(book?.titleGroupId ?? "")
-  const [language, setLanguage] = useState(book?.language ?? "en")
-  const [author, setAuthor] = useState(book?.author ?? "")
-  const [price, setPrice] = useState(String(book?.price ?? ""))
-  const { data: categoryData } = useListCategories()
-  const availableCategories = Array.isArray(categoryData) ? categoryData : []
-  const [categorySearch, setCategorySearch] = useState("")
-  const [categories, setCategories] = useState<string[]>(book?.categories?.length ? [...book.categories] : [])
-  const [slug, setSlug] = useState(book?.slug ?? "")
-  const [description, setDescription] = useState(book?.description ?? "")
-  const [format, setFormat] = useState<BookInputFormat>(book?.format ?? "PDF")
-  const [formats, setFormats] = useState<BookInputFormat[]>(book?.formats?.length ? [...book.formats] : [book?.format ?? "PDF"])
-  const [primaryCategory, setPrimaryCategory] = useState(book?.primaryCategory ?? "")
-  const [seriesId, setSeriesId] = useState(book?.seriesId ?? "")
-  const [seriesNumber, setSeriesNumber] = useState(book?.seriesNumber ? String(book.seriesNumber) : "")
-  const [newSeriesName, setNewSeriesName] = useState("")
-  const [pageCount, setPageCount] = useState(book?.pageCount ? String(book.pageCount) : "")
-  const [sampleText, setSampleText] = useState("")
-  const [sampleFile, setSampleFile] = useState<File | null>(null)
-  const [removeSample, setRemoveSample] = useState(false)
-  const { data: seriesData } = useListAdminSeries()
-  const createSeries = useCreateSeries()
-  const seriesOptions: Series[] = Array.isArray(seriesData) ? seriesData : []
-  const [featured, setFeatured] = useState(book?.featured ?? false)
-  const [isCompleted, setIsCompleted] = useState(book?.isCompleted ?? false)
-  const [publishedAt, setPublishedAt] = useState(book?.publishedAt ? book.publishedAt.slice(0, 16) : new Date().toISOString().slice(0, 16))
-  const [ebookFile, setEbookFile] = useState<File | null>(null)
-  const [coverFile, setCoverFile] = useState<File | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [phase, setPhase] = useState<BookFormPhase>("idle")
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
-
-  async function uploadFile(file: File, onProgress: UploadProgressHandler) {
-    const uploadResponse = await requestUploadUrlApi(
-      { name: file.name, size: file.size, contentType: file.type || "application/octet-stream", language: language.trim().toLowerCase() },
-      {},
-    )
-    if (!uploadResponse || typeof uploadResponse !== "object" || !("uploadURL" in uploadResponse) || !("objectPath" in uploadResponse)) {
-      throw new Error("The server returned an empty upload response. Check the API deployment and server logs.")
-    }
-    const { uploadURL, objectPath } = uploadResponse
-    return new Promise<string>((resolve, reject) => {
-      let settled = false
-      let timeoutId: ReturnType<typeof setTimeout> | undefined
-
-      const clearUpload = () => {
-        if (timeoutId) clearTimeout(timeoutId)
-      }
-
-      const fail = (uploadError: unknown) => {
-        if (settled) return
-        settled = true
-        clearUpload()
-        const reason = uploadError instanceof Error && uploadError.message ? ` ${uploadError.message}` : ""
-        reject(new Error(`Could not upload ${file.name}.${reason}`))
-      }
-
-      try {
-        timeoutId = setTimeout(() => {
-          xhr.abort()
-          fail(new Error("The upload timed out after 10 minutes. Check your connection and try again."))
-        }, UPLOAD_TIMEOUT_MS)
-        const xhr = new XMLHttpRequest()
-        xhr.open("PUT", uploadURL)
-        xhr.timeout = UPLOAD_TIMEOUT_MS
-        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
-        xhr.upload.addEventListener("progress", event => {
-          if (event.lengthComputable) onProgress(event.loaded, event.total)
-        })
-        xhr.addEventListener("load", () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            settled = true
-            clearUpload()
-            onProgress(file.size, file.size)
-            resolve(objectPath)
-          } else fail(new Error(`Storage returned HTTP ${xhr.status}.`))
-        })
-        xhr.addEventListener("error", () => fail(new Error("The browser could not reach the storage endpoint.")))
-        xhr.addEventListener("timeout", () => fail(new Error("The upload timed out.")))
-        xhr.send(file)
-      } catch (uploadError) {
-        fail(uploadError)
-      }
-    })
-  }
-
-  async function uploadFiles(files: File[], onProgress: (progress: number | null) => void) {
-    const totalBytes = files.reduce((total, file) => total + file.size, 0)
-    const transferredBytes = files.map(() => 0)
-    onProgress(null)
-
-    return Promise.all(files.map((file, index) => uploadFile(file, (bytesTransferred, fileTotalBytes) => {
-      transferredBytes[index] = bytesTransferred
-      if (bytesTransferred <= 0 && fileTotalBytes <= 0) {
-        onProgress(100)
-        return
-      }
-      const progress = totalBytes > 0
-        ? Math.round((transferredBytes.reduce((total, bytes) => total + bytes, 0) / totalBytes) * 100)
-        : fileTotalBytes > 0
-          ? Math.round((bytesTransferred / fileTotalBytes) * 100)
-          : 100
-      onProgress(Math.min(100, progress))
-    })))
-  }
-
-  async function addSeries() {
-    const name = newSeriesName.trim()
-    if (!name) return
-    try {
-      const created = await createSeries.mutateAsync({ data: { name } })
-      await queryClient.invalidateQueries({ queryKey: getListAdminSeriesQueryKey() })
-      setSeriesId(created.id)
-      setNewSeriesName("")
-    } catch (seriesError) {
-      setError(errorMessage(seriesError, "Could not create the series."))
-    }
-  }
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError(null)
-    setUploadProgress(null)
-    setPhase("validating")
-
-    try {
-      const titleValue = title.trim()
-      const titleGroupValue = titleGroupId.trim() || titleValue.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
-      const authorValue = author.trim()
-      const descriptionValue = description.trim()
-      const priceValue = Number(price)
-
-      if (!titleValue) throw new Error("Enter a book title.")
-      if (!language.trim()) throw new Error("Choose the book language.")
-      if (!book && !authorValue) throw new Error("Enter the author name.")
-      if (!price.trim()) throw new Error("Enter the USD price.")
-      if (!Number.isFinite(priceValue) || priceValue < 0) throw new Error("Enter a valid non-negative USD price.")
-      if (!descriptionValue) throw new Error("Enter a book description.")
-      if (!categories.length) throw new Error("Choose at least one tag.")
-      if (categories.length > MAX_TAGS) throw new Error(`Pick at most ${MAX_TAGS} tags.`)
-      if (!primaryCategory) throw new Error("Choose a primary category.")
-      if (!formats.includes(format)) throw new Error(`Formats must include ${format}, the format of the uploaded file.`)
-      if (seriesId && !(Number(seriesNumber) >= 1)) throw new Error("Enter the book's number in the series.")
-      if (pageCount && !(Number(pageCount) >= 1)) throw new Error("Enter a valid page count, or leave it empty.")
-      if (sampleFile && sampleFile.type !== "application/pdf") throw new Error("The sample must be a PDF file.")
-      if (!book && !ebookFile) throw new Error("Choose the ebook file before saving this book.")
-
-      if (coverFile && !coverFile.type.startsWith("image/")) {
-        throw new Error("The cover image must be a PNG, JPEG, or WebP image.")
-      }
-
-      if (ebookFile) {
-        const extension = ebookFile.name.split(".").pop()?.toUpperCase()
-        if (extension !== format) throw new Error(`The selected file must be a ${format} file.`)
-      }
-
-      if (book) {
-        const data: BookUpdate = {
-          title: titleValue,
-          titleGroupId: titleGroupValue,
-          language: language.trim().toLowerCase(),
-          slug: slug.trim(),
-          author: authorValue,
-          description: descriptionValue,
-          price: priceValue,
-          categories,
-          format,
-          formats,
-          primaryCategory,
-          seriesId: seriesId || null,
-          seriesNumber: seriesId ? Number(seriesNumber) : null,
-          pageCount: pageCount ? Number(pageCount) : null,
-          featured,
-          isCompleted,
-          publishedAt: new Date(publishedAt).toISOString(),
-        }
-        if (sampleText.trim()) data.sampleText = sampleText.trim()
-        if (removeSample) { data.sampleText = null; data.sampleObjectPath = null }
-        if (sampleFile) {
-          setPhase("uploading")
-          data.sampleObjectPath = (await uploadFiles([sampleFile], setUploadProgress))[0]
-        }
-        if (ebookFile || coverFile) {
-          setPhase("uploading")
-          const files = [ebookFile, coverFile].filter((file): file is File => Boolean(file))
-          const paths = await uploadFiles(files, setUploadProgress)
-          if (ebookFile) {
-            const ebookIndex = files.indexOf(ebookFile)
-            data.fileObjectPath = paths[ebookIndex]
-            data.fileName = ebookFile.name
-          }
-          if (coverFile) {
-            const coverIndex = files.indexOf(coverFile)
-            data.coverObjectPath = paths[coverIndex]
-          }
-        }
-        setPhase("saving")
-        await updateBook.mutateAsync({ bookId: book.id, data })
-      } else {
-        const ebook = ebookFile
-        if (!ebook) throw new Error("Choose the ebook file before saving this book.")
-        setPhase("uploading")
-        const uploadedFiles = await uploadFiles(coverFile ? [ebook, coverFile] : [ebook], setUploadProgress)
-        const fileObjectPath = uploadedFiles[0]
-        const coverObjectPath = coverFile ? uploadedFiles[1] : null
-        const sampleObjectPath = sampleFile ? (await uploadFiles([sampleFile], setUploadProgress))[0] : null
-        setPhase("saving")
-        const payload: BookInput = {
-          sampleObjectPath,
-          title: titleValue,
-          titleGroupId: titleGroupValue,
-          language: language.trim().toLowerCase(),
-          author: authorValue,
-          slug: titleValue.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
-          price: priceValue,
-          priceNgn: 0,
-          currency: "USD",
-          categories,
-          description: descriptionValue,
-          format,
-          formats,
-          primaryCategory,
-          seriesId: seriesId || null,
-          seriesNumber: seriesId ? Number(seriesNumber) : null,
-          pageCount: pageCount ? Number(pageCount) : null,
-          sampleText: sampleText.trim() || null,
-          paystackLink: null,
-          payoneerLink: null,
-          coverObjectPath,
-          fileObjectPath,
-          fileName: ebook.name,
-          featured,
-          isCompleted,
-          publishedAt: new Date(publishedAt).toISOString(),
-        }
-        await createBook.mutateAsync({ data: payload })
-      }
-      await queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
-      await queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
-      await queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() })
-      await queryClient.invalidateQueries({ queryKey: getGetStorefrontSummaryQueryKey() })
-      await queryClient.invalidateQueries({ queryKey: getListAdminSeriesQueryKey() })
-      toast({
-        title: book ? "Book updated" : "Book added",
-        description: `"${titleValue}" is now in the catalogue.`,
-      })
-      onDone()
-    } catch (submitError) {
-      const message = errorMessage(submitError, "Could not save this book. Please try again.")
-      setError(message)
-      toast({
-        variant: "destructive",
-        title: "Book not saved",
-        description: message,
-      })
-    } finally {
-      setPhase("idle")
-    }
-  }
-
-  const pending = createBook.isPending || updateBook.isPending || phase !== "idle"
-  const submitLabel = phase === "validating"
-    ? "Checking details…"
-    : phase === "uploading"
-      ? "Uploading files…"
-      : phase === "saving"
-        ? "Saving…"
-        : book
-          ? "Save changes"
-          : "Add book"
-
-  return <section id="book-form" className="rounded-2xl border border-primary/25 bg-card p-5 shadow-lg shadow-primary/5 sm:p-7"><div className="flex items-start gap-3 border-b border-border pb-5"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">{book ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}</span><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">{book ? "Edit book" : "New book"}</p><h2 className="mt-1 text-xl font-extrabold">{book ? "Refine this listing" : "Add a book to the shelf"}</h2></div></div>
-     {phase === "uploading" && <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4" role="status" aria-live="polite"><div className="flex items-center justify-between gap-3 text-sm"><p className="font-extrabold">Uploading files</p><p className="font-mono text-xs font-bold text-primary">{uploadProgress === null ? "Working…" : `${uploadProgress}%`}</p></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-primary/10" role="progressbar" aria-label="Book file upload progress" aria-valuemin={0} aria-valuemax={100} {...(uploadProgress === null ? { "aria-valuetext": "Upload in progress" } : { "aria-valuenow": uploadProgress })}><div className={uploadProgress === null ? "h-full w-1/3 rounded-full bg-primary animate-pulse" : "h-full rounded-full bg-primary transition-[width] duration-200 ease-out"} style={uploadProgress === null ? undefined : { width: `${uploadProgress}%` }} /></div><p className="mt-2 text-xs text-muted-foreground">{uploadProgress === null ? "Upload started. Waiting for transfer progress…" : uploadProgress === 100 ? "Upload complete. Preparing your book…" : "Keep this window open while the files upload."}</p></div>}
-     <form onSubmit={submit} noValidate className="mt-6 grid gap-4 sm:grid-cols-2">
-      <label><span className="mb-2 block text-xs font-bold">Title</span><input data-testid="input-book-title" required value={title} onChange={e => setTitle(e.target.value)} className={fieldClass} /></label>
-      <label><span className="mb-2 block text-xs font-bold">Author</span><input data-testid="input-book-author" required value={author} onChange={e => setAuthor(e.target.value)} className={fieldClass} /></label>
-      <label><span className="mb-2 block text-xs font-bold">Language</span><select value={language} onChange={e => setLanguage(e.target.value)} className={fieldClass}>{languages.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>
-      <label><span className="mb-2 block text-xs font-bold">Title group</span><input value={titleGroupId} onChange={e => setTitleGroupId(e.target.value)} placeholder="Same ID for translated editions" className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Use the same group ID for every language edition of this title.</span></label>
-      <label><span className="mb-2 block text-xs font-bold">Slug</span><input required value={slug} onChange={e => setSlug(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">Used in catalogue links; keep it lowercase with hyphens.</span></label>
-      <label><span className="mb-2 block text-xs font-bold">Price (USD)</span><input data-testid="input-book-price" required min="0" step="0.01" type="number" value={price} onChange={e => setPrice(e.target.value)} className={fieldClass} /><span className="mt-1 block text-xs text-muted-foreground">USD is the source price. Nigerian pricing is calculated automatically at checkout.</span></label>
-      <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Primary category <span className="text-destructive">*</span></span><select required value={primaryCategory} onChange={e => { const value = e.target.value; setPrimaryCategory(value); if (value && !categories.includes(value) && categories.length < MAX_TAGS) setCategories(current => [value, ...current]) }} className={fieldClass}><option value="">Choose one</option>{availableCategories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}</select><span className="mt-1 block text-xs text-muted-foreground">Used for breadcrumbs and “Related books”.</span></label>
-      <fieldset className="sm:col-span-2"><legend className="mb-2 flex w-full items-center justify-between text-xs font-bold"><span>Tags</span><span className={categories.length > MAX_TAGS ? "text-destructive" : "text-muted-foreground"} aria-live="polite">{categories.length}/{MAX_TAGS}</span></legend><input value={categorySearch} onChange={event => setCategorySearch(event.target.value)} placeholder="Search tags" className={`${fieldClass} mb-2`} /><div className="flex min-h-11 flex-wrap gap-2 rounded-xl border border-border bg-background p-2">{categories.map(category => <button type="button" key={category} onClick={() => setCategories(current => current.filter(item => item !== category))} className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">{category} ×</button>)}{categories.length < MAX_TAGS && availableCategories.filter(category => !categories.includes(category.name) && category.name.toLowerCase().includes(categorySearch.toLowerCase())).slice(0, 12).map(category => <button type="button" key={category.id} onClick={() => setCategories(current => current.length >= MAX_TAGS ? current : [...current, category.name])} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:border-primary hover:text-primary">{category.name}</button>)}</div><span className="mt-1 block text-xs text-muted-foreground">Pick the tags a reader would actually search for (max {MAX_TAGS}).{categories.length > MAX_TAGS ? ` Remove ${categories.length - MAX_TAGS} to save.` : ""}</span></fieldset>
-      <label><span className="mb-2 block text-xs font-bold">Uploaded file format</span><select value={format} onChange={e => { const value = e.target.value as BookInputFormat; setFormat(value); setFormats(current => current.includes(value) ? current : [...current, value]) }} className={fieldClass}><option>PDF</option><option>EPUB</option></select><span className="mt-1 block text-xs text-muted-foreground">The file emailed to buyers.</span></label>
-      <fieldset><legend className="mb-2 block text-xs font-bold">Formats shown to readers</legend><div className="flex gap-2">{(["PDF", "EPUB"] as BookInputFormat[]).map(value => <label key={value} className="flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm"><input type="checkbox" checked={formats.includes(value)} onChange={e => setFormats(current => e.target.checked ? [...new Set([...current, value])] : current.filter(item => item !== value))} />{value}</label>)}</div><span className="mt-1 block text-xs text-muted-foreground">Only tick EPUB if readers really get an EPUB.</span></fieldset>
-      <fieldset className="sm:col-span-2 grid gap-3 rounded-xl border border-border p-3 sm:grid-cols-[1fr_8rem]"><legend className="px-1 text-xs font-bold">Series</legend><label><span className="mb-2 block text-xs font-semibold text-muted-foreground">Series</span><select value={seriesId} onChange={e => setSeriesId(e.target.value)} className={fieldClass}><option value="">Not part of a series</option>{seriesOptions.map(series => <option key={series.id} value={series.id}>{series.name}</option>)}</select></label><label><span className="mb-2 block text-xs font-semibold text-muted-foreground">Book number</span><input type="number" min="1" disabled={!seriesId} value={seriesNumber} onChange={e => setSeriesNumber(e.target.value)} className={fieldClass} /></label><div className="flex gap-2 sm:col-span-2"><input value={newSeriesName} onChange={e => setNewSeriesName(e.target.value)} placeholder="Or create a new series" className={fieldClass} /><button type="button" onClick={() => void addSeries()} disabled={!newSeriesName.trim() || createSeries.isPending} className="h-11 shrink-0 rounded-xl border border-border px-4 text-xs font-bold disabled:opacity-50">Create</button></div></fieldset>
-      <label><span className="mb-2 block text-xs font-bold">Length (pages)</span><input type="number" min="1" value={pageCount} onChange={e => setPageCount(e.target.value)} placeholder="Optional" className={fieldClass} /></label>
-      <label><span className="mb-2 block text-xs font-bold">Ebook file {book && <span className="font-normal text-muted-foreground">(optional replacement)</span>}</span><input data-testid="input-book-file" required={!book} accept={format === "PDF" ? ".pdf,application/pdf" : ".epub,application/epub+zip"} type="file" onChange={e => setEbookFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
-      <label><span className="mb-2 block text-xs font-bold">Cover image <span className="font-normal text-muted-foreground">({book ? "optional replacement" : "optional"})</span></span><input accept="image/png,image/jpeg,image/webp" type="file" onChange={e => setCoverFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>
-      <label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={featured} onChange={e => setFeatured(e.target.checked)} />Show this book in Featured</label><label className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2 text-sm"><input type="checkbox" checked={isCompleted} onChange={e => setIsCompleted(e.target.checked)} />Completed series</label>
-      <label><span className="mb-2 block text-xs font-bold">Publish date</span><input type="datetime-local" value={publishedAt} onChange={e => setPublishedAt(e.target.value)} className={fieldClass} /></label>
-      <fieldset className="sm:col-span-2 grid gap-3 rounded-xl border border-border p-3"><legend className="px-1 text-xs font-bold">Free sample <span className="font-normal text-muted-foreground">(optional — never the paid file)</span></legend>{book?.hasSample && <p className="text-xs text-muted-foreground">This book already has a sample. Paste new text or upload a new PDF to replace it.</p>}<label><span className="mb-2 block text-xs font-semibold text-muted-foreground">Sample text (paste the first chapter; blank lines separate paragraphs)</span><textarea value={sampleText} onChange={e => setSampleText(e.target.value)} className={`${fieldClass} min-h-32 py-3`} /></label><label><span className="mb-2 block text-xs font-semibold text-muted-foreground">Or a sample PDF</span><input accept=".pdf,application/pdf" type="file" onChange={e => setSampleFile(e.target.files?.[0] ?? null)} className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary" /></label>{book?.hasSample && <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={removeSample} onChange={e => setRemoveSample(e.target.checked)} />Remove the existing sample</label>}</fieldset>
-      <label className="sm:col-span-2"><span className="mb-2 block text-xs font-bold">Description</span><textarea data-testid="input-book-description" required value={description} onChange={e => setDescription(e.target.value)} className={`${fieldClass} min-h-28 py-3`} /></label>
-       <div className="flex gap-2 sm:col-span-2"><button data-testid="button-save-book" type="submit" disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground disabled:opacity-60">{submitLabel}</button><button data-testid="button-cancel-book" type="button" onClick={onDone} className="h-11 rounded-xl border border-border px-5 text-xs font-bold">Cancel</button></div>
-       {error && <p role="alert" className="rounded-xl bg-destructive/5 p-3 text-sm text-destructive sm:col-span-2">{error}</p>}
-    </form>
-  </section>
-}
-
-function SeriesManager() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-  const { data } = useListAdminSeries()
-  const updateSeries = useUpdateSeries()
-  const deleteSeries = useDeleteSeries()
-  const [editing, setEditing] = useState<Series | null>(null)
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const series: Series[] = Array.isArray(data) ? data : []
-
-  function edit(item: Series) { setEditing(item); setName(item.name); setDescription(item.description) }
-  async function refresh() {
-    await queryClient.invalidateQueries({ queryKey: getListAdminSeriesQueryKey() })
-    await queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
-  }
-  async function save() {
-    if (!editing || !name.trim()) return
-    try {
-      await updateSeries.mutateAsync({ seriesId: editing.id, data: { name: name.trim(), description: description.trim() } })
-      await refresh(); setEditing(null)
-      toast({ title: "Series saved" })
-    } catch (error) { toast({ variant: "destructive", title: "Series not saved", description: errorMessage(error, "Try again.") }) }
-  }
-  async function remove(item: Series) {
-    try {
-      await deleteSeries.mutateAsync({ seriesId: item.id })
-      await refresh()
-      toast({ title: "Series deleted", description: "Its books were kept and are no longer grouped." })
-    } catch (error) { toast({ variant: "destructive", title: "Series not deleted", description: errorMessage(error, "Try again.") }) }
-  }
-
+function AdminHeader({ onRefresh, refreshing, onLogout }: { onRefresh: () => void; refreshing: boolean; onLogout: () => void }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-      <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p>
-      <h2 className="mt-1 text-2xl font-extrabold">Series</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Assign books to a series and set their number from the book form.</p>
-      {series.length ? (
-        <ul className="mt-4 divide-y divide-border">
-          {series.map(item => (
-            <li key={item.id} className="py-3">
-              {editing?.id === item.id ? (
-                <div className="grid gap-2">
-                  <input value={name} onChange={e => setName(e.target.value)} className={fieldClass} aria-label="Series name" />
-                  <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description shown on the series page" className={`${fieldClass} min-h-20 py-2`} />
-                  <div className="flex gap-2"><button type="button" onClick={() => void save()} className="h-10 rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground">Save</button><button type="button" onClick={() => setEditing(null)} className="h-10 rounded-xl border border-border px-4 text-xs font-bold">Cancel</button></div>
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="min-w-0"><p className="truncate text-sm font-bold">{item.name}</p><p className="text-xs text-muted-foreground">{item.bookCount} book{item.bookCount === 1 ? "" : "s"} · /series/{item.slug}</p></div>
-                  <div className="flex gap-1"><button type="button" onClick={() => edit(item)} aria-label={`Edit ${item.name}`} className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-secondary"><Pencil className="h-4 w-4" /></button><button type="button" onClick={() => void remove(item)} aria-label={`Delete ${item.name}`} className="flex h-10 w-10 items-center justify-center rounded-xl text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></button></div>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : <p className="mt-4 text-sm text-muted-foreground">No series yet. Create one from the book form.</p>}
-    </section>
+    <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-4 sm:px-6 sm:pt-6">
+      <Link href="/admin" className="flex min-w-0 items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><BookOpen className="h-5 w-5" /></span>
+        <span className="min-w-0"><span className="block truncate text-sm font-extrabold">Whisper 119</span><span className="block truncate text-xs text-muted-foreground">Admin</span></span>
+      </Link>
+      <div className="flex shrink-0 items-center gap-2">
+        <Link href="/" className="hidden h-10 items-center rounded-xl px-3 text-sm font-bold text-muted-foreground hover:bg-secondary sm:inline-flex">View store</Link>
+        <button type="button" data-testid="button-refresh-dashboard" onClick={onRefresh} aria-label="Refresh" className={iconButton}><RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`} /></button>
+        <button type="button" data-testid="button-admin-logout" onClick={onLogout} aria-label="Sign out" className={iconButton}><LogOut className="h-4 w-4" /></button>
+      </div>
+    </header>
   )
 }
 
-function CategoryManager() {
-  const queryClient = useQueryClient()
-  const { data } = useListCategories()
-  const create = useCreateCategory()
-  const update = useUpdateCategory()
-  const remove = useDeleteCategory()
-  const [name, setName] = useState("")
-  const [query, setQuery] = useState("")
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
-  const categories: Category[] = Array.isArray(data) ? data : []
-  const refresh = () => void queryClient.invalidateQueries({ queryKey: getListCategoriesQueryKey() })
-  const filteredCategories = [...categories]
-    .filter((category) => category.name.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => a.name.localeCompare(b.name))
-
-  return <section className={panelCardClass}>
-    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Taxonomy</p>
-        <h2 className="mt-1 text-2xl font-extrabold">Manage categories</h2>
+function TabBar({ active, onSelect }: { active: AdminTab; onSelect: (tab: AdminTab) => void }) {
+  return (
+    <nav aria-label="Admin sections" className="sticky top-0 z-30 mt-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="mx-auto grid max-w-6xl grid-cols-5 px-1 sm:flex sm:gap-1 sm:px-6">
+        {TABS.map((tab) => {
+          const selected = tab.id === active
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onSelect(tab.id)}
+              aria-current={selected ? "page" : undefined}
+              className={`relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-xs font-bold transition-colors sm:min-h-12 sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${selected ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <tab.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="max-w-full truncate">{tab.label}</span>
+              {selected && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" aria-hidden="true" />}
+            </button>
+          )
+        })}
       </div>
-    </div>
-
-    <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-      <input value={name} onChange={(event) => setName(event.target.value)} placeholder="New category name" className={fieldClass} />
-      <button
-        type="button"
-        disabled={!name.trim() || create.isPending}
-        onClick={() => create.mutate({ data: { name: name.trim() } }, { onSuccess: () => { setName(""); refresh() } })}
-        className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-primary px-4 text-xs font-extrabold text-primary-foreground transition hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        Add
-      </button>
-    </div>
-
-    <label className="mb-4 block">
-      <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Filter categories</span>
-      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by category name" className={fieldClass} />
-    </label>
-
-    {filteredCategories.length ? (
-      <div className="space-y-3">
-        {filteredCategories.map((category) => (
-          <div key={category.id} className="rounded-2xl border border-white/10 bg-background/40 p-3 shadow-[0_12px_32px_-24px_rgba(15,19,35,0.8)] backdrop-blur-xl">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <input
-                defaultValue={category.name}
-                aria-label={`Name for ${category.name}`}
-                onBlur={(event) => {
-                  const next = event.target.value.trim();
-                  if (next && next !== category.name) {
-                    update.mutate({ categoryId: category.id, data: { name: next, featured: category.featured } }, { onSuccess: refresh })
-                  }
-                }}
-                className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm font-semibold outline-none transition focus:border-primary/40 focus:bg-background/50"
-              />
-              <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-                <span className="rounded-full border border-border/80 bg-secondary/60 px-2.5 py-1 text-[0.64rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  {category.count} books
-                </span>
-                <button
-                  type="button"
-                  onClick={() => update.mutate({ categoryId: category.id, data: { name: category.name, featured: !category.featured } }, { onSuccess: refresh })}
-                  className={`rounded-full px-3 py-1.5 text-[0.68rem] font-bold uppercase tracking-[0.08em] transition ${category.featured ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}
-                >
-                  {category.featured ? "Featured" : "Feature"}
-                </button>
-                <button
-                  type="button"
-                  disabled={remove.isPending}
-                  onClick={() => setCategoryToDelete(category)}
-                  className="rounded-full border border-border/80 px-3 py-1.5 text-[0.68rem] font-bold uppercase tracking-[0.08em] text-destructive transition hover:border-destructive/60 hover:bg-destructive/5 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div className="rounded-2xl border border-dashed border-border/80 bg-background/30 p-8 text-center">
-        <p className="text-base font-extrabold">No matching categories</p>
-        <p className="mt-1 text-sm text-muted-foreground">Try a different search term or create a new category above.</p>
-      </div>
-    )}
-
-    {categoryToDelete && (
-      <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
-        <p className="font-extrabold text-foreground">Delete “{categoryToDelete.name}”?</p>
-        <p className="mt-1 text-muted-foreground">
-          {categoryToDelete.count > 0
-            ? `This category is used by ${categoryToDelete.count} book${categoryToDelete.count === 1 ? "" : "s"}. Removing it will detach it from those listings.`
-            : "This will remove the category from the taxonomy."}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={() => remove.mutate({ categoryId: categoryToDelete.id }, { onSuccess: () => { setCategoryToDelete(null); refresh() } })} className="rounded-xl bg-destructive px-3 py-2 text-xs font-extrabold text-destructive-foreground">Confirm delete</button>
-          <button type="button" onClick={() => setCategoryToDelete(null)} className="rounded-xl border border-border/80 px-3 py-2 text-xs font-extrabold">Keep it</button>
-        </div>
-      </div>
-    )}
-  </section>
+    </nav>
+  )
 }
 
 export default function Admin() {
-  const { user, loading: authLoading, isAdmin, signOutUser } = useAuth()
-  const { toast } = useToast()
+  const { loading: authLoading, isAdmin, signOutUser } = useAuth()
   const [, setLocation] = useLocation()
+  const search = useSearch()
   const queryClient = useQueryClient()
   const enabled = Boolean(isAdmin)
-  const dashboard = useGetAdminDashboard({ query: { queryKey: getGetAdminDashboardQueryKey(), enabled } })
+
+  const params = new URLSearchParams(search)
+  const tabParam = params.get("tab")
+  const activeTab: AdminTab = isTab(tabParam) ? tabParam : "home"
+  const filterParam = params.get("filter")
+  const sectionParam = params.get("section")
+
   const books = useListAdminBooks({ query: { queryKey: getListAdminBooksQueryKey(), enabled } })
-  const deleteBook = useDeleteBook()
   const orders = useListAdminOrders(undefined, { query: { queryKey: ["/api/admin/orders"], enabled, refetchInterval: 10_000, refetchOnWindowFocus: true } })
-  const [form, setForm] = useState<"new" | Book | null>(null)
-  const [adminEmail, setAdminEmail] = useState("")
-  const [adminEmails, setAdminEmails] = useState<string[]>([])
-  const [adminLoading, setAdminLoading] = useState(true)
-  const [adminError, setAdminError] = useState<string | null>(null)
-  const [adminSaving, setAdminSaving] = useState(false)
-  const [adminToDelete, setAdminToDelete] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"catalogue" | "orders" | "newsletter">("orders")
   const [languageRequests, setLanguageRequests] = useState<LanguageRequest[]>([])
+  const [refreshing, setRefreshing] = useState(false)
+
+  const loadLanguageRequests = useCallback(() => {
+    return fetch("/api/admin/language-requests")
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data: unknown) => setLanguageRequests(Array.isArray(data) ? (data as LanguageRequest[]) : []))
+      .catch(() => setLanguageRequests([]))
+  }, [])
 
   useEffect(() => {
-    if (!enabled) return
-    void fetch("/api/admin/language-requests").then((response) => response.ok ? response.json() : []).then((data: unknown) => setLanguageRequests(Array.isArray(data) ? data as LanguageRequest[] : [])).catch(() => setLanguageRequests([]))
-  }, [enabled])
+    if (enabled) void loadLanguageRequests()
+  }, [enabled, loadLanguageRequests])
 
   useEffect(() => {
-    if (!firebaseDb) {
-      setAdminLoading(false)
-      setAdminError("Firestore is not configured for admin management.")
-      return
-    }
-    if (authLoading) {
-      return
-    }
-    if (!isAdmin) {
-      setAdminLoading(false)
-      setAdminError(null)
-      return
-    }
-
-    setAdminLoading(true)
-    setAdminError(null)
-
-    let unsubscribe: (() => void) | undefined
-    try {
-      const adminCollection = collection(firebaseDb, "admins")
-      unsubscribe = onSnapshot(adminCollection, (snapshot) => {
-        setAdminEmails(snapshot.docs.map((doc) => doc.id))
-        setAdminLoading(false)
-        setAdminError(null)
-      }, (error) => {
-        console.error("Could not load admin list", error)
-        setAdminLoading(false)
-        setAdminError("Could not load admin list.")
-      })
-    } catch (err) {
-      console.error("Failed to subscribe to admin collection", err)
-      setAdminLoading(false)
-      setAdminError("Could not load admin list.")
-    }
-
-    return () => {
-      if (unsubscribe) unsubscribe()
-    }
-  }, [authLoading, firebaseDb, isAdmin])
-
-  useEffect(() => {
-    if (!authLoading && !isAdmin) {
-      setLocation("/admin/login")
-    }
+    if (!authLoading && !isAdmin) setLocation("/admin/login")
   }, [isAdmin, authLoading, setLocation])
 
-  if (authLoading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading Administrative controls…</main>
+  // Scroll to a linked section (e.g. Home → "new language requests") once its tab has rendered.
+  useEffect(() => {
+    if (!sectionParam) return
+    const frame = requestAnimationFrame(() => document.getElementById(sectionParam)?.scrollIntoView({ behavior: "smooth", block: "start" }))
+    return () => cancelAnimationFrame(frame)
+  }, [sectionParam, activeTab])
+
+  const goTo: GoTo = useCallback((tab, extra) => {
+    const next = new URLSearchParams({ tab, ...(extra ?? {}) })
+    setLocation(`/admin?${next.toString()}`)
+    window.scrollTo({ top: 0 })
+  }, [setLocation])
+
+  async function refreshAll() {
+    setRefreshing(true)
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() }),
+        loadLanguageRequests(),
+      ])
+    } finally {
+      setRefreshing(false)
+    }
   }
 
+  if (authLoading) {
+    return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading admin…</main>
+  }
   if (!isAdmin) {
     return <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">You must be an admin to access this page.</main>
   }
-  const revenueByCurrency = dashboard.data?.revenueByCurrency ?? { USD: 0, NGN: 0 }
-  const stats = [
-    { label: "Page views", value: dashboard.data?.totalPageViews ?? 0, icon: Eye, tint: "text-primary bg-primary/10" },
-    { label: "Unique visitors", value: dashboard.data?.uniqueVisitors ?? 0, icon: Users, tint: "text-indigo-400 bg-indigo-400/10" },
-    { label: "Paid orders", value: dashboard.data?.paidOrders ?? 0, icon: CheckCircle2, tint: "text-emerald-500 bg-emerald-500/10" },
-    { label: "Revenue", value: formatPrice(revenueByCurrency.USD, "USD"), secondary: `NGN ${formatPrice(revenueByCurrency.NGN, "NGN")}`, icon: WalletCards, tint: "text-amber-500 bg-amber-500/10" },
-  ]
+
   const bookList: Book[] = Array.isArray(books.data) ? books.data : []
   const orderList: Order[] = Array.isArray(orders.data) ? orders.data : []
-  const orderActionError: string | null = null
-  const confirmingOrderId: string | null = null
-  const handleConfirmOrder = (_order: Order) => undefined
-  const handleDeleteBook = (book: Book) => {
-    if (!window.confirm(`Delete â€œ${book.title}â€ from the catalogue? This cannot be undone.`)) return
-    deleteBook.mutate({ bookId: book.id }, {
-      onSuccess: () => {
-        void queryClient.invalidateQueries({ queryKey: getListAdminBooksQueryKey() })
-        void queryClient.invalidateQueries({ queryKey: getGetAdminDashboardQueryKey() })
-        void queryClient.invalidateQueries({ queryKey: getListBooksQueryKey() })
-        void queryClient.invalidateQueries({ queryKey: getGetStorefrontSummaryQueryKey() })
-        toast({ title: "Book deleted", description: `â€œ${book.title}â€ was removed from the catalogue.` })
-      },
-      onError: (error) => toast({ variant: "destructive", title: "Book not deleted", description: errorMessage(error, "The book could not be deleted.") }),
-    })
-  }
 
-  return <main className="min-h-screen bg-secondary/35 px-4 pb-16 pt-6 sm:px-6 sm:pt-8"><style>{`[data-testid="button-confirm-payment-target"] { display: none !important; }`}</style><div className="mx-auto max-w-6xl space-y-7"><AdminNav onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Panel</p><h1 className="mt-1 text-3xl font-extrabold tracking-tight">Manage your website effectively</h1><p className="mt-1 text-sm text-muted-foreground"></p></div><button data-testid="button-refresh-dashboard" onClick={() => { void dashboard.refetch(); void books.refetch(); void orders.refetch() }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-bold"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button></div>
-    <section>
-      <div className="mb-3">
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Overview</p>
-        <h2 className="mt-1 text-2xl font-extrabold">Performance</h2>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="flex items-center justify-between rounded-2xl border border-white/10 bg-card/75 p-4 shadow-[0_18px_45px_-32px_rgba(15,19,35,0.8)] backdrop-blur-xl">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{s.label}</p>
-              <p data-testid={`text-analytics-${s.label.toLowerCase().replace(" ", "-")}`} className="mt-2 text-2xl font-extrabold tracking-tight">{s.value}</p>
-              {s.secondary && <p className="mt-1 text-xs text-muted-foreground">{s.secondary}</p>}
-            </div>
-            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tint}`}><s.icon className="h-5 w-5" /></span>
-          </div>
-        ))}
-      </div>
-    </section>
-    <nav aria-label="Admin sections" className="flex gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm">
-      <button type="button" onClick={() => setActiveTab("catalogue")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "catalogue" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Catalogue</button>
-      <button type="button" onClick={() => setActiveTab("orders")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "orders" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Orders{orderList.length > 0 && <span className="ml-2 rounded-full bg-background/30 px-1.5 py-0.5">{orderList.length}</span>}</button>
-      <button type="button" onClick={() => setActiveTab("newsletter")} className={`flex-1 rounded-xl px-4 py-3 text-xs font-extrabold transition-colors sm:flex-none ${activeTab === "newsletter" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>Newsletter</button>
-    </nav>
-    <section className="rounded-2xl border border-white/10 bg-card/75 p-6 shadow-[0_18px_45px_-32px_rgba(15,19,35,0.8)] backdrop-blur-xl">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Admin team</p>
-          <h2 className="mt-1 text-2xl font-extrabold">Manage admin access</h2>
-        </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
-        <label>
-          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Admin email</span>
-          <input
-            value={adminEmail}
-            onChange={(e) => setAdminEmail(e.target.value)}
-            placeholder="admin@example.com"
-            className={fieldClass}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={async () => {
-            if (!firebaseDb) return
-            const normalized = adminEmail.trim().toLowerCase()
-            if (!normalized) {
-              setAdminError("Enter a valid email before adding an admin.")
-              return
-            }
-            setAdminSaving(true)
-            setAdminError(null)
-            try {
-              await setDoc(doc(firebaseDb, "admins", normalized), { email: normalized })
-              setAdminEmail("")
-            } catch (error) {
-              console.error("Could not save admin email", error)
-              setAdminError("Could not add admin email.")
-            } finally {
-              setAdminSaving(false)
-            }
-          }}
-          disabled={adminSaving}
-          className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-xs font-extrabold text-primary-foreground transition hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {adminSaving ? "Saving…" : "Add admin"}
-        </button>
-      </div>
-      {adminError && <p className="mt-4 text-sm text-destructive">{adminError}</p>}
-      <div className="mt-6 space-y-3">
-        {adminLoading ? (
-          <div className="rounded-2xl border border-white/10 bg-background/35 p-5 text-sm text-muted-foreground">Loading admin list…</div>
-        ) : adminEmails.length ? (
-          adminEmails.map((email) => (
-            <div key={email} className="rounded-2xl border border-white/10 bg-background/35 p-3 shadow-[0_12px_32px_-24px_rgba(15,19,35,0.8)] backdrop-blur-xl">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{email}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setAdminToDelete(email)}
-                  className="inline-flex items-center justify-center rounded-full border border-border/80 px-3 py-2 text-[0.72rem] font-bold text-destructive transition hover:border-destructive/60 hover:bg-destructive/5"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="rounded-2xl border border-dashed border-border/80 bg-background/30 p-8 text-center text-sm text-muted-foreground">
-            No admin emails configured yet.
-          </div>
-        )}
-      </div>
-      {adminToDelete && (
-        <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
-          <p className="font-extrabold text-foreground">Remove access for {adminToDelete}?</p>
-          <p className="mt-1 text-muted-foreground">This action immediately revokes admin permissions for that account.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={async () => {
-                if (!firebaseDb) return
-                setAdminError(null)
-                try {
-                  await deleteDoc(doc(firebaseDb, "admins", adminToDelete))
-                  setAdminToDelete(null)
-                } catch (error) {
-                  console.error("Could not remove admin email", error)
-                  setAdminError("Could not remove admin email.")
-                  setAdminToDelete(null)
-                }
-              }}
-              className="rounded-xl bg-destructive px-3 py-2 text-xs font-extrabold text-destructive-foreground"
-            >
-              Confirm removal
-            </button>
-            <button type="button" onClick={() => setAdminToDelete(null)} className="rounded-xl border border-border/80 px-3 py-2 text-xs font-extrabold">Cancel</button>
-          </div>
-        </div>
-      )}
-    </section>
-    {activeTab === "catalogue" && <div className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Catalogue</p><h2 className="mt-1 text-2xl font-extrabold">Your shelf</h2></div><button type="button" data-testid="button-add-title" onClick={() => setForm(form === "new" ? null : "new")} aria-expanded={form === "new"} aria-controls="book-form" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground"><Plus className="h-4 w-4" /> {form === "new" ? "Close form" : "Add book"}</button></div>
-    <CategoryManager />
-    <SeriesManager />
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"><div className="mb-4"><p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Reader demand</p><h2 className="mt-1 text-xl font-extrabold">Language requests</h2></div>{languageRequests.length ? <div className="divide-y divide-border">{languageRequests.map((request) => <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"><div><p className="font-bold">{request.language} for {request.bookTitle}</p><p className="mt-1 text-xs text-muted-foreground">{request.name} · {request.country}{request.email ? <> · <a href={`mailto:${request.email}`} className="text-primary hover:underline">{request.email}</a></> : null}</p></div><span className="text-xs text-muted-foreground">{formatDate(request.createdAt)}</span></div>)}</div> : <p className="text-sm text-muted-foreground">No language requests yet.</p>}</section>
-    {form && <AdminModal title={form === "new" ? "Add book" : `Edit ${form.title}`} onClose={() => setForm(null)}><BookForm book={form === "new" ? undefined : form} onDone={() => setForm(null)} /></AdminModal>}
-     <div>
-      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="divide-y divide-border">
-          {bookList.map((book) => (
-            <div key={book.id} className="flex items-center gap-3 p-4 sm:p-5">
-              <div className="flex h-11 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
-                {book.coverUrl ? <img src={book.coverUrl} alt="" className="h-full w-full object-cover" /> : <FileText className="h-4 w-4" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-extrabold">{book.title}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">{book.author} · {book.formats.join(" + ")}{book.seriesName ? ` · ${book.seriesName} #${book.seriesNumber}` : ""}{book.categories.length > MAX_TAGS ? ` · ${book.categories.length} tags (max ${MAX_TAGS})` : ""}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-extrabold">{formatPrice(book.price, "USD")}</p>
-                  <span className="text-[0.62rem] font-bold text-primary">{book.categories.join(" · ")}</span>
-                </div>
-                <button data-testid={"button-edit-book-" + book.id} onClick={() => setForm(book)} className="rounded-lg border border-border p-2 text-muted-foreground hover:text-primary" aria-label={"Edit " + book.title}><Pencil className="h-4 w-4" /></button>
-                <button data-testid={"button-delete-book-" + book.id} onClick={() => handleDeleteBook(book)} disabled={deleteBook.isPending} className="rounded-lg border border-border p-2 text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50" aria-label={"Delete " + book.title}><Trash2 className="h-4 w-4" /></button>
-              </div>
-            </div>
-          ))}
-          {!books.isLoading && !bookList.length && <div className="p-10 text-center"><BookOpen className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 text-sm font-bold">No books listed yet.</p></div>}
-        </div>
-      </section>
-    </div>
-    </div>}
-    {activeTab === "orders" && (
-    <section className="space-y-4">
-      <div className="mb-3">
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">Operations</p>
-        <h2 className="mt-1 text-2xl font-extrabold">Orders</h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Flutterwave webhooks verify payments automatically and trigger ebook delivery by email.</p>
-      </div>
-      {orderActionError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">{orderActionError}</p>}
-      <div className="overflow-hidden rounded-2xl border border-border bg-card/75 shadow-[0_18px_45px_-32px_rgba(15,19,35,0.8)] backdrop-blur-xl divide-y divide-border">
-        {orderList.map((order) => {
-          const needsDelivery = order.status === "pending" || (order.status === "paid" && !order.deliveryEmailSent)
-          const statusLabel = order.status === "fulfilled" ? "Fulfilled" : order.status === "paid" ? "Paid — delivery pending" : order.status
-          const statusClasses = order.status === "fulfilled"
-            ? "bg-emerald-500/10 text-emerald-600"
-            : order.status === "paid"
-              ? "bg-sky-500/10 text-sky-600"
-              : "bg-secondary text-muted-foreground"
-          return (
-            <div key={order.id} className={`flex flex-wrap items-center gap-3 p-4 transition-colors hover:bg-secondary/55 sm:p-5 ${order.status === "fulfilled" ? "bg-emerald-500/[0.02]" : order.status === "paid" ? "bg-sky-500/[0.02]" : ""}`}>
-              <Link href={`/order/${order.id}`} className="min-w-0 flex-1">
-                <p className="font-mono text-xs font-bold text-foreground">{order.reference}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">{order.email} · {formatDate(order.createdAt)}</p>
-              </Link>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-[0.62rem] font-bold ${statusClasses}`}>{statusLabel}</span>
-                <span className="text-sm font-extrabold">{formatPrice(order.subtotal, order.currency)}</span>
-                {needsDelivery && (
-                  <button type="button" data-testid="button-confirm-payment-target" onClick={() => handleConfirmOrder(order)} disabled={confirmingOrderId === order.id} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-[0.68rem] font-extrabold text-primary-foreground disabled:cursor-wait disabled:opacity-60">{confirmingOrderId === order.id ? "Checking..." : "Confirm delivery"}</button>
-                )}
-              </div>
-            </div>
-          )
-        })}
-        {!orders.isLoading && !orderList.length && (
-          <div className="p-10 text-center text-sm text-muted-foreground">
-            <Clock3 className="mx-auto h-7 w-7 text-muted-foreground" />
-            <p className="mt-3 font-bold text-foreground">No orders yet.</p>
-            <p className="mt-1">Orders will appear here as soon as readers complete checkout.</p>
-          </div>
-        )}
-      </div>
-    </section>
-    )}
+  return (
+    <main className="min-h-screen overflow-x-clip bg-background pb-24">
+      <AdminHeader onRefresh={() => void refreshAll()} refreshing={refreshing} onLogout={async () => { await signOutUser(); setLocation("/admin/login") }} />
+      <TabBar active={activeTab} onSelect={(tab) => goTo(tab)} />
+      <div className="mx-auto min-w-0 max-w-6xl px-4 pt-5 sm:px-6 sm:pt-6">
+        {activeTab === "home" && <HomeTab books={bookList} booksLoading={books.isLoading} orders={orderList} ordersLoading={orders.isLoading} languageRequests={languageRequests} goTo={goTo} />}
+        {activeTab === "books" && <BooksTab key={`books-${filterParam ?? "all"}`} books={bookList} isLoading={books.isLoading} initialFilter={pick(BOOK_FILTERS, filterParam)} />}
+        {activeTab === "orders" && <OrdersTab key={`orders-${filterParam ?? "all"}`} orders={orderList} isLoading={orders.isLoading} initialFilter={pick(ORDER_FILTERS, filterParam)} />}
         {activeTab === "newsletter" && <NewsletterPanel />}
-  </div></main>
+        {activeTab === "settings" && <SettingsTab languageRequests={languageRequests} />}
+      </div>
+    </main>
+  )
 }
